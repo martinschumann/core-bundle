@@ -20,10 +20,11 @@ namespace Contao;
  * @property boolean $chosen
  *
  * @author Leo Feyer <https://github.com/leofeyer>
+ *
+ * @todo Rename to FormSelect in Contao 5.0
  */
 class FormSelectMenu extends Widget
 {
-
 	/**
 	 * Submit user input
 	 *
@@ -82,7 +83,7 @@ class FormSelectMenu extends Widget
 				break;
 
 			case 'multiple':
-				if ($varValue != '')
+				if ($varValue)
 				{
 					$this->arrAttributes['multiple'] = 'multiple';
 				}
@@ -95,6 +96,8 @@ class FormSelectMenu extends Widget
 			case 'rgxp':
 			case 'minlength':
 			case 'maxlength':
+			case 'minval':
+			case 'maxval':
 				// Ignore
 				break;
 
@@ -197,7 +200,7 @@ class FormSelectMenu extends Widget
 		}
 
 		// Custom class
-		if ($this->strClass != '')
+		if ($this->strClass)
 		{
 			$strClass .= ' ' . $this->strClass;
 		}
@@ -307,17 +310,17 @@ class FormSelectMenu extends Widget
 					$strOptions .= '</optgroup>';
 				}
 
-				$strOptions .= sprintf('<optgroup label="%s">',
-										StringUtil::specialchars($arrOption['label']));
-
+				$strOptions .= sprintf('<optgroup label="%s">', StringUtil::specialchars($arrOption['label']));
 				$blnHasGroups = true;
 				continue;
 			}
 
-			$strOptions .= sprintf('<option value="%s"%s>%s</option>',
-									$arrOption['value'],
-									$this->isSelected($arrOption),
-									$arrOption['label']);
+			$strOptions .= sprintf(
+				'<option value="%s"%s>%s</option>',
+				$arrOption['value'],
+				$this->isSelected($arrOption),
+				$arrOption['label']
+			);
 		}
 
 		if ($blnHasGroups)
@@ -325,12 +328,14 @@ class FormSelectMenu extends Widget
 			$strOptions .= '</optgroup>';
 		}
 
-		return sprintf('<select name="%s" id="ctrl_%s" class="%s"%s>%s</select>',
-						$this->strName,
-						$this->strId,
-						$this->class,
-						$this->getAttributes(),
-						$strOptions);
+		return sprintf(
+			'<select name="%s" id="ctrl_%s" class="%s"%s>%s</select>',
+			$this->strName,
+			$this->strId,
+			$this->class,
+			$this->getAttributes(),
+			$strOptions
+		);
 	}
 }
 

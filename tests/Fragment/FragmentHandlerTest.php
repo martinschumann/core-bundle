@@ -32,9 +32,6 @@ use Symfony\Component\HttpKernel\Fragment\FragmentRendererInterface;
 
 class FragmentHandlerTest extends TestCase
 {
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -209,9 +206,6 @@ class FragmentHandlerTest extends TestCase
         $fragmentHandler->render($uri);
     }
 
-    /**
-     * @param BaseFragmentHandler&MockObject $fragmentHandler
-     */
     private function getFragmentHandler(FragmentRegistry $registry = null, ServiceLocator $renderers = null, ServiceLocator $preHandlers = null, Request $request = null, BaseFragmentHandler $fragmentHandler = null): FragmentHandler
     {
         if (null === $registry) {
@@ -270,11 +264,9 @@ class FragmentHandlerTest extends TestCase
     }
 
     /**
-     * @param object $service
-     *
      * @return ServiceLocator&MockObject
      */
-    private function mockServiceLocator(string $name, $service): ServiceLocator
+    private function mockServiceLocator(string $name, object $service): ServiceLocator
     {
         $serviceLocator = $this->createMock(ServiceLocator::class);
         $serviceLocator

@@ -11,6 +11,7 @@
 namespace Contao;
 
 use Contao\CoreBundle\OptIn\OptIn;
+use Contao\CoreBundle\Util\SimpleTokenParser;
 use Patchwork\Utf8;
 use Symfony\Component\HttpFoundation\Session\Session;
 
@@ -18,10 +19,11 @@ use Symfony\Component\HttpFoundation\Session\Session;
  * Front end module "lost password".
  *
  * @author Leo Feyer <https://github.com/leofeyer>
+ *
+ * @todo Rename to ModuleLostPassword in Contao 5.0
  */
 class ModulePassword extends Module
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -35,7 +37,9 @@ class ModulePassword extends Module
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 			$objTemplate->wildcard = '### ' . Utf8::strtoupper($GLOBALS['TL_LANG']['FMD']['lostPassword'][0]) . ' ###';
@@ -138,11 +142,11 @@ class ModulePassword extends Module
 		$this->Template->hasError = $doNotSubmit;
 
 		// Look for an account and send the password link
-		if (Input::post('FORM_SUBMIT') == $strFormId && !$doNotSubmit)
+		if (!$doNotSubmit && Input::post('FORM_SUBMIT') == $strFormId)
 		{
 			if ($this->reg_skipName)
 			{
-				$objMember = MemberModel::findActiveByEmailAndUsername(Input::post('email', true), null);
+				$objMember = MemberModel::findActiveByEmailAndUsername(Input::post('email', true));
 			}
 			else
 			{
@@ -151,7 +155,6 @@ class ModulePassword extends Module
 
 			if ($objMember === null)
 			{
-				sleep(2); // Wait 2 seconds while brute forcing :)
 				$this->Template->error = $GLOBALS['TL_LANG']['MSC']['accountNotFound'];
 			}
 			else
@@ -163,7 +166,6 @@ class ModulePassword extends Module
 		$this->Template->formId = $strFormId;
 		$this->Template->username = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['username']);
 		$this->Template->email = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['emailAddress']);
-		$this->Template->action = Environment::get('indexFreeRequest');
 		$this->Template->slabel = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['requestPassword']);
 		$this->Template->rowLast = 'row_' . $row . ' row_last' . ((($row % 2) == 0) ? ' even' : ' odd');
 	}
@@ -241,7 +243,7 @@ class ModulePassword extends Module
 		$objSession = System::getContainer()->get('session');
 
 		// Validate the field
-		if (\strlen(Input::post('FORM_SUBMIT')) && Input::post('FORM_SUBMIT') == $objSession->get('setPasswordToken'))
+		if (Input::post('FORM_SUBMIT') && Input::post('FORM_SUBMIT') == $objSession->get('setPasswordToken'))
 		{
 			$objWidget->validate();
 
@@ -296,7 +298,6 @@ class ModulePassword extends Module
 
 		$this->Template->formId = $strToken;
 		$this->Template->fields = $objWidget->parse();
-		$this->Template->action = Environment::get('indexFreeRequest');
 		$this->Template->slabel = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['setNewPassword']);
 	}
 
@@ -318,7 +319,10 @@ class ModulePassword extends Module
 		$arrData['link'] = Idna::decode(Environment::get('base')) . Environment::get('request') . ((strpos(Environment::get('request'), '?') !== false) ? '&' : '?') . 'token=' . $optInToken->getIdentifier();
 
 		// Send the token
-		$optInToken->send(sprintf($GLOBALS['TL_LANG']['MSC']['passwordSubject'], Idna::decode(Environment::get('host'))), StringUtil::parseSimpleTokens($this->reg_password, $arrData));
+		$optInToken->send(
+			sprintf($GLOBALS['TL_LANG']['MSC']['passwordSubject'], Idna::decode(Environment::get('host'))),
+			System::getContainer()->get(SimpleTokenParser::class)->parse($this->reg_password, $arrData)
+		);
 
 		$this->log('A new password has been requested for user ID ' . $objMember->id . ' (' . Idna::decodeEmail($objMember->email) . ')', __METHOD__, TL_ACCESS);
 

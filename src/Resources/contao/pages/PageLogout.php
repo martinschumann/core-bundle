@@ -13,6 +13,7 @@ namespace Contao;
 use League\Uri\Components\Query;
 use League\Uri\Http;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Provide methods to handle a logout page.
@@ -21,7 +22,6 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class PageLogout extends Frontend
 {
-
 	/**
 	 * Return a redirect response object
 	 *
@@ -31,19 +31,13 @@ class PageLogout extends Frontend
 	 */
 	public function getResponse($objPage)
 	{
-		// Set last page visited
-		if ($objPage->redirectBack)
-		{
-			$_SESSION['LAST_PAGE_VISITED'] = $this->getReferer();
-		}
-
 		$strLogoutUrl = System::getContainer()->get('security.logout_url_generator')->getLogoutUrl();
 		$strRedirect = Environment::get('base');
 
 		// Redirect to last page visited
-		if ($objPage->redirectBack && !empty($_SESSION['LAST_PAGE_VISITED']))
+		if ($objPage->redirectBack && ($strReferer = $this->getReferer()))
 		{
-			$strRedirect = $_SESSION['LAST_PAGE_VISITED'];
+			$strRedirect = $strReferer;
 		}
 
 		// Redirect to jumpTo page
@@ -59,7 +53,7 @@ class PageLogout extends Frontend
 		$query = new Query($uri->getQuery());
 		$query = $query->merge('redirect=' . $strRedirect);
 
-		return new RedirectResponse((string) $uri->withQuery((string) $query));
+		return new RedirectResponse((string) $uri->withQuery((string) $query), Response::HTTP_TEMPORARY_REDIRECT);
 	}
 }
 

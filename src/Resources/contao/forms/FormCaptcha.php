@@ -24,7 +24,6 @@ use Patchwork\Utf8;
  */
 class FormCaptcha extends Widget
 {
-
 	/**
 	 * Template
 	 *
@@ -108,15 +107,12 @@ class FormCaptcha extends Widget
 		{
 			case 'name':
 				return $this->strCaptchaKey;
-				break;
 
 			case 'question':
 				return $this->getQuestion();
-				break;
 
 			default:
 				return parent::__get($strKey);
-				break;
 		}
 	}
 
@@ -125,7 +121,7 @@ class FormCaptcha extends Widget
 	 */
 	public function validate()
 	{
-		if (!isset($_POST[$this->strCaptchaKey]) || !\in_array(Input::post($this->strCaptchaKey.'_hash'), $this->generateHashes((int) Input::post($this->strCaptchaKey)), true) || (isset($_POST[$this->strCaptchaKey.'_name']) && Input::post($this->strCaptchaKey.'_name')))
+		if (!isset($_POST[$this->strCaptchaKey]) || (isset($_POST[$this->strCaptchaKey . '_name']) && Input::post($this->strCaptchaKey . '_name')) || !\in_array(Input::post($this->strCaptchaKey . '_hash'), $this->generateHashes((int) Input::post($this->strCaptchaKey)), true))
 		{
 			$this->class = 'error';
 			$this->addError($GLOBALS['TL_LANG']['ERR']['captcha']);
@@ -168,7 +164,7 @@ class FormCaptcha extends Widget
 		$time = (int) round(time() / 60 / 30);
 
 		return array_map(
-			function ($hashTime) use ($sum)
+			static function ($hashTime) use ($sum)
 			{
 				return hash_hmac('sha256', $sum . "\0" . $hashTime, System::getContainer()->getParameter('kernel.secret'));
 			},
@@ -191,9 +187,9 @@ class FormCaptcha extends Widget
 		$strEncoded = '';
 		$arrCharacters = Utf8::str_split($question);
 
-		foreach ($arrCharacters as $strCharacter)
+		foreach ($arrCharacters as $index => $strCharacter)
 		{
-			$strEncoded .= sprintf('&#%s;', Utf8::ord($strCharacter));
+			$strEncoded .= sprintf(($index % 2) ? '&#x%X;' : '&#%s;', Utf8::ord($strCharacter));
 		}
 
 		return $strEncoded;
@@ -230,17 +226,19 @@ class FormCaptcha extends Widget
 	 */
 	public function generateLabel()
 	{
-		if ($this->strLabel == '')
+		if (!$this->strLabel)
 		{
 			return '';
 		}
 
-		return sprintf('<label for="ctrl_%s" class="mandatory%s"><span class="invisible">%s </span>%s<span class="mandatory">*</span><span class="invisible"> %s</span></label>',
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						$GLOBALS['TL_LANG']['MSC']['mandatory'],
-						$this->strLabel,
-						$this->getQuestion());
+		return sprintf(
+			'<label for="ctrl_%s" class="mandatory%s"><span class="invisible">%s </span>%s<span class="mandatory">*</span><span class="invisible"> %s</span></label>',
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			$GLOBALS['TL_LANG']['MSC']['mandatory'],
+			$this->strLabel,
+			$this->getQuestion()
+		);
 	}
 
 	/**
@@ -250,13 +248,15 @@ class FormCaptcha extends Widget
 	 */
 	public function generate()
 	{
-		return sprintf('<input type="text" name="%s" id="ctrl_%s" class="captcha mandatory%s" value="" aria-describedby="captcha_text_%s"%s%s',
-						$this->strCaptchaKey,
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						$this->strId,
-						$this->getAttributes(),
-						$this->strTagEnding);
+		return sprintf(
+			'<input type="text" name="%s" id="ctrl_%s" class="captcha mandatory%s" value="" aria-describedby="captcha_text_%s"%s%s',
+			$this->strCaptchaKey,
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			$this->strId,
+			$this->getAttributes(),
+			$this->strTagEnding
+		);
 	}
 
 	/**
@@ -266,10 +266,12 @@ class FormCaptcha extends Widget
 	 */
 	public function generateQuestion()
 	{
-		return sprintf('<span id="captcha_text_%s" class="captcha_text%s">%s</span>',
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						$this->getQuestion());
+		return sprintf(
+			'<span id="captcha_text_%s" class="captcha_text%s">%s</span>',
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			$this->getQuestion()
+		);
 	}
 }
 

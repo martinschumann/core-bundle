@@ -10,6 +10,7 @@
 
 namespace Contao;
 
+use Contao\CoreBundle\Controller\InsertTagsController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Controller\ControllerReference;
 use Symfony\Component\HttpKernel\Fragment\FragmentHandler;
@@ -26,7 +27,6 @@ use Symfony\Component\HttpKernel\Fragment\FragmentHandler;
  */
 class InsertTags extends Controller
 {
-
 	/**
 	 * @var array
 	 */
@@ -105,10 +105,10 @@ class InsertTags extends Controller
 		for ($_rit=0, $_cnt=\count($tags); $_rit<$_cnt; $_rit+=2)
 		{
 			$strBuffer .= $tags[$_rit];
-			$strTag = $tags[$_rit+1];
+			$strTag = $tags[$_rit+1] ?? '';
 
 			// Skip empty tags
-			if ($strTag == '')
+			if (!$strTag)
 			{
 				continue;
 			}
@@ -127,7 +127,7 @@ class InsertTags extends Controller
 			// Skip certain elements if the output will be cached
 			if ($blnCache)
 			{
-				if ($elements[0] == 'date' || $elements[0] == 'ua' || $elements[0] == 'post' || $elements[1] == 'back' || $elements[1] == 'referer' || $elements[0] == 'request_token' || strncmp($elements[0], 'cache_', 6) === 0 || \in_array('uncached', $flags))
+				if ($elements[0] == 'date' || $elements[0] == 'ua' || $elements[0] == 'post' || $elements[1] == 'back' || $elements[1] == 'referer' || \in_array('uncached', $flags) || strncmp($elements[0], 'cache_', 6) === 0)
 				{
 					/** @var FragmentHandler $fragmentHandler */
 					$fragmentHandler = $container->get('fragment.handler');
@@ -144,7 +144,7 @@ class InsertTags extends Controller
 
 					$strBuffer .= $fragmentHandler->render(
 						new ControllerReference(
-							'contao.controller.insert_tags:renderAction',
+							InsertTagsController::class . '::renderAction',
 							$attributes,
 							array('clientCache' => (int) $objPage->clientCache, 'pageId' => $objPage->id, 'request' => Environment::get('request'))
 						),
@@ -168,7 +168,7 @@ class InsertTags extends Controller
 
 				// Accessibility tags
 				case 'lang':
-					if ($elements[1] == '')
+					if (!$elements[1])
 					{
 						$arrCache[$strTag] = '</span>';
 					}
@@ -187,7 +187,7 @@ class InsertTags extends Controller
 				case 'email':
 				case 'email_open':
 				case 'email_url':
-					if ($elements[1] == '')
+					if (!$elements[1])
 					{
 						$arrCache[$strTag] = '';
 						break;
@@ -268,6 +268,9 @@ class InsertTags extends Controller
 						case 'CONFIRM':
 						case 'DP':
 						case 'COLS':
+						case 'SECTIONS':
+						case 'DCA':
+						case 'CRAWL':
 							$file = 'default';
 							break;
 					}
@@ -291,7 +294,7 @@ class InsertTags extends Controller
 						$this->import(FrontendUser::class, 'User');
 						$value = $this->User->{$elements[1]};
 
-						if ($value == '')
+						if (!$value)
 						{
 							$arrCache[$strTag] = $value;
 							break;
@@ -333,7 +336,7 @@ class InsertTags extends Controller
 						{
 							$arrCache[$strTag] = implode(', ', $value);
 						}
-						elseif (\is_array($opts) && array_is_assoc($opts))
+						elseif (\is_array($opts) && ArrayUtil::isAssoc($opts))
 						{
 							$arrCache[$strTag] = $opts[$value] ?? $value;
 						}
@@ -359,6 +362,7 @@ class InsertTags extends Controller
 				case 'link_target':
 				case 'link_name':
 					$strTarget = null;
+					$strClass = '';
 
 					// Back link
 					if ($elements[1] == 'back')
@@ -367,7 +371,7 @@ class InsertTags extends Controller
 						$strTitle = $GLOBALS['TL_LANG']['MSC']['goBack'];
 
 						// No language files if the page is cached
-						if (!\strlen($strTitle))
+						if (!$strTitle)
 						{
 							$strTitle = 'Go back';
 						}
@@ -438,7 +442,7 @@ class InsertTags extends Controller
 									$strUrl = \in_array('absolute', $flags, true) ? $objNext->getAbsoluteUrl() : $objNext->getFrontendUrl();
 									break;
 								}
-								// DO NOT ADD A break; STATEMENT
+								// no break
 
 							default:
 								$strUrl = \in_array('absolute', $flags, true) ? $objNextPage->getAbsoluteUrl() : $objNextPage->getFrontendUrl();
@@ -446,7 +450,8 @@ class InsertTags extends Controller
 						}
 
 						$strName = $objNextPage->title;
-						$strTarget = $objNextPage->target ? ' target="_blank"' : '';
+						$strTarget = $objNextPage->target ? ' target="_blank" rel="noreferrer noopener"' : '';
+						$strClass = $objNextPage->cssClass ? sprintf(' class="%s"', $objNextPage->cssClass) : '';
 						$strTitle = $objNextPage->pageTitle ?: $objNextPage->title;
 					}
 
@@ -454,11 +459,11 @@ class InsertTags extends Controller
 					switch (strtolower($elements[0]))
 					{
 						case 'link':
-							$arrCache[$strTag] = sprintf('<a href="%s" title="%s"%s>%s</a>', $strUrl, StringUtil::specialchars($strTitle), $strTarget, $strName);
+							$arrCache[$strTag] = sprintf('<a href="%s" title="%s"%s%s>%s</a>', $strUrl, StringUtil::specialchars($strTitle), $strClass, $strTarget, $strName);
 							break;
 
 						case 'link_open':
-							$arrCache[$strTag] = sprintf('<a href="%s" title="%s"%s>', $strUrl, StringUtil::specialchars($strTitle), $strTarget);
+							$arrCache[$strTag] = sprintf('<a href="%s" title="%s"%s%s>', $strUrl, StringUtil::specialchars($strTitle), $strClass, $strTarget);
 							break;
 
 						case 'link_url':
@@ -598,7 +603,7 @@ class InsertTags extends Controller
 
 				// Conditional tags (if)
 				case 'iflng':
-					if ($elements[1] != '')
+					if ($elements[1])
 					{
 						$langs = StringUtil::trimsplit(',', $elements[1]);
 
@@ -609,7 +614,7 @@ class InsertTags extends Controller
 							{
 								$langs[$k] = substr($v, 0, -1);
 
-								if (\strlen($objPage->language) > 2 && substr($objPage->language, 0, 2) == $langs[$k])
+								if (\strlen($objPage->language) > 2 && 0 === strncmp($objPage->language, $langs[$k], 2))
 								{
 									$langs[] = $objPage->language;
 								}
@@ -632,7 +637,7 @@ class InsertTags extends Controller
 
 				// Conditional tags (if not)
 				case 'ifnlng':
-					if ($elements[1] != '')
+					if ($elements[1])
 					{
 						$langs = StringUtil::trimsplit(',', $elements[1]);
 
@@ -643,7 +648,7 @@ class InsertTags extends Controller
 							{
 								$langs[$k] = substr($v, 0, -1);
 
-								if (\strlen($objPage->language) > 2 && substr($objPage->language, 0, 2) == $langs[$k])
+								if (\strlen($objPage->language) > 2 && 0 === strncmp($objPage->language, $langs[$k], 2))
 								{
 									$langs[] = $objPage->language;
 								}
@@ -714,15 +719,15 @@ class InsertTags extends Controller
 
 				// Page
 				case 'page':
-					if ($elements[1] == 'pageTitle' && $objPage->pageTitle == '')
+					if (!$objPage->pageTitle && $elements[1] == 'pageTitle')
 					{
 						$elements[1] = 'title';
 					}
-					elseif ($elements[1] == 'parentPageTitle' && $objPage->parentPageTitle == '')
+					elseif (!$objPage->parentPageTitle && $elements[1] == 'parentPageTitle')
 					{
 						$elements[1] = 'parentTitle';
 					}
-					elseif ($elements[1] == 'mainPageTitle' && $objPage->mainPageTitle == '')
+					elseif (!$objPage->mainPageTitle && $elements[1] == 'mainPageTitle')
 					{
 						$elements[1] = 'mainTitle';
 					}
@@ -735,7 +740,7 @@ class InsertTags extends Controller
 				case 'ua':
 					$ua = Environment::get('agent');
 
-					if ($elements[1] != '')
+					if ($elements[1])
 					{
 						$arrCache[$strTag] = $ua->{$elements[1]};
 					}
@@ -748,9 +753,9 @@ class InsertTags extends Controller
 				// Abbreviations
 				case 'abbr':
 				case 'acronym':
-					if ($elements[1] != '')
+					if ($elements[1])
 					{
-						$arrCache[$strTag] = '<abbr title="'. StringUtil::specialchars($elements[1]) .'">';
+						$arrCache[$strTag] = '<abbr title="' . StringUtil::specialchars($elements[1]) . '">';
 					}
 					else
 					{
@@ -810,7 +815,7 @@ class InsertTags extends Controller
 									break;
 
 								case 'size':
-									$size = (int) $value;
+									$size = is_numeric($value) ? (int) $value : $value;
 									break;
 
 								case 'template':
@@ -848,25 +853,23 @@ class InsertTags extends Controller
 
 						$strFile = $objFile->path;
 					}
-					else
+					elseif (Validator::isInsecurePath($strFile))
 					{
-						// Check the path
-						if (Validator::isInsecurePath($strFile))
-						{
-							throw new \RuntimeException('Invalid path ' . $strFile);
-						}
+						throw new \RuntimeException('Invalid path ' . $strFile);
 					}
 
-					// Check the maximum image width
-					if (Config::get('maxImageWidth') > 0 && $width > Config::get('maxImageWidth'))
-					{
-						@trigger_error('Using a maximum front end width has been deprecated and will no longer work in Contao 5.0. Remove the "maxImageWidth" configuration and use responsive images instead.', E_USER_DEPRECATED);
+					$maxImageWidth = Config::get('maxImageWidth');
 
-						$width = Config::get('maxImageWidth');
+					// Check the maximum image width
+					if ($maxImageWidth > 0 && $width > $maxImageWidth)
+					{
+						trigger_deprecation('contao/core-bundle', '4.0', 'Using a maximum front end width has been deprecated and will no longer work in Contao 5.0. Remove the "maxImageWidth" configuration and use responsive images instead.');
+
+						$width = $maxImageWidth;
 						$height = null;
 					}
 
-					// Use the alternative text from the image meta data if none is given
+					// Use the alternative text from the image metadata if none is given
 					if (!$alt && ($objFile = FilesModel::findByPath($strFile)))
 					{
 						$arrMeta = Frontend::getMetaData($objFile->meta, $objPage->language);
@@ -893,7 +896,7 @@ class InsertTags extends Controller
 								$dimensions = ' width="' . StringUtil::specialchars($imgSize[0]) . '" height="' . StringUtil::specialchars($imgSize[1]) . '"';
 							}
 
-							$arrCache[$strTag] = '<img src="' . Controller::addFilesUrlTo($src) . '" ' . $dimensions . ' alt="' . StringUtil::specialchars($alt) . '"' . (($class != '') ? ' class="' . StringUtil::specialchars($class) . '"' : '') . '>';
+							$arrCache[$strTag] = '<img src="' . Controller::addFilesUrlTo($src) . '" ' . $dimensions . ' alt="' . StringUtil::specialchars($alt) . '"' . ($class ? ' class="' . StringUtil::specialchars($class) . '"' : '') . '>';
 						}
 
 						// Picture
@@ -916,9 +919,9 @@ class InsertTags extends Controller
 						}
 
 						// Add a lightbox link
-						if ($rel != '')
+						if ($rel)
 						{
-							$arrCache[$strTag] = '<a href="' . Controller::addFilesUrlTo($strFile) . '"' . (($alt != '') ? ' title="' . StringUtil::specialchars($alt) . '"' : '') . ' data-lightbox="' . StringUtil::specialchars($rel) . '">' . $arrCache[$strTag] . '</a>';
+							$arrCache[$strTag] = '<a href="' . Controller::addFilesUrlTo($strFile) . '"' . ($alt ? ' title="' . StringUtil::specialchars($alt) . '"' : '') . ' data-lightbox="' . StringUtil::specialchars($rel) . '">' . $arrCache[$strTag] . '</a>';
 						}
 					}
 					catch (\Exception $e)
@@ -935,7 +938,7 @@ class InsertTags extends Controller
 
 						if ($objFile !== null)
 						{
-							$arrCache[$strTag] = $objFile->path;
+							$arrCache[$strTag] = System::urlEncode($objFile->path);
 							break;
 						}
 					}
@@ -1005,7 +1008,7 @@ class InsertTags extends Controller
 						}
 					}
 
-					$this->log('Unknown insert tag {{' . $strTag . '}}', __METHOD__, TL_ERROR);
+					$this->log('Unknown insert tag {{' . $strTag . '}} on page ' . Environment::get('uri'), __METHOD__, TL_ERROR);
 					break;
 			}
 
@@ -1020,8 +1023,6 @@ class InsertTags extends Controller
 						case 'standardize':
 						case 'ampersand':
 						case 'specialchars':
-						case 'nl2br':
-						case 'nl2br_pre':
 						case 'strtolower':
 						case 'utf8_strtolower':
 						case 'strtoupper':
@@ -1038,6 +1039,14 @@ class InsertTags extends Controller
 							$arrCache[$strTag] = $flag($arrCache[$strTag]);
 							break;
 
+						case 'nl2br_pre':
+							trigger_deprecation('contao/core-bundle', '4.0', 'Using nl2br_pre() has been deprecated and will no longer work in Contao 5.0.');
+							// no break
+
+						case 'nl2br':
+							$arrCache[$strTag] = preg_replace('/\r?\n/', '<br>', $arrCache[$strTag]);
+							break;
+
 						case 'encodeEmail':
 							$arrCache[$strTag] = StringUtil::$flag($arrCache[$strTag]);
 							break;
@@ -1047,7 +1056,7 @@ class InsertTags extends Controller
 							break;
 
 						case 'currency_format':
-							$arrCache[$strTag] = System::getFormattedNumber($arrCache[$strTag], 2);
+							$arrCache[$strTag] = System::getFormattedNumber($arrCache[$strTag]);
 							break;
 
 						case 'readable_size':
@@ -1078,6 +1087,7 @@ class InsertTags extends Controller
 							$arrCache[$strTag] = implode(', ', $result);
 							break;
 
+						case 'absolute':
 						case 'refresh':
 						case 'uncached':
 							// ignore
@@ -1101,7 +1111,7 @@ class InsertTags extends Controller
 								}
 							}
 
-							$this->log('Unknown insert tag flag "' . $flag . '" in {{' . $strTag . '}}', __METHOD__, TL_ERROR);
+							$this->log('Unknown insert tag flag "' . $flag . '" in {{' . $strTag . '}} on page ' . Environment::get('uri'), __METHOD__, TL_ERROR);
 							break;
 					}
 				}

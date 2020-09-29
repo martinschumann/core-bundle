@@ -15,6 +15,8 @@ namespace Contao\CoreBundle\Tests\DataCollector;
 use Contao\ContentImage;
 use Contao\ContentText;
 use Contao\CoreBundle\DataCollector\ContaoDataCollector;
+use Contao\CoreBundle\Tests\Fixtures\DataCollector\TestClass;
+use Contao\CoreBundle\Tests\Fixtures\DataCollector\vendor\foo\bar\BundleTestClass;
 use Contao\CoreBundle\Tests\TestCase;
 use Contao\CoreBundle\Util\PackageUtil;
 use Contao\LayoutModel;
@@ -35,13 +37,13 @@ class ContaoDataCollectorTest extends TestCase
             'additional_data' => 'data',
         ];
 
-        $collector = new ContaoDataCollector();
+        $collector = $this->getDataCollector();
         $collector->collect(new Request(), new Response());
 
         $this->assertSame(['ContentText' => ContentText::class], $collector->getClassesAliased());
         $this->assertSame(['ContentImage' => ContentImage::class], $collector->getClassesComposerized());
 
-        $version = $this->getContaoVersion();
+        $version = PackageUtil::getContaoVersion();
 
         $this->assertSame(
             [
@@ -52,6 +54,7 @@ class ContaoDataCollectorTest extends TestCase
                 'preview' => false,
                 'layout' => '',
                 'template' => '',
+                'legacy_routing' => false,
             ],
             $collector->getSummary()
         );
@@ -81,19 +84,20 @@ class ContaoDataCollectorTest extends TestCase
 
         $GLOBALS['objPage'] = $page;
 
-        $collector = new ContaoDataCollector();
+        $collector = $this->getDataCollector();
         $collector->setFramework($framework);
         $collector->collect(new Request(), new Response());
 
         $this->assertSame(
             [
-                'version' => $this->getContaoVersion(),
+                'version' => PackageUtil::getContaoVersion(),
                 'framework' => false,
                 'models' => 0,
                 'frontend' => true,
                 'preview' => false,
                 'layout' => 'Default (ID 2)',
                 'template' => 'fe_page',
+                'legacy_routing' => false,
             ],
             $collector->getSummary()
         );
@@ -105,17 +109,72 @@ class ContaoDataCollectorTest extends TestCase
         unset($GLOBALS['objPage']);
     }
 
-    public function testReturnsAnEmtpyArrayIfTheDataIsNotAnArray(): void
+    public function testStoresTheLegacyRoutingData(bool $legacyRouting = false, bool $prependLocale = false, string $urlSuffix = '.html'): void
     {
-        $collector = new ContaoDataCollector();
-        $collector->unserialize('N;');
+        $collector = $this->getDataCollector($legacyRouting, $prependLocale, $urlSuffix);
+        $collector->collect(new Request(), new Response());
 
-        $this->assertSame([], $collector->getAdditionalData());
+        $this->assertSame(
+            [
+                'enabled' => $legacyRouting,
+                'prepend_locale' => $prependLocale,
+                'url_suffix' => $urlSuffix,
+                'hooks' => [],
+            ],
+            $collector->getLegacyRouting()
+        );
+    }
+
+    public function legacyRoutingProvider(): \Generator
+    {
+        yield [false, false, '.html'];
+        yield [true, false, '.html'];
+        yield [true, false, '.html'];
+        yield [true, true, '.html'];
+        yield [true, true, '.php'];
+    }
+
+    public function testIncludesTheLegacyRoutingHooks(): void
+    {
+        $GLOBALS['TL_HOOKS'] = [
+            'getPageIdFromUrl' => [
+                [TestClass::class, 'onGetPageIdFromUrl'],
+                ['foo.service', 'onGetPageIdFromUrl'],
+            ],
+            'getRootPageFromUrl' => [
+                [TestClass::class, 'onGetRootPageFromUrl'],
+                ['bar.service', 'onGetRootPageFromUrl'],
+            ],
+        ];
+
+        $systemAdapter = $this->mockAdapter(['importStatic']);
+        $systemAdapter
+            ->expects($this->exactly(4))
+            ->method('importStatic')
+            ->withConsecutive([TestClass::class], ['foo.service'], [TestClass::class], ['bar.service'])
+            ->willReturnOnConsecutiveCalls(new TestClass(), new BundleTestClass(), new TestClass(), new BundleTestClass())
+        ;
+
+        $framework = $this->mockContaoFramework([System::class => $systemAdapter]);
+
+        $collector = $this->getDataCollector(true);
+        $collector->setFramework($framework);
+        $collector->collect(new Request(), new Response());
+
+        $this->assertSame(
+            [
+                ['name' => 'getPageIdFromUrl', 'class' => TestClass::class, 'method' => 'onGetPageIdFromUrl', 'package' => ''],
+                ['name' => 'getPageIdFromUrl', 'class' => BundleTestClass::class, 'method' => 'onGetPageIdFromUrl', 'package' => 'foo/bar'],
+                ['name' => 'getRootPageFromUrl', 'class' => TestClass::class, 'method' => 'onGetRootPageFromUrl', 'package' => ''],
+                ['name' => 'getRootPageFromUrl', 'class' => BundleTestClass::class, 'method' => 'onGetRootPageFromUrl', 'package' => 'foo/bar'],
+            ],
+            $collector->getLegacyRouting()['hooks']
+        );
     }
 
     public function testReturnsAnEmptyArrayIfTheKeyIsUnknown(): void
     {
-        $collector = new ContaoDataCollector();
+        $collector = $this->getDataCollector();
 
         $method = new \ReflectionMethod($collector, 'getData');
         $method->setAccessible(true);
@@ -123,12 +182,8 @@ class ContaoDataCollectorTest extends TestCase
         $this->assertSame([], $method->invokeArgs($collector, ['foo']));
     }
 
-    private function getContaoVersion(): string
+    private function getDataCollector(bool $legacyRouting = false, bool $prependLocale = false, string $urlSuffix = '.html'): ContaoDataCollector
     {
-        try {
-            return PackageUtil::getVersion('contao/core-bundle');
-        } catch (\OutOfBoundsException $e) {
-            return PackageUtil::getVersion('contao/contao');
-        }
+        return new ContaoDataCollector($legacyRouting, \dirname(__DIR__).'/Fixtures/DataCollector', $prependLocale, $urlSuffix);
     }
 }

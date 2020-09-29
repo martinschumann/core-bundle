@@ -182,16 +182,20 @@
         <target>Omogoči na</target>
       </trans-unit>
       <trans-unit id="tl_member.start.1">
-        <source>Automatically activate the account on this day.</source>
-        <target>Samodejno omogoči račun na ta dan.</target>
+        <source>If you want to prevent the account from being active before a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
+        <target>Če želite omogočiti račun z določenim dnem oz. uro, ga oz. jo vnesite tu. Drugače pustite vnosno polje prazno.</target>
       </trans-unit>
       <trans-unit id="tl_member.stop.0">
         <source>Deactivate on</source>
         <target>Onemogoči na</target>
       </trans-unit>
       <trans-unit id="tl_member.stop.1">
-        <source>Automatically deactivate the account on this day.</source>
-        <target>Samodejno onemogoči račun na ta dan.</target>
+        <source>If you want to prevent the account from being active after a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
+        <target>Če želite onemogočiti račun z določenim dnem oz. uro, ga oz. jo vnesite tu. Drugače pustite polje prazno.</target>
+      </trans-unit>
+      <trans-unit id="tl_member.useTwoFactor">
+        <source>Use two-factor authentication</source>
+        <target>Uporabi dvostopenjsko prijavo</target>
       </trans-unit>
       <trans-unit id="tl_member.personal_legend">
         <source>Personal data</source>
@@ -238,58 +242,34 @@
         <target>Prijavni podatki</target>
       </trans-unit>
       <trans-unit id="tl_member.new.0">
-        <source>New member</source>
-        <target>Nov član</target>
+        <source>New</source>
+        <target>Nov</target>
       </trans-unit>
       <trans-unit id="tl_member.new.1">
         <source>Create a new member</source>
         <target>Ustvari novega člana</target>
       </trans-unit>
-      <trans-unit id="tl_member.show.0">
-        <source>Member details</source>
-        <target>podrobnosti člana</target>
-      </trans-unit>
-      <trans-unit id="tl_member.show.1">
+      <trans-unit id="tl_member.show">
         <source>Show the details of member ID %s</source>
         <target>Prikaži podrobnosti člana ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_member.edit.0">
-        <source>Edit member</source>
-        <target>Uredi člana</target>
-      </trans-unit>
-      <trans-unit id="tl_member.edit.1">
+      <trans-unit id="tl_member.edit">
         <source>Edit member ID %s</source>
         <target>Uredi člana ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_member.copy.0">
-        <source>Duplicate member</source>
-        <target>Kopiraj člana</target>
-      </trans-unit>
-      <trans-unit id="tl_member.copy.1">
+      <trans-unit id="tl_member.copy">
         <source>Duplicate member ID %s</source>
         <target>Kopiraj člana ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_member.delete.0">
-        <source>Delete member</source>
-        <target>Izbriši člana</target>
-      </trans-unit>
-      <trans-unit id="tl_member.delete.1">
+      <trans-unit id="tl_member.delete">
         <source>Delete member ID %s</source>
         <target>Izbriši člana ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_member.toggle.0">
-        <source>Activate/deactivate member</source>
-        <target>Omogoči/onemogoči člana</target>
-      </trans-unit>
-      <trans-unit id="tl_member.toggle.1">
+      <trans-unit id="tl_member.toggle">
         <source>Activate/deactivate member ID %s</source>
         <target>Omogoči/onemogoči člana z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_member.su.0">
-        <source>Preview</source>
-        <target>Predogled</target>
-      </trans-unit>
-      <trans-unit id="tl_member.su.1">
+      <trans-unit id="tl_member.su">
         <source>Preview the front end as member ID %s</source>
         <target>Naredite predogled kot uporabnik ID %s</target>
       </trans-unit>

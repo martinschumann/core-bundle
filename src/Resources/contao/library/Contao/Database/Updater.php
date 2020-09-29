@@ -10,6 +10,7 @@
 
 namespace Contao\Database;
 
+use Contao\ArrayUtil;
 use Contao\Config;
 use Contao\Controller;
 use Contao\Database;
@@ -17,11 +18,12 @@ use Contao\Dbafs;
 use Contao\File;
 use Contao\Files;
 use Contao\FilesModel;
+use Contao\Folder;
 use Contao\StringUtil;
 use Contao\System;
 use Symfony\Component\Finder\SplFileInfo;
 
-@trigger_error('Using the Contao\Database\Updater class has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+trigger_deprecation('contao/core-bundle', '4.0', 'Using the "Contao\Database\Updater" class has been deprecated and will no longer work in Contao 5.0.');
 
 /**
  * Adjust the database if the system is updated.
@@ -32,7 +34,6 @@ use Symfony\Component\Finder\SplFileInfo;
  */
 class Updater extends Controller
 {
-
 	/**
 	 * Import the Database object
 	 */
@@ -81,7 +82,7 @@ class Updater extends Controller
 		{
 			$mootools = array('moo_mediabox');
 
-			if ($objLayout->mootools != '')
+			if ($objLayout->mootools)
 			{
 				$mootools[] = $objLayout->mootools;
 			}
@@ -90,10 +91,10 @@ class Updater extends Controller
 						   ->execute(serialize($mootools), $objLayout->id);
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Update event reader
-		if (!file_exists($rootDir . '/templates/event_default.tpl'))
+		if (!file_exists($projectDir . '/templates/event_default.tpl'))
 		{
 			$this->Database->execute("UPDATE tl_module SET cal_template='event_full' WHERE cal_template='event_default'");
 		}
@@ -107,8 +108,7 @@ class Updater extends Controller
 
 			$arrSet['source'] = 'tl_news';
 			$arrSet['parent'] = $arrSet['pid'];
-			unset($arrSet['id']);
-			unset($arrSet['pid']);
+			unset($arrSet['id'], $arrSet['pid']);
 
 			$this->Database->prepare("INSERT INTO tl_comments %s")->set($arrSet)->execute();
 		}
@@ -330,14 +330,14 @@ class Updater extends Controller
 				{
 					switch ($objStyle->gradientAngle)
 					{
-						case 'top':          $angle = 'to bottom';       break;
-						case 'right':        $angle = 'to left';         break;
-						case 'bottom':       $angle = 'to top';          break;
-						case 'left':         $angle = 'to right';        break;
-						case 'top left':     $angle = 'to bottom right'; break;
-						case 'top right':    $angle = 'to bottom left';  break;
-						case 'bottom left':  $angle = 'to top right';    break;
-						case 'bottom right': $angle = 'to top left';     break;
+						case 'top': $angle = 'to bottom'; break;
+						case 'right': $angle = 'to left'; break;
+						case 'bottom': $angle = 'to top'; break;
+						case 'left': $angle = 'to right'; break;
+						case 'top left': $angle = 'to bottom right'; break;
+						case 'top right': $angle = 'to bottom left'; break;
+						case 'bottom left': $angle = 'to top right'; break;
+						case 'bottom right': $angle = 'to top left'; break;
 					}
 				}
 
@@ -346,8 +346,8 @@ class Updater extends Controller
 			}
 		}
 
-		// Make unlimited recurrences end on 2038-01-01 00:00:00 (see #4862)
-		$this->Database->query("UPDATE `tl_calendar_events` SET `repeatEnd`=2145913200 WHERE `recurring`=1 AND `recurrences`=0");
+		// Make unlimited recurrences end on 2106-02-07 07:28:15 (see #4862 and #510)
+		$this->Database->query("UPDATE `tl_calendar_events` SET `repeatEnd`=4294967295 WHERE `recurring`=1 AND `recurrences`=0");
 	}
 
 	/**
@@ -558,7 +558,7 @@ class Updater extends Controller
 			{
 				if (($key = array_search('layout.css', $tmp)) !== false)
 				{
-					array_insert($tmp, $key + 1, 'responsive.css');
+					ArrayUtil::arrayInsert($tmp, $key + 1, 'responsive.css');
 				}
 
 				$strFramework = serialize(array_values(array_unique($tmp)));
@@ -600,16 +600,13 @@ class Updater extends Controller
 			{
 				$jquery = StringUtil::deserialize($objLayout->jquery);
 
-				if (!empty($jquery) && \is_array($jquery))
+				if (!empty($jquery) && \is_array($jquery) && ($key = array_search('j_slider', $jquery)) !== false)
 				{
-					if (($key = array_search('j_slider', $jquery)) !== false)
-					{
-						$arrScripts[] = 'js_slider';
-						unset($jquery[$key]);
+					$arrScripts[] = 'js_slider';
+					unset($jquery[$key]);
 
-						$this->Database->prepare("UPDATE tl_layout SET jquery=? WHERE id=?")
-									   ->execute(serialize(array_values($jquery)), $objLayout->id);
-					}
+					$this->Database->prepare("UPDATE tl_layout SET jquery=? WHERE id=?")
+								   ->execute(serialize(array_values($jquery)), $objLayout->id);
 				}
 			}
 
@@ -618,16 +615,13 @@ class Updater extends Controller
 			{
 				$mootools = StringUtil::deserialize($objLayout->mootools);
 
-				if (!empty($mootools) && \is_array($mootools))
+				if (!empty($mootools) && \is_array($mootools) && ($key = array_search('moo_slider', $mootools)) !== false)
 				{
-					if (($key = array_search('moo_slider', $mootools)) !== false)
-					{
-						$arrScripts[] = 'js_slider';
-						unset($mootools[$key]);
+					$arrScripts[] = 'js_slider';
+					unset($mootools[$key]);
 
-						$this->Database->prepare("UPDATE tl_layout SET mootools=? WHERE id=?")
-									   ->execute(serialize(array_values($mootools)), $objLayout->id);
-					}
+					$this->Database->prepare("UPDATE tl_layout SET mootools=? WHERE id=?")
+								   ->execute(serialize(array_values($mootools)), $objLayout->id);
 				}
 			}
 
@@ -657,8 +651,9 @@ class Updater extends Controller
 		$arrMapper = array();
 		$arrFolders = array();
 		$arrFiles = array();
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
-		$arrScan = scan($rootDir . '/' . $strPath);
+
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
+		$arrScan = Folder::scan($projectDir . '/' . $strPath);
 
 		foreach ($arrScan as $strFile)
 		{
@@ -667,7 +662,7 @@ class Updater extends Controller
 				continue;
 			}
 
-			if (is_dir($rootDir . '/' . $strPath . '/' . $strFile))
+			if (is_dir($projectDir . '/' . $strPath . '/' . $strFile))
 			{
 				$arrFolders[] = $strPath . '/' . $strFile;
 			}
@@ -697,7 +692,7 @@ class Updater extends Controller
 			if (preg_match('/^meta(_([a-z]{2}))?\.txt$/', basename($strFile), $matches))
 			{
 				$key = $matches[2] ?: 'en';
-				$arrData = file($rootDir . '/' . $strFile, FILE_IGNORE_NEW_LINES);
+				$arrData = file($projectDir . '/' . $strFile, FILE_IGNORE_NEW_LINES);
 
 				foreach ($arrData as $line)
 				{
@@ -716,7 +711,7 @@ class Updater extends Controller
 			$arrMapper[basename($strFile)] = $strUuid;
 		}
 
-		// Insert the meta data AFTER the file entries have been created
+		// Insert the metadata AFTER the file entries have been created
 		if (!empty($arrMeta))
 		{
 			foreach ($arrMeta as $file=>$meta)
@@ -772,6 +767,7 @@ class Updater extends Controller
 			{
 				continue;
 			}
+
 			if ($arrConfig['dataContainer'] == 'Folder' && !$arrConfig['databaseAssisted'])
 			{
 				continue;
@@ -791,12 +787,9 @@ class Updater extends Controller
 						}
 
 						// Convert the order fields as well
-						if (isset($arrField['eval']['orderField']) && isset($GLOBALS['TL_DCA'][$strTable]['fields'][$arrField['eval']['orderField']]))
+						if (isset($arrField['eval']['orderField'], $GLOBALS['TL_DCA'][$strTable]['fields'][$arrField['eval']['orderField']]) && $this->Database->fieldExists($arrField['eval']['orderField'], $strTable, true))
 						{
-							if ($this->Database->fieldExists($arrField['eval']['orderField'], $strTable, true))
-							{
-								$arrFields['order'][] = $strTable . '.' . $arrField['eval']['orderField'];
-							}
+							$arrFields['order'][] = $strTable . '.' . $arrField['eval']['orderField'];
 						}
 					}
 				}
@@ -991,7 +984,7 @@ class Updater extends Controller
 		}
 		else
 		{
-			$return->value = array_map(function ($var) { return rtrim($var, "\x00"); }, $value);
+			$return->value = array_map(static function ($var) { return rtrim($var, "\x00"); }, $value);
 			$return->isUuid = (\strlen($value[0]) == 16 && !is_numeric($return->value[0]) && strncmp($return->value[0], Config::get('uploadPath') . '/', \strlen(Config::get('uploadPath')) + 1) !== 0);
 			$return->isNumeric = (is_numeric($return->value[0]) && $return->value[0] > 0);
 		}

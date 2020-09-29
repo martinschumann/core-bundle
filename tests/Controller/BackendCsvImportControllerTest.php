@@ -28,13 +28,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class BackendCsvImportControllerTest extends TestCase
 {
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -239,7 +236,7 @@ EOF;
         $response = $controller->importListWizardAction($this->mockDataContainer());
 
         $this->assertInstanceOf(RedirectResponse::class, $response);
-        $this->assertSame(303, $response->getStatusCode());
+        $this->assertSame(302, $response->getStatusCode());
     }
 
     public function testFailsIfThereIsNoRequestObject(): void
@@ -287,7 +284,7 @@ EOF;
         $response = $controller->importListWizardAction($this->mockDataContainer());
 
         $this->assertInstanceOf(RedirectResponse::class, $response);
-        $this->assertSame(303, $response->getStatusCode());
+        $this->assertSame(302, $response->getStatusCode());
     }
 
     public function testFailsIfTheFileExtensionIsNotCsv(): void
@@ -318,7 +315,7 @@ EOF;
         $response = $controller->importListWizardAction($this->mockDataContainer());
 
         $this->assertInstanceOf(RedirectResponse::class, $response);
-        $this->assertSame(303, $response->getStatusCode());
+        $this->assertSame(302, $response->getStatusCode());
     }
 
     private function mockFramework(array $files = [], bool $expectError = false): ContaoFramework
@@ -380,7 +377,7 @@ EOF;
     /**
      * Mocks a Contao framework with a file uploader.
      *
-     * @return ContaoFramework|\PHPUnit_Framework_MockObject_MockObject
+     * @return ContaoFramework&MockObject
      */
     private function mockContaoFrameworkWithUploader(): ContaoFramework
     {

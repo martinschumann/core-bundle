@@ -11,7 +11,7 @@
 namespace Contao;
 
 use Contao\CoreBundle\Exception\ResponseException;
-use Contao\Image\Image as ContaoImage;
+use Contao\Image\DeferredImageInterface;
 use Contao\Image\ImageDimensions;
 use Patchwork\Utf8;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -68,7 +68,6 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
  */
 class File extends System
 {
-
 	/**
 	 * File handle
 	 * @var resource
@@ -132,8 +131,6 @@ class File extends System
 	 */
 	public function __construct($strFile)
 	{
-		// No parent::__construct() here
-
 		// Handle open_basedir restrictions
 		if ($strFile == '.')
 		{
@@ -178,7 +175,6 @@ class File extends System
 			case 'size':
 			case 'filesize':
 				return filesize($this->strRootDir . '/' . $this->strFile);
-				break;
 
 			case 'name':
 			case 'basename':
@@ -188,7 +184,6 @@ class File extends System
 				}
 
 				return $this->arrPathinfo['basename'];
-				break;
 
 			case 'dirname':
 			case 'filename':
@@ -206,7 +201,6 @@ class File extends System
 				}
 
 				return strtolower($this->arrPathinfo['extension']);
-				break;
 
 			case 'origext':
 				if (!isset($this->arrPathinfo['extension']))
@@ -215,92 +209,86 @@ class File extends System
 				}
 
 				return $this->arrPathinfo['extension'];
-				break;
 
 			case 'tmpname':
 				return basename($this->strTmp);
-				break;
 
 			case 'path':
 			case 'value':
 				return $this->strFile;
-				break;
 
 			case 'mime':
 				return $this->getMimeType();
-				break;
 
 			case 'hash':
 				return $this->getHash();
-				break;
 
 			case 'ctime':
 				return filectime($this->strRootDir . '/' . $this->strFile);
-				break;
 
 			case 'mtime':
 				return filemtime($this->strRootDir . '/' . $this->strFile);
-				break;
 
 			case 'atime':
 				return fileatime($this->strRootDir . '/' . $this->strFile);
-				break;
 
 			case 'icon':
 				return $this->getIcon();
-				break;
 
 			case 'dataUri':
 				if ($this->extension == 'svgz')
 				{
 					return 'data:' . $this->mime . ';base64,' . base64_encode(gzdecode($this->getContent()));
 				}
-				else
-				{
-					return 'data:' . $this->mime . ';base64,' . base64_encode($this->getContent());
-				}
-				break;
+
+				return 'data:' . $this->mime . ';base64,' . base64_encode($this->getContent());
 
 			case 'imageSize':
 				if (empty($this->arrImageSize))
 				{
-					$strCacheKey = $this->strFile . '|' . $this->mtime;
+					$strCacheKey = $this->strFile . '|' . ($this->exists() ? $this->mtime : 0);
 
 					if (isset(static::$arrImageSizeCache[$strCacheKey]))
 					{
 						$this->arrImageSize = static::$arrImageSizeCache[$strCacheKey];
 					}
-					elseif ($this->isGdImage)
-					{
-						$this->arrImageSize = @getimagesize($this->strRootDir . '/' . $this->strFile);
-					}
-					elseif ($this->isSvgImage)
+					else
 					{
 						try
 						{
-							$dimensions = (new ContaoImage($this->strRootDir . '/' . $this->strFile, System::getContainer()->get('contao.image.imagine_svg')))->getDimensions();
+							$dimensions = System::getContainer()->get('contao.image.image_factory')->create($this->strRootDir . '/' . $this->strFile)->getDimensions();
 
 							if (!$dimensions->isRelative() && !$dimensions->isUndefined())
 							{
+								$mapper = array
+								(
+									'gif' => IMAGETYPE_GIF,
+									'jpg' => IMAGETYPE_JPEG,
+									'jpeg' => IMAGETYPE_JPEG,
+									'png' => IMAGETYPE_PNG,
+									'webp' => IMAGETYPE_WEBP,
+								);
+
 								$this->arrImageSize = array
 								(
 									$dimensions->getSize()->getWidth(),
 									$dimensions->getSize()->getHeight(),
-									0, // replace this with IMAGETYPE_SVG when it becomes available
+									$mapper[$this->extension] ?? 0,
 									'width="' . $dimensions->getSize()->getWidth() . '" height="' . $dimensions->getSize()->getHeight() . '"',
 									'bits' => 8,
 									'channels' => 3,
 									'mime' => $this->getMimeType()
 								);
 							}
-							else
-							{
-								$this->arrImageSize = false;
-							}
 						}
-						catch(\Exception $e)
+						catch (\Exception $e)
 						{
-							$this->arrImageSize = false;
+							// ignore
+						}
+
+						if (!$this->arrImageSize)
+						{
+							$this->arrImageSize = @getimagesize($this->strRootDir . '/' . $this->strFile);
 						}
 					}
 
@@ -311,15 +299,12 @@ class File extends System
 				}
 
 				return $this->arrImageSize;
-				break;
 
 			case 'width':
 				return $this->imageSize[0];
-				break;
 
 			case 'height':
 				return $this->imageSize[1];
-				break;
 
 			case 'imageViewSize':
 				if (empty($this->arrImageViewSize))
@@ -349,12 +334,12 @@ class File extends System
 								(int) $dimensions->getSize()->getHeight()
 							);
 
-							if (!$this->arrImageViewSize[0] || !$this->arrImageViewSize[1])
+							if (!$this->arrImageViewSize[0] || !$this->arrImageViewSize[1] || $dimensions->isUndefined())
 							{
 								$this->arrImageViewSize = false;
 							}
 						}
-						catch(\Exception $e)
+						catch (\Exception $e)
 						{
 							$this->arrImageViewSize = false;
 						}
@@ -362,56 +347,44 @@ class File extends System
 				}
 
 				return $this->arrImageViewSize;
-				break;
 
 			case 'viewWidth':
-				return $this->imageViewSize[0];
-				break;
+				return $this->imageViewSize !== false ? $this->imageViewSize[0] : null;
 
 			case 'viewHeight':
-				return $this->imageViewSize[1];
-				break;
+				return $this->imageViewSize !== false ? $this->imageViewSize[1] : null;
 
 			case 'isImage':
 				return $this->isGdImage || $this->isSvgImage;
-				break;
 
 			case 'isGdImage':
-				return \in_array($this->extension, array('gif', 'jpg', 'jpeg', 'png'));
-				break;
+				return \in_array($this->extension, array('gif', 'jpg', 'jpeg', 'png', 'webp'));
 
 			case 'isSvgImage':
 				return \in_array($this->extension, array('svg', 'svgz'));
-				break;
 
 			case 'channels':
 				return $this->imageSize['channels'];
-				break;
 
 			case 'bits':
 				return $this->imageSize['bits'];
-				break;
 
 			case 'isRgbImage':
 				return $this->channels == 3;
-				break;
 
 			case 'isCmykImage':
 				return $this->channels == 4;
-				break;
 
 			case 'handle':
 				if (!\is_resource($this->resFile))
 				{
-					$this->resFile = fopen($this->strRootDir . '/' . $this->strFile, 'rb');
+					$this->resFile = fopen($this->strRootDir . '/' . $this->strFile, 'r');
 				}
 
 				return $this->resFile;
-				break;
 
 			default:
 				return parent::__get($strKey);
-				break;
 		}
 	}
 
@@ -598,12 +571,43 @@ class File extends System
 	}
 
 	/**
+	 * Generate the image if the current file is a deferred image and does not exist yet
+	 *
+	 * @return bool True if a deferred image was resized otherwise false
+	 */
+	public function createIfDeferred()
+	{
+		if (!$this->exists())
+		{
+			try
+			{
+				$image = System::getContainer()->get('contao.image.image_factory')->create($this->strRootDir . '/' . $this->strFile);
+
+				if ($image instanceof DeferredImageInterface)
+				{
+					System::getContainer()->get('contao.image.resizer')->resizeDeferredImage($image);
+
+					return true;
+				}
+			}
+			catch (\Throwable $e)
+			{
+				// ignore
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Return the file content as string
 	 *
 	 * @return string The file content without BOM
 	 */
 	public function getContent()
 	{
+		$this->createIfDeferred();
+
 		$strContent = file_get_contents($this->strRootDir . '/' . ($this->strTmp ?: $this->strFile));
 
 		// Remove BOMs (see #4469)
@@ -746,19 +750,18 @@ class File extends System
 			return false;
 		}
 
-		$return = System::getContainer()
+		System::getContainer()
 			->get('contao.image.image_factory')
 			->create($this->strRootDir . '/' . $this->strFile, array($width, $height, $mode), $this->strRootDir . '/' . $this->strFile)
-			->getUrl($this->strRootDir)
 		;
 
-		if ($return)
-		{
-			$this->arrPathinfo = array();
-			$this->arrImageSize = array();
-		}
+		$this->arrPathinfo = array();
+		$this->arrImageSize = array();
 
-		return $return;
+		// Clear the image size cache as mtime could potentially not change
+		unset(static::$arrImageSizeCache[$this->strFile . '|' . $this->mtime]);
+
+		return true;
 	}
 
 	/**
@@ -784,6 +787,7 @@ class File extends System
 
 		$response->headers->addCacheControlDirective('must-revalidate');
 		$response->headers->set('Connection', 'close');
+		$response->headers->set('Content-Type', $this->getMimeType());
 
 		throw new ResponseException($response);
 	}
@@ -837,12 +841,7 @@ class File extends System
 	 */
 	protected function getMimeInfo()
 	{
-		if (isset($GLOBALS['TL_MIME'][$this->extension]))
-		{
-			return $GLOBALS['TL_MIME'][$this->extension];
-		}
-
-		return array('application/octet-stream', 'iconPLAIN.svg');
+		return $GLOBALS['TL_MIME'][$this->extension] ?? array('application/octet-stream', 'iconPLAIN.svg');
 	}
 
 	/**
@@ -881,10 +880,8 @@ class File extends System
 		{
 			return '';
 		}
-		else
-		{
-			return md5_file($this->strRootDir . '/' . $this->strFile);
-		}
+
+		return md5_file($this->strRootDir . '/' . $this->strFile);
 	}
 
 	/**
@@ -899,7 +896,7 @@ class File extends System
 		$matches = array();
 		$return = array('dirname'=>'', 'basename'=>'', 'extension'=>'', 'filename'=>'');
 
-		preg_match('%^(.*?)[\\\\/]*(([^/\\\\]*?)(\.([^\.\\\\/]+?)|))[\\\\/\.]*$%m', $this->strFile, $matches);
+		preg_match('%^(.*?)[\\\\/]*(([^/\\\\]*?)(\.([^.\\\\/]+?)|))[\\\\/.]*$%m', $this->strFile, $matches);
 
 		if (isset($matches[1]))
 		{

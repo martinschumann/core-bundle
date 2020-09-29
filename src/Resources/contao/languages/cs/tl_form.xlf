@@ -33,6 +33,12 @@
         <source>Send the submitted data to an e-mail address.</source>
         <target>Zaslání údajů z formuláře mailem.</target>
       </trans-unit>
+      <trans-unit id="tl_form.mailerTransport.0">
+        <source>Mailer transport</source>
+      </trans-unit>
+      <trans-unit id="tl_form.mailerTransport.1">
+        <source>Here you can override the mailer transport used to send the form via e-mail.</source>
+      </trans-unit>
       <trans-unit id="tl_form.recipient.0">
         <source>Recipient address</source>
         <target>Adresa příjemce</target>
@@ -80,6 +86,20 @@
       <trans-unit id="tl_form.csv.1">
         <source>The form data will be attached to the e-mail as a CSV file.</source>
         <target>Údaje z formuláře budou připojená k mailu jako soubor CSV.</target>
+      </trans-unit>
+      <trans-unit id="tl_form.csv_excel.0">
+        <source>CSV file (Microsoft Excel)</source>
+      </trans-unit>
+      <trans-unit id="tl_form.csv_excel.1">
+        <source>The form data will be attached to the e-mail as a CSV file readable by Microsoft Excel.</source>
+      </trans-unit>
+      <trans-unit id="tl_form.skipEmpty.0">
+        <source>Skip empty fields</source>
+        <target>Vynechat prázdná pole</target>
+      </trans-unit>
+      <trans-unit id="tl_form.skipEmpty.1">
+        <source>Do not include empty fields in the form data.</source>
+        <target>Nezahrnovat prázdná pole do formulářových dat.</target>
       </trans-unit>
       <trans-unit id="tl_form.email.0">
         <source>E-mail</source>
@@ -194,50 +214,30 @@
         <target>Předloha komentáře</target>
       </trans-unit>
       <trans-unit id="tl_form.new.0">
-        <source>New form</source>
-        <target>Nový formulář</target>
+        <source>New</source>
+        <target>Nové</target>
       </trans-unit>
       <trans-unit id="tl_form.new.1">
         <source>Create a new form</source>
         <target>Vytvořit nový formulář</target>
       </trans-unit>
-      <trans-unit id="tl_form.show.0">
-        <source>Form details</source>
-        <target>Zobrazit podrobnosti</target>
-      </trans-unit>
-      <trans-unit id="tl_form.show.1">
+      <trans-unit id="tl_form.show">
         <source>Show the details of form ID %s</source>
         <target>Zobrazit podrobnosti k formůláři ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.edit.0">
-        <source>Edit form</source>
-        <target>Upravit formulář</target>
-      </trans-unit>
-      <trans-unit id="tl_form.edit.1">
+      <trans-unit id="tl_form.edit">
         <source>Edit form ID %s</source>
         <target>Editovat formulář ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.editheader.0">
-        <source>Edit form</source>
-        <target>Upravit formulář</target>
+      <trans-unit id="tl_form.editheader">
+        <source>Edit the settings of form ID %s</source>
+        <target>Upravit nastavení formuláře ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.editheader.1">
-        <source>Edit the form settings</source>
-        <target>Nastavit formulář</target>
-      </trans-unit>
-      <trans-unit id="tl_form.copy.0">
-        <source>Duplicate form</source>
-        <target>Duplikovat formulář</target>
-      </trans-unit>
-      <trans-unit id="tl_form.copy.1">
+      <trans-unit id="tl_form.copy">
         <source>Duplicate form ID %s</source>
         <target>Duplikovat formulář ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.delete.0">
-        <source>Delete form</source>
-        <target>Smazat formulář</target>
-      </trans-unit>
-      <trans-unit id="tl_form.delete.1">
+      <trans-unit id="tl_form.delete">
         <source>Delete form ID %s</source>
         <target>Smazat formulář ID %s</target>
       </trans-unit>

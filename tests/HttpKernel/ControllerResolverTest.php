@@ -17,8 +17,8 @@ use Contao\CoreBundle\Fragment\FragmentRegistry;
 use Contao\CoreBundle\HttpKernel\ControllerResolver;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Controller\ControllerReference;
 use Symfony\Component\HttpKernel\Controller\ControllerResolverInterface;
-use Symfony\Component\HttpKernel\Kernel;
 
 class ControllerResolverTest extends TestCase
 {
@@ -55,27 +55,18 @@ class ControllerResolverTest extends TestCase
         $resolver->getController(new Request());
     }
 
-    /**
-     * @group legacy
-     *
-     * @expectedDeprecation The Symfony\Component\HttpKernel\Controller\ControllerResolverInterface::getArguments method is deprecated %s.
-     */
-    public function testForwardsArgumentsToDecoratedClass(): void
+    public function testIgnoresControllersThatAreNotString(): void
     {
-        if (Kernel::MAJOR_VERSION > 3) {
-            $this->markTestSkipped('The getArguments() method has been removed in Symfony 4');
-
-            return;
-        }
-
-        $decorated = $this->createMock(ControllerResolverInterface::class);
-        $decorated
-            ->expects($this->once())
-            ->method('getArguments')
-            ->willReturn([])
+        $registry = $this->createMock(FragmentRegistry::class);
+        $registry
+            ->expects($this->never())
+            ->method('get')
         ;
 
-        $resolver = new ControllerResolver($decorated, new FragmentRegistry());
-        $resolver->getArguments(new Request(), '');
+        $request = new Request();
+        $request->attributes->set('_controller', new ControllerReference('foo'));
+
+        $resolver = new ControllerResolver($this->createMock(ControllerResolverInterface::class), $registry);
+        $resolver->getController($request);
     }
 }

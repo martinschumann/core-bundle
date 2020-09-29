@@ -17,7 +17,6 @@ use Contao\CoreBundle\Monolog\ContaoContext;
 use Contao\CoreBundle\Monolog\ContaoTableProcessor;
 use Contao\CoreBundle\Tests\TestCase;
 use Monolog\Logger;
-use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
@@ -31,7 +30,6 @@ class ContaoTableProcessorTest extends TestCase
         $processor = $this->getContaoTableProcessor();
 
         $this->assertEmpty($processor([]));
-        $this->assertSame(['foo' => 'bar'], $processor(['foo' => 'bar']));
         $this->assertSame(['context' => ['contao' => false]], $processor(['context' => ['contao' => false]]));
     }
 
@@ -233,10 +231,6 @@ class ContaoTableProcessorTest extends TestCase
         yield [ContaoCoreBundle::SCOPE_BACKEND, null, 'BE'];
     }
 
-    /**
-     * @param RequestStack&MockObject          $requestStack
-     * @param TokenStorageInterface&MockObject $tokenStorage
-     */
     private function getContaoTableProcessor(RequestStack $requestStack = null, TokenStorageInterface $tokenStorage = null): ContaoTableProcessor
     {
         if (null === $requestStack) {

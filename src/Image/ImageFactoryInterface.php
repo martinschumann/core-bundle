@@ -13,28 +13,29 @@ declare(strict_types=1);
 namespace Contao\CoreBundle\Image;
 
 use Contao\Image\ImageInterface;
-use Contao\Image\ImportantPartInterface;
-use Contao\Image\ResizeConfigurationInterface;
+use Contao\Image\ImportantPart;
+use Contao\Image\ResizeConfiguration;
+use Contao\Image\ResizeOptions;
 
 interface ImageFactoryInterface
 {
     /**
      * Creates an Image object.
      *
-     * @param string|ImageInterface                       $path       The absolute path to the source image or an Image object
-     * @param int|array|ResizeConfigurationInterface|null $size       An image size ID, an array with width, height and resize mode or a ResizeConfiguration object
-     * @param string|null                                 $targetPath
+     * @param string|ImageInterface              $path    The absolute path to the source image or an Image object
+     * @param int|array|ResizeConfiguration|null $size    An image size ID, an array with width, height and resize mode or a ResizeConfiguration object
+     * @param string|ResizeOptions|null          $options The target path as string or a ResizeOptions object
      *
      * @return ImageInterface
      */
-    public function create($path, $size = null, $targetPath = null);
+    public function create($path, $size = null, $options = null);
 
     /**
      * Returns the equivalent important part from a legacy resize mode.
      *
      * @param string $mode One of left_top, center_top, right_top, left_center, center_center, right_center, left_bottom, center_bottom, right_bottom
      *
-     * @return ImportantPartInterface
+     * @return ImportantPart
      */
     public function getImportantPartFromLegacyMode(ImageInterface $image, $mode);
 }

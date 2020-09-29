@@ -19,9 +19,6 @@ use Contao\System;
 
 class GdImageTest extends TestCase
 {
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -32,21 +29,21 @@ class GdImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using the Contao\GdImage class has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\GdImage" class has been deprecated %s.
      */
     public function testCreatesImagesFromResources(): void
     {
         $resource = imagecreate(1, 1);
         $image = new GdImage($resource);
 
-        $this->assertInternalType('resource', $image->getResource());
+        $this->assertIsResource($image->getResource());
     }
 
     public function testCreatesImagesFromDimensions(): void
     {
         $image = GdImage::fromDimensions(100, 100);
 
-        $this->assertInternalType('resource', $image->getResource());
+        $this->assertIsResource($image->getResource());
         $this->assertTrue(imageistruecolor($image->getResource()));
         $this->assertSame(100, imagesx($image->getResource()));
         $this->assertSame(100, imagesy($image->getResource()));
@@ -78,7 +75,7 @@ class GdImageTest extends TestCase
 
         $image = GdImage::fromFile(new File('test.'.$type));
 
-        $this->assertInternalType('resource', $image->getResource());
+        $this->assertIsResource($image->getResource());
         $this->assertSame(100, imagesx($image->getResource()));
         $this->assertSame(100, imagesy($image->getResource()));
     }
@@ -183,7 +180,7 @@ class GdImageTest extends TestCase
         $image = new GdImage($image);
         $image->convertToPaletteImage();
 
-        $this->assertInternalType('resource', $image->getResource());
+        $this->assertIsResource($image->getResource());
         $this->assertFalse(imageistruecolor($image->getResource()));
 
         $this->assertSame(
@@ -216,7 +213,7 @@ class GdImageTest extends TestCase
         $image = new GdImage($image);
         $image->convertToPaletteImage();
 
-        $this->assertInternalType('resource', $image->getResource());
+        $this->assertIsResource($image->getResource());
         $this->assertFalse(imageistruecolor($image->getResource()));
         $this->assertSame(256, imagecolorstotal($image->getResource()));
 

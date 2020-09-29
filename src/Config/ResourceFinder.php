@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Contao\CoreBundle\Config;
 
 use Symfony\Component\Finder\Finder;
+use Webmozart\PathUtil\Path;
 
 /**
  * Creates a Finder object with the bundle paths set.
@@ -32,17 +33,11 @@ class ResourceFinder implements ResourceFinderInterface
         $this->paths = (array) $paths;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function find(): Finder
     {
         return Finder::create()->in($this->paths);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function findIn($subpath): Finder
     {
         return Finder::create()->in($this->getExistingSubpaths($subpath));
@@ -51,14 +46,14 @@ class ResourceFinder implements ResourceFinderInterface
     /**
      * @throws \InvalidArgumentException
      *
-     * @return string[]
+     * @return array<string>
      */
     private function getExistingSubpaths(string $subpath): array
     {
         $paths = [];
 
         foreach ($this->paths as $path) {
-            if (is_dir($dir = $path.'/'.$subpath)) {
+            if (is_dir($dir = Path::join($path, $subpath))) {
                 $paths[] = $dir;
             }
         }

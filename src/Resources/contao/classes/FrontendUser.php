@@ -13,17 +13,17 @@ namespace Contao;
 /**
  * Provide methods to manage front end users.
  *
- * @property array   $allGroups
- * @property string  $loginPage
+ * @property array  $allGroups
+ * @property string $loginPage
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
 class FrontendUser extends User
 {
-
 	/**
 	 * Symfony Security session key
 	 * @var string
+	 * @deprecated Deprecated since Contao 4.8, to be removed in Contao 5.0
 	 */
 	const SECURITY_SESSION_KEY = '_security_contao_frontend';
 
@@ -115,15 +115,13 @@ class FrontendUser extends User
 	 */
 	public function __set($strKey, $varValue)
 	{
-		switch ($strKey)
+		if ($strKey == 'allGroups')
 		{
-			case 'allGroups':
-				$this->arrGroups = $varValue;
-				break;
-
-			default:
-				parent::__set($strKey, $varValue);
-				break;
+			$this->arrGroups = $varValue;
+		}
+		else
+		{
+			parent::__set($strKey, $varValue);
 		}
 	}
 
@@ -140,11 +138,9 @@ class FrontendUser extends User
 		{
 			case 'allGroups':
 				return $this->arrGroups;
-				break;
 
 			case 'loginPage':
 				return $this->strLoginPage;
-				break;
 		}
 
 		return parent::__get($strKey);
@@ -160,7 +156,7 @@ class FrontendUser extends User
 	 */
 	public function authenticate()
 	{
-		@trigger_error('Using FrontendUser::authenticate() has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\FrontendUser::authenticate()" has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.');
 
 		return System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
 	}
@@ -175,7 +171,7 @@ class FrontendUser extends User
 	 */
 	public function login()
 	{
-		@trigger_error('Using FrontendUser::login() has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\FrontendUser::login()" has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.');
 
 		return System::getContainer()->get('contao.security.token_checker')->hasFrontendUser();
 	}
@@ -232,7 +228,7 @@ class FrontendUser extends User
 		// Make sure that groups is an array
 		if (!\is_array($this->groups))
 		{
-			$this->groups = ($this->groups != '') ? array($this->groups) : array();
+			$this->groups = $this->groups ? array($this->groups) : array();
 		}
 
 		// Skip inactive groups

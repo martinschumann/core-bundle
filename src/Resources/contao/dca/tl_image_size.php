@@ -8,9 +8,21 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\Config;
+use Contao\CoreBundle\Exception\AccessDeniedException;
+use Contao\DataContainer;
+use Contao\Image;
+use Contao\StringUtil;
+use Contao\System;
+use Imagine\Gd\Imagine as GdImagine;
+use Imagine\Gmagick\Imagine as GmagickImagine;
+use Imagine\Imagick\Imagine as ImagickImagine;
+use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
+
 $GLOBALS['TL_DCA']['tl_image_size'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -57,7 +69,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		(
 			'all' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['MSC']['all'],
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset()" accesskey="e"'
@@ -67,40 +78,34 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		(
 			'edit' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_image_size']['edit'],
 				'href'                => 'table=tl_image_size_item',
 				'icon'                => 'edit.svg'
 			),
 			'editheader' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_image_size']['editheader'],
 				'href'                => 'table=tl_image_size&amp;act=edit',
 				'icon'                => 'header.svg',
 				'button_callback'     => array('tl_image_size', 'editHeader')
 			),
 			'copy' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_image_size']['copy'],
 				'href'                => 'act=paste&amp;mode=copy',
 				'icon'                => 'copy.svg'
 			),
 			'cut' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_image_size']['cut'],
 				'href'                => 'act=paste&amp;mode=cut',
 				'icon'                => 'cut.svg',
 				'attributes'          => 'onclick="Backend.getScrollOffset()"'
 			),
 			'delete' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_image_size']['delete'],
 				'href'                => 'act=delete',
 				'icon'                => 'delete.svg',
 				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"'
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_image_size']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg'
 			)
@@ -110,7 +115,7 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 	// Palettes
 	'palettes' => array
 	(
-		'default'                     => '{title_legend},name,width,height,resizeMode,zoom;{expert_legend},cssClass,densities,sizes'
+		'default'                     => '{title_legend},name,width,height,resizeMode,zoom;{source_legend},densities,sizes;{loading_legend},lazyLoading;{expert_legend:hide},formats,cssClass,skipIfDimensionsMatch'
 	),
 
 	// Fields
@@ -132,7 +137,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'name' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['name'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'search'                  => true,
@@ -142,7 +146,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'cssClass' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['cssClass'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'search'                  => true,
@@ -151,7 +154,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'densities' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['densities'],
 			'inputType'               => 'text',
 			'explanation'             => 'imageSizeDensities',
 			'exclude'                 => true,
@@ -160,7 +162,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'sizes' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['sizes'],
 			'inputType'               => 'text',
 			'explanation'             => 'imageSizeDensities',
 			'exclude'                 => true,
@@ -169,7 +170,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'width' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['width'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'eval'                    => array('rgxp'=>'digit', 'nospace'=>true, 'tl_class'=>'clr w50'),
@@ -177,7 +177,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'height' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['height'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'eval'                    => array('rgxp'=>'digit', 'nospace'=>true, 'tl_class'=>'w50'),
@@ -185,7 +184,6 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'resizeMode' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['resizeMode'],
 			'inputType'               => 'select',
 			'options'                 => array('proportional', 'box', 'crop'),
 			'reference'               => &$GLOBALS['TL_LANG']['tl_image_size'],
@@ -195,11 +193,34 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
 		),
 		'zoom' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['zoom'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'eval'                    => array('rgxp'=>'prcnt', 'nospace'=>true, 'tl_class'=>'w50'),
 			'sql'                     => "int(10) NULL"
+		),
+		'formats' => array
+		(
+			'inputType'               => 'checkboxWizard',
+			'options_callback'        => array('tl_image_size', 'getFormats'),
+			'reference'               => &$GLOBALS['TL_LANG']['tl_image_size'],
+			'exclude'                 => true,
+			'eval'                    => array('multiple'=>true),
+			'sql'                     => "varchar(255) NOT NULL default ''"
+		),
+		'skipIfDimensionsMatch' => array
+		(
+			'label'                   => &$GLOBALS['TL_LANG']['tl_image_size']['skipIfDimensionsMatch'],
+			'inputType'               => 'checkbox',
+			'exclude'                 => true,
+			'eval'                    => array('tl_class'=>'w50 m12'),
+			'sql'                     => "char(1) NOT NULL default ''"
+		),
+		'lazyLoading' => array
+		(
+			'inputType'               => 'checkbox',
+			'exclude'                 => true,
+			'eval'                    => array('tl_class'=>'w50'),
+			'sql'                     => "char(1) NOT NULL default ''"
 		)
 	)
 );
@@ -209,22 +230,21 @@ $GLOBALS['TL_DCA']['tl_image_size'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_image_size extends Contao\Backend
+class tl_image_size extends Backend
 {
-
 	/**
 	 * Import the back end user object
 	 */
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('Contao\BackendUser', 'User');
+		$this->import(BackendUser::class, 'User');
 	}
 
 	/**
 	 * Check permissions to edit the table
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
 	public function checkPermission()
 	{
@@ -235,7 +255,7 @@ class tl_image_size extends Contao\Backend
 
 		if (!$this->User->hasAccess('image_sizes', 'themes'))
 		{
-			throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to access the image sizes module.');
+			throw new AccessDeniedException('Not enough permissions to access the image sizes module.');
 		}
 	}
 
@@ -247,7 +267,7 @@ class tl_image_size extends Contao\Backend
 	public function adjustPermissions($insertId)
 	{
 		// The oncreate_callback passes $insertId as second argument
-		if (\func_num_args() == 4)
+		if (func_num_args() == 4)
 		{
 			$insertId = func_get_arg(1);
 		}
@@ -258,7 +278,7 @@ class tl_image_size extends Contao\Backend
 		}
 
 		// Set the image sizes
-		if (empty($this->User->imageSizes) || !\is_array($this->User->imageSizes))
+		if (empty($this->User->imageSizes) || !is_array($this->User->imageSizes))
 		{
 			$imageSizes = array();
 		}
@@ -268,17 +288,17 @@ class tl_image_size extends Contao\Backend
 		}
 
 		// The image size is enabled already
-		if (\in_array($insertId, $imageSizes))
+		if (in_array($insertId, $imageSizes))
 		{
 			return;
 		}
 
-		/** @var Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface $objSessionBag */
-		$objSessionBag = Contao\System::getContainer()->get('session')->getBag('contao_backend');
+		/** @var AttributeBagInterface $objSessionBag */
+		$objSessionBag = System::getContainer()->get('session')->getBag('contao_backend');
 
 		$arrNew = $objSessionBag->get('new_records');
 
-		if (\is_array($arrNew['tl_image_size']) && \in_array($insertId, $arrNew['tl_image_size']))
+		if (is_array($arrNew['tl_image_size']) && in_array($insertId, $arrNew['tl_image_size']))
 		{
 			// Add the permissions on group level
 			if ($this->User->inherit != 'custom')
@@ -287,11 +307,11 @@ class tl_image_size extends Contao\Backend
 
 				while ($objGroup->next())
 				{
-					$arrThemes = Contao\StringUtil::deserialize($objGroup->themes);
+					$arrThemes = StringUtil::deserialize($objGroup->themes);
 
-					if (\is_array($arrThemes) && \in_array('image_sizes', $arrThemes))
+					if (is_array($arrThemes) && in_array('image_sizes', $arrThemes))
 					{
-						$arrImageSizes = Contao\StringUtil::deserialize($objGroup->imageSizes, true);
+						$arrImageSizes = StringUtil::deserialize($objGroup->imageSizes, true);
 						$arrImageSizes[] = $insertId;
 
 						$this->Database->prepare("UPDATE tl_user_group SET imageSizes=? WHERE id=?")
@@ -307,11 +327,11 @@ class tl_image_size extends Contao\Backend
 										   ->limit(1)
 										   ->execute($this->User->id);
 
-				$arrThemes = Contao\StringUtil::deserialize($objUser->themes);
+				$arrThemes = StringUtil::deserialize($objUser->themes);
 
-				if (\is_array($arrThemes) && \in_array('image_sizes', $arrThemes))
+				if (is_array($arrThemes) && in_array('image_sizes', $arrThemes))
 				{
-					$arrImageSizes = Contao\StringUtil::deserialize($objUser->imageSizes, true);
+					$arrImageSizes = StringUtil::deserialize($objUser->imageSizes, true);
 					$arrImageSizes[] = $insertId;
 
 					$this->Database->prepare("UPDATE tl_user SET imageSizes=? WHERE id=?")
@@ -366,6 +386,68 @@ class tl_image_size extends Contao\Backend
 	 */
 	public function editHeader($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->canEditFieldsOf('tl_image_size') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->canEditFieldsOf('tl_image_size') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
+	}
+
+	/**
+	 * Return the image format options
+	 *
+	 * @param DataContainer $dc
+	 *
+	 * @return array
+	 */
+	public function getFormats(DataContainer $dc=null)
+	{
+		$formats = array();
+
+		if ($dc->value)
+		{
+			$formats = StringUtil::deserialize($dc->value, true);
+		}
+
+		if (!in_array('webp', StringUtil::trimsplit(',', Config::get('validImageTypes'))))
+		{
+			return $formats;
+		}
+
+		if (!$this->supportsWebp())
+		{
+			$GLOBALS['TL_DCA']['tl_image_size']['fields']['formats']['label'] = array
+			(
+				$GLOBALS['TL_LANG']['tl_image_size']['formats'][0],
+				$GLOBALS['TL_LANG']['tl_image_size']['formatsWebpNotSupported'],
+			);
+
+			return $formats;
+		}
+
+		return array_merge($formats, array('png:webp,png', 'jpg:webp,jpg;jpeg:webp,jpeg', 'gif:webp,gif'));
+	}
+
+	/**
+	 * Check if WEBP is supported
+	 *
+	 * @return boolean
+	 */
+	private function supportsWebp()
+	{
+		$imagine = System::getContainer()->get('contao.image.imagine');
+
+		if ($imagine instanceof ImagickImagine)
+		{
+			return in_array('WEBP', Imagick::queryFormats('WEBP'), true);
+		}
+
+		if ($imagine instanceof GmagickImagine)
+		{
+			return in_array('WEBP', (new Gmagick())->queryformats('WEBP'), true);
+		}
+
+		if ($imagine instanceof GdImagine)
+		{
+			return function_exists('imagewebp');
+		}
+
+		return false;
 	}
 }

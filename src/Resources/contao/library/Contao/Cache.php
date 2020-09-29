@@ -32,7 +32,6 @@ namespace Contao;
  */
 class Cache
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var Cache
@@ -96,7 +95,9 @@ class Cache
 	 * @deprecated Deprecated since Contao 4.0, to be removed in Contao 5.0.
 	 *             The Cache class is now static.
 	 */
-	protected function __construct() {}
+	protected function __construct()
+	{
+	}
 
 	/**
 	 * Prevent cloning of the object (Singleton)
@@ -104,7 +105,9 @@ class Cache
 	 * @deprecated Deprecated since Contao 4.0, to be removed in Contao 5.0.
 	 *             The Cache class is now static.
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Check whether a key is set
@@ -178,7 +181,7 @@ class Cache
 	 */
 	public static function getInstance()
 	{
-		@trigger_error('Using Cache::getInstance() has been deprecated and will no longer work in Contao 5.0. The Cache class is now static.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Cache::getInstance()" has been deprecated and will no longer work in Contao 5.0. The "Contao\Cache" class is now static.');
 
 		if (static::$objInstance === null)
 		{

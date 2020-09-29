@@ -33,6 +33,14 @@
         <source>Add an image to the content element.</source>
         <target>Jeśli zaznaczysz te opcję, obrazek zostanie dodany do elementu.</target>
       </trans-unit>
+      <trans-unit id="tl_content.inline.0">
+        <source>Show in browser</source>
+        <target>Pokaż w przeglądarce</target>
+      </trans-unit>
+      <trans-unit id="tl_content.inline.1">
+        <source>Show the file in the browser instead of opening the download dialog.</source>
+        <target>Pokaż plik w przeglądarce zamiast otwierać okno dialogowe pobierania.</target>
+      </trans-unit>
       <trans-unit id="tl_content.overwriteMeta.0">
         <source>Overwrite meta data</source>
         <target>Napisz meta dane</target>
@@ -311,6 +319,7 @@
       </trans-unit>
       <trans-unit id="tl_content.rel.1">
         <source>To trigger the lightbox, enter a &lt;em&gt;data-lightbox&lt;/em&gt; attribute here.</source>
+        <target>Aby uruchomić lightbox, wprowadź tutaj atrybut &lt;em&gt;data-lightbox&lt;/em&gt;.</target>
       </trans-unit>
       <trans-unit id="tl_content.useImage.0">
         <source>Create an image link</source>
@@ -381,16 +390,13 @@
         <target>Szablon galerii</target>
       </trans-unit>
       <trans-unit id="tl_content.galleryTpl.1">
-        <source>Here you can select the gallery template.</source>
-        <target>Tu możesz wybrać szablon galerii.</target>
+        <source>Here you can select a gallery template.</source>
       </trans-unit>
       <trans-unit id="tl_content.customTpl.0">
-        <source>Custom element template</source>
-        <target>Własny szablon elementu</target>
+        <source>Content element template</source>
       </trans-unit>
       <trans-unit id="tl_content.customTpl.1">
-        <source>Here you can overwrite the default element template.</source>
-        <target>Tutaj możesz wybrać własny szablon elementu.</target>
+        <source>Here you can select the content element template.</source>
       </trans-unit>
       <trans-unit id="tl_content.playerSRC.0">
         <source>Video/audio files</source>
@@ -414,6 +420,7 @@
       </trans-unit>
       <trans-unit id="tl_content.vimeo.1">
         <source>Please enter the Vimeo video ID (e.g. &lt;em&gt;275028611&lt;/em&gt;).</source>
+        <target>Wprowadź ID video Vimeo (np. &lt;em&gt;275028611&lt;/em&gt;).</target>
       </trans-unit>
       <trans-unit id="tl_content.posterSRC.0">
         <source>Preview image</source>
@@ -433,27 +440,35 @@
       </trans-unit>
       <trans-unit id="tl_content.playerOptions.0">
         <source>Player options</source>
+        <target>Opcje odtwarzacza</target>
       </trans-unit>
       <trans-unit id="tl_content.playerOptions.1">
         <source>Here you can select the player options.</source>
+        <target>Tutaj możesz wybrać opcje odtwarzacza.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerPreload.0">
         <source>Preloading</source>
+        <target>Wstępne ładowanie</target>
       </trans-unit>
       <trans-unit id="tl_content.playerPreload.1">
         <source>Here you can suggest how the browser shall preload the video.</source>
+        <target>Tutaj możesz zasugerować, w jaki sposób przeglądarka ma wstępnie załadować wideo.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerStart.0">
         <source>Start at</source>
+        <target>Zacznij od</target>
       </trans-unit>
       <trans-unit id="tl_content.playerStart.1">
         <source>Start playing the video at the given number of seconds. Set to 0 to disable.</source>
+        <target>Rozpocznij odtwarzanie wideo o określonej liczbie sekund. Ustaw na 0, aby wyłączyć.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerStop.0">
         <source>Stop at</source>
+        <target>Zatrzymaj się przy</target>
       </trans-unit>
       <trans-unit id="tl_content.playerStop.1">
         <source>Stop playing the video at the given number of seconds. Set to 0 to disable.</source>
+        <target>Zatrzymaj odtwarzanie wideo przy określonej liczbie sekund. Ustaw na 0, aby wyłączyć.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerCaption.0">
         <source>Caption</source>
@@ -461,18 +476,31 @@
       </trans-unit>
       <trans-unit id="tl_content.playerCaption.1">
         <source>Here you can enter a caption.</source>
+        <target>Tutaj możesz wprowadzić podpis.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerAspect.0">
         <source>Aspect ratio</source>
+        <target>Współczynnik proporcji</target>
       </trans-unit>
       <trans-unit id="tl_content.playerAspect.1">
         <source>Here you can select the aspect ratio of the video to make it responsive.</source>
+        <target>Tutaj możesz wybrać współczynnik kształtu filmu, aby był responsywny.</target>
+      </trans-unit>
+      <trans-unit id="tl_content.splashImage.0">
+        <source>Use a splash image</source>
+        <target>Użyj obrazu splash</target>
+      </trans-unit>
+      <trans-unit id="tl_content.splashImage.1">
+        <source>Only load the video after the user has clicked on the splash image.</source>
+        <target> Ładuj wideo tylko wtedy, gdy użytkownik kliknie obraz splash.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerColor.0">
         <source>Controls color</source>
+        <target>Kolor przycisków sterujących</target>
       </trans-unit>
       <trans-unit id="tl_content.playerColor.1">
         <source>Here you can enter a hexadecimal color (e.g. ff0000) for the video controls.</source>
+        <target>Wprowadź heksadecymalną wartość koloru dla przycisków sterujących (np. ff0000).</target>
       </trans-unit>
       <trans-unit id="tl_content.sliderDelay.0">
         <source>Sliding interval</source>
@@ -591,16 +619,16 @@
         <target>Wrapper start</target>
       </trans-unit>
       <trans-unit id="tl_content.start.1">
-        <source>Do not show the element on the website before this day.</source>
-        <target>Ten tryb pozwala wyświetlić w pojedynczym rozwijanym panelu, różne elementy zawartości (tekst, zdjęcia, formularz). Musimy te elementy zawrzeć pomiędzy elementem &lt;em&gt;wrapper start&lt;/em&gt; a elementem &lt;em&gt;wrapper stop&lt;/em&gt;.</target>
+        <source>If you want to prevent the element from showing on the website before a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
+        <target>Jeśli nie chcesz żeby element był wyświetlany przed jakąś datą, możesz wprowadzić ją tutaj. W przeciwnym wypadku zostaw to pole puste.</target>
       </trans-unit>
       <trans-unit id="tl_content.stop.0">
         <source>Show until</source>
         <target>Wrapper stop</target>
       </trans-unit>
       <trans-unit id="tl_content.stop.1">
-        <source>Do not show the element on the website on and after this day.</source>
-        <target>Zakończenie dla elementu &lt;em&gt;wrapper start&lt;/em&gt;.</target>
+        <source>If you want to prevent the element from showing on the website after a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
+        <target>Jeśli nie chcesz żeby element był wyświetlany po jakiejś dacie, możesz wprowadzić ją tutaj. W przeciwnym wypadku zostaw to pole puste.</target>
       </trans-unit>
       <trans-unit id="tl_content.type_legend">
         <source>Element type</source>
@@ -613,6 +641,10 @@
       <trans-unit id="tl_content.image_legend">
         <source>Image settings</source>
         <target>Ustawienia obrazka</target>
+      </trans-unit>
+      <trans-unit id="tl_content.download_legend">
+        <source>Download settings</source>
+        <target>Ustawienia pobierania</target>
       </trans-unit>
       <trans-unit id="tl_content.slider_legend">
         <source>Slider settings</source>
@@ -657,6 +689,10 @@
       <trans-unit id="tl_content.protected_legend">
         <source>Access protection</source>
         <target>Ochrona dostępu</target>
+      </trans-unit>
+      <trans-unit id="tl_content.splash_legend">
+        <source>Splash image</source>
+        <target>Obraz splash</target>
       </trans-unit>
       <trans-unit id="tl_content.expert_legend">
         <source>Expert settings</source>
@@ -724,24 +760,31 @@
       </trans-unit>
       <trans-unit id="tl_content.player_nocontrols">
         <source>Hide the controls</source>
+        <target>Ukryj przyciski sterujące</target>
       </trans-unit>
       <trans-unit id="tl_content.player_loop">
         <source>Play in a loop</source>
+        <target>Odtwarzaj w pętli</target>
       </trans-unit>
       <trans-unit id="tl_content.player_muted">
         <source>Mute the audio output</source>
+        <target>Wycisz audio</target>
       </trans-unit>
       <trans-unit id="tl_content.player_playsinline">
         <source>Play inline (no fullscreen mode)</source>
+        <target>Odtwarzaj inline (bez trybu pełnoekranowego)</target>
       </trans-unit>
       <trans-unit id="tl_content.player_preload.auto">
         <source>Auto (preload the entiry video)</source>
+        <target>Auto (wczytaj wstępnie film wideo)</target>
       </trans-unit>
       <trans-unit id="tl_content.player_preload.metadata">
         <source>Metadata (preload the metadata only)</source>
+        <target>Metadane (wstępnie ładuj tylko metadane)</target>
       </trans-unit>
       <trans-unit id="tl_content.player_preload.none">
         <source>None (do not preload anything)</source>
+        <target>Brak (niczego nie ładuj)</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_autoplay">
         <source>Autoplay</source>
@@ -749,30 +792,39 @@
       </trans-unit>
       <trans-unit id="tl_content.youtube_controls">
         <source>Hide the controls</source>
+        <target>Ukryj przyciski sterujące</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_cc_load_policy">
         <source>Show captions by default</source>
+        <target>Pokaż podpisy domyślnie</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_fs">
         <source>Hide the fullscreen button</source>
+        <target>Ukryj przycisk pełny ekran</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_hl">
         <source>Use the Contao page language</source>
+        <target>Użyj języka strony Contao</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_iv_load_policy">
         <source>Hide annotations</source>
+        <target>Ukryj adnotacje</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_modestbranding">
         <source>Hide the YouTube logo</source>
+        <target>Ukryj logo YouTube</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_rel">
         <source>Do not show related videos at the end</source>
+        <target>Nie pokazuj powiązanych filmów na końcu</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_showinfo">
         <source>Hide the top bar in the preview</source>
+        <target>Ukryj górny pasek w podglądzie</target>
       </trans-unit>
       <trans-unit id="tl_content.youtube_nocookie">
         <source>Use the youtube-nocookie.com domain</source>
+        <target>Użyj domeny youtube-nocookie.com</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_autoplay">
         <source>Autoplay</source>
@@ -780,71 +832,55 @@
       </trans-unit>
       <trans-unit id="tl_content.vimeo_loop">
         <source>Play in a loop</source>
+        <target>Odtwarzaj w pętli</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_portrait">
         <source>Hide the profile image</source>
+        <target>Ukryj obrazek profilu</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_title">
         <source>Hide the title</source>
+        <target>Ukryj tytuł</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_byline">
         <source>Hide the author</source>
+        <target>Ukryj autora</target>
       </trans-unit>
       <trans-unit id="tl_content.new.0">
-        <source>New element</source>
-        <target>Nowy element</target>
+        <source>New</source>
+        <target>Nowy</target>
       </trans-unit>
       <trans-unit id="tl_content.new.1">
         <source>Add a new content element</source>
         <target>Utwórz nowy element</target>
       </trans-unit>
-      <trans-unit id="tl_content.show.0">
-        <source>Element details</source>
-        <target>Szczegóły elementu</target>
-      </trans-unit>
-      <trans-unit id="tl_content.show.1">
+      <trans-unit id="tl_content.show">
         <source>Show the details of content element ID %s</source>
         <target>Pokaż szczegóły elementu ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.cut.0">
-        <source>Move element</source>
-        <target>Przenieś element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.cut.1">
+      <trans-unit id="tl_content.cut">
         <source>Move content element ID %s</source>
         <target>Przenieś zawartość elementu ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.copy.0">
-        <source>Duplicate element</source>
-        <target>Kopiuj element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.copy.1">
+      <trans-unit id="tl_content.copy">
         <source>Duplicate content element ID %s</source>
         <target>Kopiuj zawartość elementu ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.delete.0">
-        <source>Delete element</source>
-        <target>Skasuj element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.delete.1">
+      <trans-unit id="tl_content.delete">
         <source>Delete content element ID %s</source>
         <target>Skasuj zawartość elementu ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.edit.0">
-        <source>Edit element</source>
-        <target>Edytuj element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.edit.1">
+      <trans-unit id="tl_content.edit">
         <source>Edit content element ID %s</source>
         <target>Edytuj zawartość elementu ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.editheader.0">
-        <source>Edit article</source>
-        <target>Edytuj artykuł</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editheader.1">
+      <trans-unit id="tl_content.editheader">
         <source>Edit the article settings</source>
         <target>Edytuj ustawienia artykułu</target>
+      </trans-unit>
+      <trans-unit id="tl_content.toggle">
+        <source>Hide/unhide content element ID %s</source>
+        <target>Pokaż/ukryj zawartość elementu ID %s</target>
       </trans-unit>
       <trans-unit id="tl_content.pasteafter.0">
         <source>Paste at the top</source>
@@ -855,34 +891,18 @@
         <target>Wklej po elemencie zawartości ID %s</target>
       </trans-unit>
       <trans-unit id="tl_content.pastenew.0">
-        <source>Add new at the top</source>
-        <target>Utwórz nowy element arkusza na początku</target>
+        <source>Create a new content element at the top</source>
+        <target>Utwórz nowy element na górze</target>
       </trans-unit>
       <trans-unit id="tl_content.pastenew.1">
-        <source>Add new after content element ID %s</source>
+        <source>Create a new content element after content element ID %s</source>
         <target>Utwórz nowy element zawartości po elemencie zawartości ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.toggle.0">
-        <source>Toggle visibility</source>
-        <target>Włącz lub wyłącz widoczność elementu</target>
-      </trans-unit>
-      <trans-unit id="tl_content.toggle.1">
-        <source>Toggle the visibility of element ID %s</source>
-        <target>Włącz lub wyłącz widoczność elementu ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editalias.0">
-        <source>Edit source element</source>
-        <target>Edytuj źródłowy element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editalias.1">
+      <trans-unit id="tl_content.editalias">
         <source>Edit the source element ID %s</source>
         <target>Edytuj źródłowy element ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.editarticle.0">
-        <source>Edit article</source>
-        <target>Edytuj artykuł</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editarticle.1">
+      <trans-unit id="tl_content.editarticle">
         <source>Edit article ID %s</source>
         <target>Edytuj artykuł ID %s</target>
       </trans-unit>

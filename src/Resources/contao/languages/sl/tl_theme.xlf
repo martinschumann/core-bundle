@@ -49,14 +49,6 @@
         <source>Here you can define global variables for the style sheets of the theme (e.g. &lt;em&gt;$red&lt;/em&gt; -&gt; &lt;em&gt;c00&lt;/em&gt; or &lt;em&gt;$margin&lt;/em&gt; -&gt; &lt;em&gt;12px&lt;/em&gt;).</source>
         <target>Tukaj lahko definirate globalne spremenljivke za css teme (npr. &lt;em&gt;$red&lt;/em&gt; -&gt; &lt;em&gt;c00&lt;/em&gt; or &lt;em&gt;$margin&lt;/em&gt; -&gt; &lt;em&gt;12px&lt;/em&gt;).</target>
       </trans-unit>
-      <trans-unit id="tl_theme.defaultImageDensities.0">
-        <source>Default image pixel densities</source>
-        <target>Privzete gostote pikslov slike</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.defaultImageDensities.1">
-        <source>Here you can define the default pixel densities, e.g. &lt;em&gt;1x, 1.5x, 2x&lt;/em&gt;.</source>
-        <target>Tu lahko določite privzeto gostoto pikslov, npr. &lt;em&gt;1x, 1.5x, 2x&lt;/ em&gt;.</target>
-      </trans-unit>
       <trans-unit id="tl_theme.source.0">
         <source>Source files</source>
         <target>Izvorne datoteke</target>
@@ -80,10 +72,6 @@
       <trans-unit id="tl_theme.config_legend">
         <source>Configuration</source>
         <target>Nastavitev</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.image_legend">
-        <source>Image sizes</source>
-        <target>Velikosti slik</target>
       </trans-unit>
       <trans-unit id="tl_theme.vars_legend">
         <source>Global variables</source>
@@ -133,83 +121,55 @@
         <source>Find more themes in the Contao theme store</source>
         <target>Naj več tem v Contao trgovini tem.</target>
       </trans-unit>
+      <trans-unit id="tl_theme.importTheme.0">
+        <source>Import</source>
+        <target>Uvoz</target>
+      </trans-unit>
+      <trans-unit id="tl_theme.importTheme.1">
+        <source>Import a theme</source>
+        <target>Uvozi temo</target>
+      </trans-unit>
+      <trans-unit id="tl_theme.editmeta">
+        <source>Edit the theme settings</source>
+        <target>Uredi nastavitve teme</target>
+      </trans-unit>
       <trans-unit id="tl_theme.new.0">
-        <source>New theme</source>
-        <target>Nova tema</target>
+        <source>New</source>
+        <target>Nov</target>
       </trans-unit>
       <trans-unit id="tl_theme.new.1">
         <source>Create a new theme</source>
         <target>Ustvari novo temo</target>
       </trans-unit>
-      <trans-unit id="tl_theme.show.0">
-        <source>Theme details</source>
-        <target>Podrobnosti teme</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.show.1">
+      <trans-unit id="tl_theme.show">
         <source>Show the details of theme ID %s</source>
         <target>Prikaži podrobnosti teme ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_theme.edit.0">
-        <source>Edit theme</source>
-        <target>Uredi temo</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.edit.1">
+      <trans-unit id="tl_theme.edit">
         <source>Edit theme ID %s</source>
         <target>Uredi temo z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_theme.delete.0">
-        <source>Delete theme</source>
-        <target>Izbriši temo</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.delete.1">
+      <trans-unit id="tl_theme.delete">
         <source>Delete theme ID %s</source>
         <target>Izbriši temo z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_theme.css.0">
-        <source>Style sheets</source>
-        <target>Slogovne predloge</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.css.1">
+      <trans-unit id="tl_theme.css">
         <source>Edit the style sheets of theme ID %s</source>
         <target>Uredi slogovne predloge teme ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_theme.modules.0">
-        <source>Modules</source>
-        <target>Moduli</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.modules.1">
+      <trans-unit id="tl_theme.modules">
         <source>Edit the front end modules of theme ID %s</source>
         <target>Uredi predstavitvene module (front end) teme z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_theme.layout.0">
-        <source>Layouts</source>
-        <target>Postavitve</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.layout.1">
+      <trans-unit id="tl_theme.layout">
         <source>Edit the page layouts of theme ID %s</source>
         <target>Uredi postavitve strani teme z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_theme.imageSizes.0">
-        <source>Image sizes</source>
-        <target>Velikosti slik</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.imageSizes.1">
+      <trans-unit id="tl_theme.imageSizes">
         <source>Edit the image sizes of theme ID %s</source>
         <target>Uredi velikosti slik teme ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_theme.importTheme.0">
-        <source>Theme import</source>
-        <target>Uvoz teme</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.importTheme.1">
-        <source>Import new themes</source>
-        <target>Uvozi nove teme</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.exportTheme.0">
-        <source>Export</source>
-        <target>Izvoz</target>
-      </trans-unit>
-      <trans-unit id="tl_theme.exportTheme.1">
+      <trans-unit id="tl_theme.exportTheme">
         <source>Export theme ID %s</source>
         <target>Izvoz teme ID %s</target>
       </trans-unit>

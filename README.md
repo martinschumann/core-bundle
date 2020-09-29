@@ -36,8 +36,8 @@ Install Contao and all its dependencies by executing the following command:
 
 ```
 composer require \
-    contao/core-bundle:4.7.* \
-    contao/installation-bundle:^4.7 \
+    contao/core-bundle:4.8.* \
+    contao/installation-bundle:^4.8 \
     php-http/guzzle6-adapter:^1.1
 ```
 
@@ -63,11 +63,11 @@ your application routes.
 
 ```yml
 ContaoCoreBundle:
-    resource: "@ContaoCoreBundle/Resources/config/routing.yml"
+    resource: "@ContaoCoreBundle/Resources/config/routes.yml"
 ```
 
-Edit your `app/config/security.yml` file and merge all the `providers`,
-`encoders`, `firewalls` and `access_control` sections:
+Edit your `config/security.yml` file and merge all the `providers`, `encoders`,
+`firewalls` and `access_control` sections:
 
 ```yml
 security:
@@ -80,7 +80,7 @@ security:
 
     encoders:
         Contao\User:
-            algorithm: bcrypt
+            algorithm: auto
 
     firewalls:
         dev:
@@ -92,32 +92,20 @@ security:
             security: false
 
         contao_backend:
-            entry_point: contao.security.entry_point
             request_matcher: contao.routing.backend_matcher
             provider: contao.security.backend_user_provider
             user_checker: contao.security.user_checker
             anonymous: ~
             switch_user: true
-            logout_on_user_change: true
 
             contao_login:
-                login_path: contao_backend_login
-                check_path: contao_backend_login
-                default_target_path: contao_backend
-                success_handler: contao.security.authentication_success_handler
-                failure_handler: contao.security.authentication_failure_handler
                 remember_me: false
-
-            two_factor:
-                auth_form_path: contao_backend_login
-                check_path: contao_backend_two_factor
-                auth_code_parameter_name: verify
 
             logout:
                 path: contao_backend_logout
-                target: contao_backend_login
                 handlers:
                     - contao.security.logout_handler
+                success_handler: contao.security.logout_success_handler
 
         contao_frontend:
             request_matcher: contao.routing.frontend_matcher
@@ -125,26 +113,16 @@ security:
             user_checker: contao.security.user_checker
             anonymous: ~
             switch_user: false
-            logout_on_user_change: true
 
             contao_login:
-                login_path: contao_frontend_login
-                check_path: contao_frontend_login
-                default_target_path: contao_root
-                failure_path: contao_root
-                success_handler: contao.security.authentication_success_handler
-                failure_handler: contao.security.authentication_failure_handler
                 remember_me: true
-                use_forward: true
 
             remember_me:
-                secret: '%secret%'
+                secret: '%kernel.secret%'
                 remember_me_parameter: autologin
-                token_provider: contao.security.database_token_provider
 
             logout:
                 path: contao_frontend_logout
-                target: contao_root
                 handlers:
                     - contao.security.logout_handler
                 success_handler: contao.security.logout_success_handler
@@ -153,6 +131,7 @@ security:
         - { path: ^/contao/login$, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/contao/logout$, roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: ^/contao(/|$), roles: ROLE_USER }
+        - { path: ^/, roles: [IS_AUTHENTICATED_ANONYMOUSLY] }
 ```
 
 The Contao core-bundle as well as the installation-bundle are now installed and

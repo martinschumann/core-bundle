@@ -17,7 +17,6 @@ namespace Contao;
  */
 class ContentYouTube extends ContentElement
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -31,18 +30,20 @@ class ContentYouTube extends ContentElement
 	 */
 	public function generate()
 	{
-		if ($this->youtube == '')
+		if (!$this->youtube)
 		{
 			return '';
 		}
 
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$return = '<p><a href="https://youtu.be/' . $this->youtube . '" target="_blank" rel="noreferrer noopener">youtu.be/' . $this->youtube . '</a></p>';
 
-			if ($this->headline != '')
+			if ($this->headline)
 			{
-				$return = '<'. $this->hl .'>'. $this->headline .'</'. $this->hl .'>'. $return;
+				$return = '<' . $this->hl . '>' . $this->headline . '</' . $this->hl . '>' . $return;
 			}
 
 			return $return;

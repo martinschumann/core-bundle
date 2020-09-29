@@ -12,9 +12,7 @@ declare(strict_types=1);
 
 namespace Contao\CoreBundle\Security\Authentication;
 
-use Contao\BackendUser;
 use Contao\CoreBundle\Framework\ContaoFramework;
-use Contao\CoreBundle\HttpKernel\JwtManager;
 use Contao\CoreBundle\Monolog\ContaoContext;
 use Contao\FrontendUser;
 use Contao\PageModel;
@@ -22,52 +20,105 @@ use Contao\StringUtil;
 use Contao\System;
 use Contao\User;
 use Psr\Log\LoggerInterface;
+use Scheb\TwoFactorBundle\Security\Authentication\Token\TwoFactorTokenInterface;
+use Scheb\TwoFactorBundle\Security\TwoFactor\Trusted\TrustedDeviceManagerInterface;
+use Symfony\Bundle\SecurityBundle\Security\FirewallConfig;
+use Symfony\Bundle\SecurityBundle\Security\FirewallMap;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\Component\Security\Http\Authentication\DefaultAuthenticationSuccessHandler;
-use Symfony\Component\Security\Http\HttpUtils;
+use Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface;
+use Symfony\Component\Security\Http\Util\TargetPathTrait;
 
-class AuthenticationSuccessHandler extends DefaultAuthenticationSuccessHandler
+class AuthenticationSuccessHandler implements AuthenticationSuccessHandlerInterface
 {
+    use TargetPathTrait;
+
     /**
      * @var ContaoFramework
      */
-    protected $framework;
+    private $framework;
+
+    /**
+     * @var TrustedDeviceManagerInterface
+     */
+    private $trustedDeviceManager;
+
+    /**
+     * @var FirewallMap
+     */
+    private $firewallMap;
 
     /**
      * @var LoggerInterface|null
      */
-    protected $logger;
+    private $logger;
 
     /**
      * @var User|UserInterface
      */
     private $user;
 
-    public function __construct(HttpUtils $httpUtils, ContaoFramework $framework, LoggerInterface $logger = null)
+    /**
+     * @internal Do not inherit from this class; decorate the "contao.security.authentication_success_handler" service instead
+     */
+    public function __construct(ContaoFramework $framework, TrustedDeviceManagerInterface $trustedDeviceManager, FirewallMap $firewallMap, LoggerInterface $logger = null)
     {
-        parent::__construct($httpUtils);
-
         $this->framework = $framework;
+        $this->trustedDeviceManager = $trustedDeviceManager;
+        $this->firewallMap = $firewallMap;
         $this->logger = $logger;
     }
 
     /**
      * Redirects the authenticated user.
+     *
+     * @return RedirectResponse
      */
-    public function onAuthenticationSuccess(Request $request, TokenInterface $token): RedirectResponse
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token): Response
     {
-        $this->user = $token->getUser();
+        $user = $token->getUser();
 
-        if (!$this->user instanceof User) {
-            return $this->getRedirectResponse($request);
+        if (!$user instanceof User) {
+            return new RedirectResponse($this->determineTargetUrl($request));
+        }
+
+        $this->user = $user;
+
+        // Reset login attempts and locked values
+        $this->user->loginAttempts = 0;
+        $this->user->locked = 0;
+
+        if ($token instanceof TwoFactorTokenInterface) {
+            $this->user->save();
+
+            $response = new RedirectResponse($request->getUri());
+
+            // Used by the TwoFactorListener to redirect a user back to the authentication page
+            if ($request->hasSession() && $request->isMethodSafe() && !$request->isXmlHttpRequest()) {
+                $this->saveTargetPath($request->getSession(), $token->getProviderKey(), $request->getUri());
+            }
+
+            return $response;
         }
 
         $this->user->lastLogin = $this->user->currentLogin;
         $this->user->currentLogin = time();
         $this->user->save();
+
+        if ($request->request->has('trusted')) {
+            /** @var FirewallConfig $firewallConfig */
+            $firewallConfig = $this->firewallMap->getFirewallConfig($request);
+
+            if (!$this->trustedDeviceManager->isTrustedDevice($user, $firewallConfig->getName())) {
+                $this->trustedDeviceManager->addTrustedDevice($token->getUser(), $firewallConfig->getName());
+            }
+        }
+
+        $response = new RedirectResponse($this->determineTargetUrl($request));
 
         if (null !== $this->logger) {
             $this->logger->info(
@@ -78,20 +129,17 @@ class AuthenticationSuccessHandler extends DefaultAuthenticationSuccessHandler
 
         $this->triggerPostLoginHook();
 
-        return $this->getRedirectResponse($request);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function determineTargetUrl(Request $request): string
-    {
-        if (!$this->user instanceof FrontendUser) {
-            return parent::determineTargetUrl($request);
+        if ($request->hasSession() && method_exists($token, 'getProviderKey')) {
+            $this->removeTargetPath($request->getSession(), $token->getProviderKey());
         }
 
-        if ($targetUrl = $this->getFixedTargetPath($request)) {
-            return $targetUrl;
+        return $response;
+    }
+
+    protected function determineTargetUrl(Request $request): string
+    {
+        if (!$this->user instanceof FrontendUser || $request->request->get('_always_use_target_path')) {
+            return $this->decodeTargetPath($request);
         }
 
         /** @var PageModel $pageModelAdapter */
@@ -103,24 +151,7 @@ class AuthenticationSuccessHandler extends DefaultAuthenticationSuccessHandler
             return $groupPage->getAbsoluteUrl();
         }
 
-        return parent::determineTargetUrl($request);
-    }
-
-    private function getRedirectResponse(Request $request): RedirectResponse
-    {
-        $response = $this->httpUtils->createRedirectResponse($request, $this->determineTargetUrl($request));
-
-        if (!$this->user instanceof BackendUser) {
-            return $response;
-        }
-
-        $jwtManager = $request->attributes->get(JwtManager::REQUEST_ATTRIBUTE);
-
-        if ($jwtManager instanceof JwtManager) {
-            $jwtManager->addResponseCookie($response, ['debug' => false]);
-        }
-
-        return $response;
+        return $this->decodeTargetPath($request);
     }
 
     private function triggerPostLoginHook(): void
@@ -131,7 +162,7 @@ class AuthenticationSuccessHandler extends DefaultAuthenticationSuccessHandler
             return;
         }
 
-        @trigger_error('Using the "postLogin" hook has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+        trigger_deprecation('contao/core-bundle', '4.5', 'Using the "postLogin" hook has been deprecated and will no longer work in Contao 5.0.');
 
         /** @var System $system */
         $system = $this->framework->getAdapter(System::class);
@@ -141,12 +172,14 @@ class AuthenticationSuccessHandler extends DefaultAuthenticationSuccessHandler
         }
     }
 
-    private function getFixedTargetPath(Request $request): ?string
+    private function decodeTargetPath(Request $request): string
     {
-        if (!$request->request->get('_always_use_target_path')) {
-            return null;
+        $targetPath = $request->request->get('_target_path');
+
+        if (null === $targetPath) {
+            throw new BadRequestHttpException('Missing form field "_target_path". You probably need to adjust your custom login template.');
         }
 
-        return $request->request->get('_target_path');
+        return base64_decode($targetPath, true);
     }
 }

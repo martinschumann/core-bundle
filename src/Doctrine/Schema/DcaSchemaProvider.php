@@ -15,7 +15,7 @@ namespace Contao\CoreBundle\Doctrine\Schema;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\Database\Installer;
 use Doctrine\Bundle\DoctrineBundle\Registry;
-use Doctrine\DBAL\Platforms\AbstractPlatform;
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaConfig;
@@ -36,6 +36,9 @@ class DcaSchemaProvider
      */
     private $doctrine;
 
+    /**
+     * @internal Do not inherit from this class; decorate the "contao.doctrine.schema_provider" service instead
+     */
     public function __construct(ContaoFramework $framework, Registry $doctrine)
     {
         $this->framework = $framework;
@@ -77,11 +80,6 @@ class DcaSchemaProvider
                 }
             }
 
-            // The default InnoDB row format before MySQL 5.7.9 is "Compact" but innodb_large_prefix requires "DYNAMIC"
-            if ($table->hasOption('engine') && 'InnoDB' === $table->getOption('engine')) {
-                $table->addOption('row_format', 'DYNAMIC');
-            }
-
             if (isset($definitions['SCHEMA_FIELDS'])) {
                 foreach ($definitions['SCHEMA_FIELDS'] as $fieldName => $config) {
                     $options = $config;
@@ -115,13 +113,16 @@ class DcaSchemaProvider
         /** @var EntityManagerInterface $manager */
         $manager = $this->doctrine->getManager();
 
-        /** @var ClassMetadata[] $metadata */
+        /** @var array<ClassMetadata> $metadata */
         $metadata = $manager->getMetadataFactory()->getAllMetadata();
 
+        /** @var Connection $connection */
+        $connection = $this->doctrine->getConnection();
+
         // Apply the schema filter
-        if ($filter = $this->doctrine->getConnection()->getConfiguration()->getFilterSchemaAssetsExpression()) {
+        if ($filter = $connection->getConfiguration()->getSchemaAssetsFilter()) {
             foreach ($metadata as $key => $data) {
-                if (!preg_match($filter, $data->getTableName())) {
+                if (!$filter($data->getTableName())) {
                     unset($metadata[$key]);
                 }
             }
@@ -154,15 +155,21 @@ class DcaSchemaProvider
 
     private function parseColumnSql(Table $table, string $columnName, string $sql): void
     {
-        [$dbType, $def] = explode(' ', $sql, 2);
+        $chunks = explode(' ', $sql, 2);
+        $dbType = $chunks[0];
+        $def = $chunks[1] ?? null;
 
         $type = strtok(strtolower($dbType), '(), ');
         $length = (int) strtok('(), ');
+
         $fixed = false;
         $scale = null;
         $precision = null;
         $default = null;
         $collation = null;
+        $unsigned = false;
+        $notnull = false;
+        $autoincrement = false;
 
         $this->setLengthAndPrecisionByType($type, $dbType, $length, $scale, $precision, $fixed);
 
@@ -173,32 +180,38 @@ class DcaSchemaProvider
             $length = null;
         }
 
-        if (preg_match('/default (\'[^\']*\'|\d+(?:\.\d+)?)/i', $def, $match)) {
-            if (is_numeric($match[1])) {
-                $default = $match[1] * 1;
-            } else {
-                $default = trim($match[1], "'");
+        if (null !== $def) {
+            if (preg_match('/default (\'[^\']*\'|\d+(?:\.\d+)?)/i', $def, $match)) {
+                if (is_numeric($match[1])) {
+                    $default = $match[1] * 1;
+                } else {
+                    $default = trim($match[1], "'");
+                }
             }
-        }
 
-        if (preg_match('/collate ([^ ]+)/i', $def, $match)) {
-            $collation = $match[1];
-        }
+            if (preg_match('/collate ([^ ]+)/i', $def, $match)) {
+                $collation = $match[1];
+            }
 
-        // Use the binary collation if the BINARY flag is set (see #1286)
-        if (0 === strncasecmp($def, 'binary ', 7)) {
-            $collation = $this->getBinaryCollation($table);
+            // Use the binary collation if the BINARY flag is set (see #1286)
+            if (0 === strncasecmp($def, 'binary ', 7)) {
+                $collation = $this->getBinaryCollation($table);
+            }
+
+            $unsigned = false !== stripos($def, 'unsigned');
+            $notnull = false !== stripos($def, 'not null');
+            $autoincrement = false !== stripos($def, 'auto_increment');
         }
 
         $options = [
             'length' => $length,
-            'unsigned' => false !== stripos($def, 'unsigned'),
+            'unsigned' => $unsigned,
             'fixed' => $fixed,
             'default' => $default,
-            'notnull' => false !== stripos($def, 'not null'),
+            'notnull' => $notnull,
             'scale' => null,
             'precision' => null,
-            'autoincrement' => false !== stripos($def, 'auto_increment'),
+            'autoincrement' => $autoincrement,
             'comment' => null,
         ];
 
@@ -227,7 +240,7 @@ class DcaSchemaProvider
             case 'real':
             case 'numeric':
             case 'decimal':
-                if (preg_match('/[a-z]+\((\d+)\,(\d+)\)/i', $dbType, $match)) {
+                if (preg_match('/[a-z]+\((\d+),(\d+)\)/i', $dbType, $match)) {
                     $length = null;
                     [, $precision, $scale] = $match;
                 }
@@ -303,20 +316,6 @@ class DcaSchemaProvider
                 $flags[] = 'fulltext';
             }
 
-            // Backwards compatibility for doctrine/dbal <2.9
-            if (array_filter($lengths) && !method_exists(AbstractPlatform::class, 'supportsColumnLengthIndexes')) {
-                $columns = array_combine(
-                    $columns,
-                    array_map(
-                        static function ($column, $length) {
-                            return $column.($length ? '('.$length.')' : '');
-                        },
-                        $columns,
-                        $lengths
-                    )
-                );
-            }
-
             $table->addIndex($columns, $matches[2], $flags, ['lengths' => $lengths]);
         }
     }
@@ -324,7 +323,7 @@ class DcaSchemaProvider
     /**
      * Returns the SQL definitions from the Contao installer.
      *
-     * @return array<string,array<string,string[]>>
+     * @return array<string, array<string, string|array<string>>>
      */
     private function getSqlDefinitions(): array
     {
@@ -350,10 +349,13 @@ class DcaSchemaProvider
             }
         }
 
+        /** @var Connection $connection */
+        $connection = $this->doctrine->getConnection();
+
         // Apply the schema filter (see contao/installation-bundle#78)
-        if ($filter = $this->doctrine->getConnection()->getConfiguration()->getFilterSchemaAssetsExpression()) {
+        if ($filter = $connection->getConfiguration()->getSchemaAssetsFilter()) {
             foreach (array_keys($sqlTarget) as $key) {
-                if (!preg_match($filter, $key)) {
+                if (!$filter($key)) {
                     unset($sqlTarget[$key]);
                 }
             }
@@ -413,7 +415,7 @@ class DcaSchemaProvider
         ;
 
         // The variable no longer exists as of MySQL 8 and MariaDB 10.3
-        if (false === $largePrefix) {
+        if (false === $largePrefix || '' === $largePrefix->Value) {
             return 3072;
         }
 
@@ -458,7 +460,7 @@ class DcaSchemaProvider
         ;
 
         // The InnoDB file format is not Barracuda
-        if ('barracuda' !== strtolower((string) $fileFormat->Value)) {
+        if ('' !== $fileFormat->Value && 'barracuda' !== strtolower((string) $fileFormat->Value)) {
             return 767;
         }
 

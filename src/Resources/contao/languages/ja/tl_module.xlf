@@ -54,8 +54,8 @@
         <target>保護した項目を表示</target>
       </trans-unit>
       <trans-unit id="tl_module.showProtected.1">
-        <source>Show items that are usually only visible to authenticated users.</source>
-        <target>通常は認証済みのユーザーだけに見える項目も表示します。</target>
+        <source>Show items that are usually only visible to authenticated members.</source>
+        <target>通常は認証済みのメンバーだけに見える項目も表示します。</target>
       </trans-unit>
       <trans-unit id="tl_module.defineRoot.0">
         <source>Set a reference page</source>
@@ -82,12 +82,12 @@
         <target>ナビゲーションのテンプレートを選択します。</target>
       </trans-unit>
       <trans-unit id="tl_module.customTpl.0">
-        <source>Custom module template</source>
-        <target>独自のモジュールのテンプレート</target>
+        <source>Module template</source>
+        <target>モジュールのテンプレート</target>
       </trans-unit>
       <trans-unit id="tl_module.customTpl.1">
-        <source>Here you can overwrite the default module template.</source>
-        <target>初期設定のモジュールのテンプレートを上書きできます。</target>
+        <source>Here you can select the module template.</source>
+        <target>モジュールのテンプレートを選択できます。</target>
       </trans-unit>
       <trans-unit id="tl_module.pages.0">
         <source>Pages</source>
@@ -134,8 +134,8 @@
         <target>最後に参照していたページに移動</target>
       </trans-unit>
       <trans-unit id="tl_module.redirectBack.1">
-        <source>Redirect the user back to the last page visited instead of the redirect page.</source>
-        <target>リダイレクト先のページの代わりに、ユーザーが最後に参照していたページに移動します。</target>
+        <source>Redirect the member back to the last page visited instead of the redirect page.</source>
+        <target>リダイレクト先のページの代わりに、メンバーが最後に参照していたページに移動します。</target>
       </trans-unit>
       <trans-unit id="tl_module.1cl.0">
         <source>One column</source>
@@ -226,20 +226,20 @@
         <target>入力欄と問い合わせの方法を選択するラジオボタンを含みます。</target>
       </trans-unit>
       <trans-unit id="tl_module.contextLength.0">
-        <source>Context range</source>
-        <target>文脈の範囲</target>
+        <source>Context length</source>
+        <target>文脈の長さ</target>
       </trans-unit>
       <trans-unit id="tl_module.contextLength.1">
-        <source>The number of characters on the left and right side of each keyword that are used as context.</source>
-        <target>文脈として使用するキーワードの前後の文字の数です。</target>
+        <source>The first field defines the number of characters on the left and right side of each keyword and the second one the overall context length per result.</source>
+        <target>最初の項目は各キーワードの左右の文字数を指定し、2つめの項目は結果毎の文脈全体の長さを指定します。</target>
       </trans-unit>
-      <trans-unit id="tl_module.totalLength.0">
-        <source>Maximum context length</source>
-        <target>文脈の最大長</target>
+      <trans-unit id="tl_module.minKeywordLength.0">
+        <source>Minimum keyword length</source>
+        <target>キーワードの最小の長さ</target>
       </trans-unit>
-      <trans-unit id="tl_module.totalLength.1">
-        <source>Here you can limit the overall context length per result.</source>
-        <target>結果毎の文脈全体の長さを制限できます。</target>
+      <trans-unit id="tl_module.minKeywordLength.1">
+        <source>Keywords deceeding the minimum length will be ignored in the search results. Set to 0 to disable.</source>
+        <target>最小の長さより短いキーワードは検索結果では無視します。0に設定して無効にできます。</target>
       </trans-unit>
       <trans-unit id="tl_module.perPage.0">
         <source>Items per page</source>
@@ -266,12 +266,12 @@
         <target>検索結果のテンプレートを選択します。</target>
       </trans-unit>
       <trans-unit id="tl_module.inColumn.0">
-        <source>Column</source>
-        <target>列</target>
+        <source>Layout section</source>
+        <target>レイアウトセクション</target>
       </trans-unit>
       <trans-unit id="tl_module.inColumn.1">
-        <source>Please choose the column whose articles you want to list.</source>
-        <target>アーティクルをリストしたい列を選択してください。</target>
+        <source>Please choose the layout section whose articles you want to list.</source>
+        <target>アーティクルを一覧したいレイアウトセクションを洗濯してください。</target>
       </trans-unit>
       <trans-unit id="tl_module.skipFirst.0">
         <source>Skip items</source>
@@ -410,28 +410,28 @@
         <target>IDと1つ以上のclassを設定できます。</target>
       </trans-unit>
       <trans-unit id="tl_module.disableCaptcha.0">
-        <source>Disable the security question</source>
-        <target>セキュリティ質問を不使用</target>
+        <source>Disable spam protection</source>
+        <target>spam防御を不使用</target>
       </trans-unit>
       <trans-unit id="tl_module.disableCaptcha.1">
-        <source>Here you can disable the security question (not recommended).</source>
-        <target>セキュリティ質問を使用しません。(推奨しません。)</target>
+        <source>Here you can disable the spam protection (not recommended).</source>
+        <target>spam防御を使用しません。(推奨しません。)</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_groups.0">
         <source>Member groups</source>
         <target>メンバーグループ</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_groups.1">
-        <source>Here you can assign the user to one or more groups.</source>
-        <target>ユーザーにグループを1つ以上割り当てができます。</target>
+        <source>Here you can assign the member to one or more groups.</source>
+        <target>メンバーに1つ以上のグループを割り当てできます。</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_allowLogin.0">
         <source>Allow login</source>
         <target>ログインを許可</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_allowLogin.1">
-        <source>Allow the new user to log into the front end.</source>
-        <target>フロントエンドにログインを新しいユーザーに許可します。</target>
+        <source>Allow the new member to log into the front end.</source>
+        <target>フロントエンドにログインを新しいメンバーに許可します。</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_skipName.0">
         <source>Skip username</source>
@@ -478,8 +478,8 @@
         <target>確認ページ</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_jumpTo.1">
-        <source>Please choose the page to which users will be redirected after the request has been completed.</source>
-        <target>リクエストを完了した後で移動するページを選択してください。</target>
+        <source>Please choose the page to which members will be redirected after the request has been completed.</source>
+        <target>リクエストを完了した後で移動するメンバーのページを選択してください。</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_text.0">
         <source>Activation message</source>
@@ -494,8 +494,8 @@
         <target>パスワードのメッセージ</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_password.1">
-        <source>You can use the wildcards &lt;em&gt;##domain##&lt;/em&gt; (domain name), &lt;em&gt;##link##&lt;/em&gt; (activation link) and any user property (e.g. &lt;em&gt;##lastname##&lt;/em&gt;).</source>
-        <target>&lt;em&gt;##domain##&lt;/em&gt; (ドメイン名)、&lt;em&gt;##link##&lt;/em&gt; (アクティベーションのリンク)、(例えば、&lt;em&gt;##lastname##&lt;/em&gt;といった)任意の入力項目をワイルドカードとして使用できます。</target>
+        <source>You can use the wildcards &lt;em&gt;##domain##&lt;/em&gt; (domain name), &lt;em&gt;##link##&lt;/em&gt; (activation link) and any member property (e.g. &lt;em&gt;##lastname##&lt;/em&gt;).</source>
+        <target>&lt;em&gt;##domain##&lt;/em&gt; (ドメイン名)、&lt;em&gt;##link##&lt;/em&gt; (アクティベーションのリンク)、(例えば、&lt;em&gt;##lastname##&lt;/em&gt;といった)任意のメンバーの属性をワイルドカードとして使用できます。</target>
       </trans-unit>
       <trans-unit id="tl_module.title_legend">
         <source>Title and type</source>
@@ -620,68 +620,32 @@ If you did not request this e-mail, please contact the website administrator.
         <target>アカウントを完全に削除</target>
       </trans-unit>
       <trans-unit id="tl_module.new.0">
-        <source>Add module</source>
-        <target>モジュールを追加</target>
+        <source>New</source>
+        <target>新規作成</target>
       </trans-unit>
       <trans-unit id="tl_module.new.1">
-        <source>Add a module</source>
-        <target>モジュールを追加</target>
+        <source>Create a new module</source>
+        <target>新しいモジュールを作成</target>
       </trans-unit>
-      <trans-unit id="tl_module.show.0">
-        <source>Module details</source>
-        <target>モジュールの詳細</target>
-      </trans-unit>
-      <trans-unit id="tl_module.show.1">
+      <trans-unit id="tl_module.show">
         <source>Show the details of module ID %s</source>
         <target>ID %sのモジュールの詳細を表示</target>
       </trans-unit>
-      <trans-unit id="tl_module.edit.0">
-        <source>Edit module</source>
-        <target>モジュールを変更</target>
-      </trans-unit>
-      <trans-unit id="tl_module.edit.1">
+      <trans-unit id="tl_module.edit">
         <source>Edit module ID %s</source>
         <target>ID %sのモジュールを変更</target>
       </trans-unit>
-      <trans-unit id="tl_module.cut.0">
-        <source>Move module</source>
-        <target>モジュールを移動</target>
-      </trans-unit>
-      <trans-unit id="tl_module.cut.1">
-        <source>Move module ID %s</source>
-        <target>ID %sのモジュールを移動</target>
-      </trans-unit>
-      <trans-unit id="tl_module.copy.0">
-        <source>Duplicate module</source>
-        <target>モジュールを複製</target>
-      </trans-unit>
-      <trans-unit id="tl_module.copy.1">
+      <trans-unit id="tl_module.copy">
         <source>Duplicate module ID %s</source>
         <target>ID %sのモジュールを複製</target>
       </trans-unit>
-      <trans-unit id="tl_module.delete.0">
-        <source>Delete module</source>
-        <target>モジュールを削除</target>
+      <trans-unit id="tl_module.cut">
+        <source>Move module ID %s</source>
+        <target>ID %sのモジュールを移動</target>
       </trans-unit>
-      <trans-unit id="tl_module.delete.1">
+      <trans-unit id="tl_module.delete">
         <source>Delete module ID %s</source>
         <target>ID %sのモジュールを削除</target>
-      </trans-unit>
-      <trans-unit id="tl_module.editheader.0">
-        <source>Edit theme</source>
-        <target>テーマを変更</target>
-      </trans-unit>
-      <trans-unit id="tl_module.editheader.1">
-        <source>Edit the theme settings</source>
-        <target>テーマの設定を変更</target>
-      </trans-unit>
-      <trans-unit id="tl_module.pasteafter.0">
-        <source>Paste here</source>
-        <target>ここに貼り付け</target>
-      </trans-unit>
-      <trans-unit id="tl_module.pasteafter.1">
-        <source>Paste after module ID %s</source>
-        <target>ID %sのモジュールの後に貼り付け</target>
       </trans-unit>
     </body>
   </file>

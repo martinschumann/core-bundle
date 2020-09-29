@@ -10,8 +10,9 @@
 
 namespace Contao;
 
+use Contao\CoreBundle\Util\SimpleTokenParser;
 use Patchwork\Utf8;
-use Psr\Log\LogLevel;
+use Webmozart\PathUtil\Path;
 
 /**
  * Provides string manipulation methods
@@ -26,7 +27,6 @@ use Psr\Log\LogLevel;
  */
 class StringUtil
 {
-
 	/**
 	 * Shorten a string to a given number of characters
 	 *
@@ -82,7 +82,7 @@ class StringUtil
 		// Deprecated since Contao 4.0, to be removed in Contao 5.0
 		if ($strEllipsis === true)
 		{
-			@trigger_error('Passing "true" as third argument to StringUtil::substr() has been deprecated and will no longer work in Contao 5.0. Pass the ellipsis string instead.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.0', 'Passing "true" as third argument to "Contao\StringUtil::substr()" has been deprecated and will no longer work in Contao 5.0. Pass the ellipsis string instead.');
 
 			$strEllipsis = ' …';
 		}
@@ -161,7 +161,7 @@ class StringUtil
 					// Store opening tags in the open_tags array
 					if (strncmp($strTagName, '/', 1) !== 0)
 					{
-						if (!empty($arrChunks[$i]) || $i<$c)
+						if ($i<$c || !empty($arrChunks[$i]))
 						{
 							$arrOpenTags[] = $strTagName;
 						}
@@ -170,7 +170,7 @@ class StringUtil
 					}
 
 					// Closing tags will be removed from the "open tags" array
-					if (!empty($arrChunks[$i]) || $i<$c)
+					if ($i<$c || !empty($arrChunks[$i]))
 					{
 						$arrOpenTags = array_values($arrOpenTags);
 
@@ -186,7 +186,7 @@ class StringUtil
 				}
 
 				// If the current chunk contains text, add tags and text to the return string
-				if (\strlen($arrChunks[$i]) || $i<$c)
+				if ($i<$c || \strlen($arrChunks[$i]))
 				{
 					$strReturn .= implode('', $arrTagBuffer) . $arrChunks[$i];
 				}
@@ -226,7 +226,7 @@ class StringUtil
 	 */
 	public static function decodeEntities($strString, $strQuoteStyle=ENT_COMPAT, $strCharset=null)
 	{
-		if ($strString == '')
+		if (!$strString)
 		{
 			return '';
 		}
@@ -332,9 +332,9 @@ class StringUtil
 			$strEncoded = '';
 			$arrCharacters = Utf8::str_split($strEmail);
 
-			foreach ($arrCharacters as $strCharacter)
+			foreach ($arrCharacters as $index => $strCharacter)
 			{
-				$strEncoded .= sprintf((random_int(0, 1) ? '&#x%X;' : '&#%s;'), Utf8::ord($strCharacter));
+				$strEncoded .= sprintf(($index % 2) ? '&#x%X;' : '&#%s;', Utf8::ord($strCharacter));
 			}
 
 			$strString = str_replace($strEmail, $strEncoded, $strString);
@@ -361,7 +361,7 @@ class StringUtil
 		}
 
 		// Find all mailto: addresses
-		preg_match_all('/mailto:(?:[^\x00-\x20\x22\x40\x7F]{1,64}+|\x22[^\x00-\x1F\x7F]{1,64}?\x22)@(?:\[(?:IPv)?[a-f0-9.:]{1,47}\]|[\w.-]{1,252}\.[a-z]{2,63}\b)/u', $strString, $matches);
+		preg_match_all('/mailto:(?:[^\x00-\x20\x22\x40\x7F]{1,64}+|\x22[^\x00-\x1F\x7F]{1,64}?\x22)@(?:\[(?:IPv)?[a-f0-9.:]{1,47}]|[\w.-]{1,252}\.[a-z]{2,63}\b)/u', $strString, $matches);
 
 		foreach ($matches[0] as &$strEmail)
 		{
@@ -376,9 +376,9 @@ class StringUtil
 		unset($strEmail);
 
 		// Encode opening arrow brackets (see #3998)
-		$strString = preg_replace_callback('@</?([^\s<>/]*)@', function ($matches) use ($strAllowedTags)
+		$strString = preg_replace_callback('@</?([^\s<>/]*)@', static function ($matches) use ($strAllowedTags)
 		{
-			if ($matches[1] == '' || stripos($strAllowedTags, '<' . strtolower($matches[1]) . '>') === false)
+			if (!$matches[1] || stripos($strAllowedTags, '<' . strtolower($matches[1]) . '>') === false)
 			{
 				$matches[0] = str_replace('<', '&lt;', $matches[0]);
 			}
@@ -387,7 +387,7 @@ class StringUtil
 		}, $strString);
 
 		// Find all addresses in the plain text
-		preg_match_all('/(?:[^\x00-\x20\x22\x40\x7F]{1,64}|\x22[^\x00-\x1F\x7F]{1,64}?\x22)@(?:\[(?:IPv)?[a-f0-9.:]{1,47}\]|[\w.-]{1,252}\.[a-z]{2,63}\b)/u', strip_tags($strString), $matches);
+		preg_match_all('/(?:[^\x00-\x20\x22\x40\x7F]{1,64}|\x22[^\x00-\x1F\x7F]{1,64}?\x22)@(?:\[(?:IPv)?[a-f0-9.:]{1,47}]|[\w.-]{1,252}\.[a-z]{2,63}\b)/u', strip_tags($strString), $matches);
 
 		foreach ($matches[0] as &$strEmail)
 		{
@@ -403,7 +403,7 @@ class StringUtil
 	}
 
 	/**
-	 * Split a friendly-name e-address and return name and e-mail as array
+	 * Split a friendly-name e-mail address and return name and e-mail as array
 	 *
 	 * @param string $strEmail A friendly-name e-mail address
 	 *
@@ -415,14 +415,13 @@ class StringUtil
 		{
 			return array_map('trim', explode(' <', str_replace('>', '', $strEmail)));
 		}
-		elseif (strpos($strEmail, '[') !== false)
+
+		if (strpos($strEmail, '[') !== false)
 		{
 			return array_map('trim', explode(' [', str_replace(']', '', $strEmail)));
 		}
-		else
-		{
-			return array('', $strEmail);
-		}
+
+		return array('', $strEmail);
 	}
 
 	/**
@@ -451,7 +450,7 @@ class StringUtil
 	 */
 	public static function highlight($strString, $strPhrase, $strOpeningTag='<strong>', $strClosingTag='</strong>')
 	{
-		if ($strString == '' || $strPhrase == '')
+		if (!$strString || !$strPhrase)
 		{
 			return $strString;
 		}
@@ -469,7 +468,7 @@ class StringUtil
 	 */
 	public static function splitCsv($strString, $strDelimiter=',')
 	{
-		$arrValues = preg_split('/'.$strDelimiter.'(?=(?:[^"]*"[^"]*")*(?![^"]*"))/', $strString);
+		$arrValues = preg_split('/' . $strDelimiter . '(?=(?:[^"]*"[^"]*")*(?![^"]*"))/', $strString);
 
 		foreach ($arrValues as $k=>$v)
 		{
@@ -553,182 +552,17 @@ class StringUtil
 	 *
 	 * @return string The converted string
 	 *
-	 * @throws \Exception                If $strString cannot be parsed
+	 * @throws \RuntimeException         If $strString cannot be parsed
 	 * @throws \InvalidArgumentException If there are incorrectly formatted if-tags
+	 *
+	 * @deprecated Deprecated since Contao 4.10, to be removed in Contao 5.
+	 *             Use the SimpleTokenParser::class service instead.
 	 */
 	public static function parseSimpleTokens($strString, $arrData)
 	{
-		$strReturn = '';
+		trigger_deprecation('contao/core-bundle', '4.10', 'Using "Contao\StringUtil::parseSimpleTokens()" has been deprecated and will no longer work in Contao 5.0. Use the "SimpleTokenParser::class" service instead.');
 
-		$replaceTokens = function ($strSubject) use ($arrData)
-		{
-			// Replace tokens
-			return preg_replace_callback
-			(
-				'/##([^=!<>\s]+?)##/',
-				function (array $matches) use ($arrData)
-				{
-					if (!\array_key_exists($matches[1], $arrData))
-					{
-						System::getContainer()
-							->get('monolog.logger.contao')
-							->log(LogLevel::INFO, sprintf('Tried to parse unknown simple token "%s".', $matches[1]))
-						;
-
-						return '##' . $matches[1] . '##';
-					}
-
-					return $arrData[$matches[1]];
-				},
-				$strSubject
-			);
-		};
-
-		$evaluateExpression = function ($strExpression) use ($arrData)
-		{
-			if (!preg_match('/^([^=!<>\s]+) *([=!<>]+)(.+)$/s', $strExpression, $arrMatches))
-			{
-				return false;
-			}
-
-			$strToken = $arrMatches[1];
-			$strOperator = $arrMatches[2];
-			$strValue = trim($arrMatches[3], ' ');
-
-			if (!\array_key_exists($strToken, $arrData))
-			{
-				System::getContainer()
-					->get('monolog.logger.contao')
-					->log(LogLevel::INFO, sprintf('Tried to evaluate unknown simple token "%s".', $strToken))
-				;
-
-				return false;
-			}
-
-			$varTokenValue = $arrData[$strToken];
-
-			if (is_numeric($strValue))
-			{
-				if (strpos($strValue, '.') === false)
-				{
-					$varValue = (int) $strValue;
-				}
-				else
-				{
-					$varValue = (float) $strValue;
-				}
-			}
-			elseif (strtolower($strValue) === 'true')
-			{
-				$varValue = true;
-			}
-			elseif (strtolower($strValue) === 'false')
-			{
-				$varValue = false;
-			}
-			elseif (strtolower($strValue) === 'null')
-			{
-				$varValue = null;
-			}
-			elseif (substr($strValue, 0, 1) === '"' && substr($strValue, -1) === '"')
-			{
-				$varValue = str_replace('\"', '"', substr($strValue, 1, -1));
-			}
-			elseif (substr($strValue, 0, 1) === "'" && substr($strValue, -1) === "'")
-			{
-				$varValue = str_replace("\\'", "'", substr($strValue, 1, -1));
-			}
-			else
-			{
-				throw new \InvalidArgumentException(sprintf('Unknown data type of comparison value "%s".', $strValue));
-			}
-
-			switch ($strOperator)
-			{
-				case '==':
-					return $varTokenValue == $varValue;
-
-				case '!=':
-					return $varTokenValue != $varValue;
-
-				case '===':
-					return $varTokenValue === $varValue;
-
-				case '!==':
-					return $varTokenValue !== $varValue;
-
-				case '<':
-					return $varTokenValue < $varValue;
-
-				case '>':
-					return $varTokenValue > $varValue;
-
-				case '<=':
-					return $varTokenValue <= $varValue;
-
-				case '>=':
-					return $varTokenValue >= $varValue;
-
-				default:
-					throw new \InvalidArgumentException(sprintf('Unknown simple token comparison operator "%s".', $strOperator));
-			}
-		};
-
-		// The last item is true if it is inside a matching if-tag
-		$arrStack = array(true);
-
-		// The last item is true if any if/elseif at that level was true
-		$arrIfStack = array(true);
-
-		// Tokenize the string into tag and text blocks
-		$arrTags = preg_split('/({[^{}]+})\n?/', $strString, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY);
-
-		// Parse the tokens
-		foreach ($arrTags as $strTag)
-		{
-			// True if it is inside a matching if-tag
-			$blnCurrent = $arrStack[\count($arrStack) - 1];
-			$blnCurrentIf = $arrIfStack[\count($arrIfStack) - 1];
-
-			if (strncmp($strTag, '{if ', 4) === 0)
-			{
-				$blnExpression = $evaluateExpression(substr($strTag, 4, -1));
-				$arrStack[] = $blnCurrent && $blnExpression;
-				$arrIfStack[] = $blnExpression;
-			}
-			elseif (strncmp($strTag, '{elseif ', 8) === 0)
-			{
-				$blnExpression = $evaluateExpression(substr($strTag, 8, -1));
-				array_pop($arrStack);
-				array_pop($arrIfStack);
-				$arrStack[] = !$blnCurrentIf && $arrStack[\count($arrStack) - 1] && $blnExpression;
-				$arrIfStack[] = $blnCurrentIf || $blnExpression;
-			}
-			elseif (strncmp($strTag, '{else}', 6) === 0)
-			{
-				array_pop($arrStack);
-				array_pop($arrIfStack);
-				$arrStack[] = !$blnCurrentIf && $arrStack[\count($arrStack) - 1];
-				$arrIfStack[] = true;
-			}
-			elseif (strncmp($strTag, '{endif}', 7) === 0)
-			{
-				array_pop($arrStack);
-				array_pop($arrIfStack);
-			}
-			elseif ($blnCurrent)
-			{
-				$strReturn .= $replaceTokens($strTag);
-			}
-		}
-
-		// Throw an exception if there is an error
-		if (\count($arrStack) !== 1)
-		{
-			throw new \Exception('Error parsing simple tokens');
-		}
-
-		return $strReturn;
+		return System::getContainer()->get(SimpleTokenParser::class)->parse($strString, $arrData);
 	}
 
 	/**
@@ -801,7 +635,7 @@ class StringUtil
 	public static function insertTagToSrc($data)
 	{
 		$return = '';
-		$paths = preg_split('/((src|href)="([^"]*)\{\{file::([^"\}]+)\}\}")/i', $data, -1, PREG_SPLIT_DELIM_CAPTURE);
+		$paths = preg_split('/((src|href)="([^"]*){{file::([^"}]+)}}")/i', $data, -1, PREG_SPLIT_DELIM_CAPTURE);
 
 		for ($i=0, $c=\count($paths); $i<$c; $i+=5)
 		{
@@ -913,7 +747,7 @@ class StringUtil
 	 */
 	public static function convertEncoding($str, $to, $from=null)
 	{
-		if ($str == '')
+		if (!$str)
 		{
 			return '';
 		}
@@ -974,9 +808,8 @@ class StringUtil
 
 		do
 		{
-			$strString = preg_replace('/\{\{[^\{\}]*\}\}/', '', $strString, -1, $count);
-		}
-		while ($count > 0);
+			$strString = preg_replace('/{{[^{}]*}}/', '', $strString, -1, $count);
+		} while ($count > 0);
 
 		return $strString;
 	}
@@ -1017,7 +850,7 @@ class StringUtil
 	 * @param mixed   $varValue      The serialized string
 	 * @param boolean $blnForceArray True to always return an array
 	 *
-	 * @return array|string|null The array, an empty string or null
+	 * @return mixed The unserialized array or the unprocessed input value
 	 */
 	public static function deserialize($varValue, $blnForceArray=false)
 	{
@@ -1040,7 +873,7 @@ class StringUtil
 		}
 
 		// Empty string
-		if (trim($varValue) == '')
+		if (trim($varValue) === '')
 		{
 			return $blnForceArray ? array() : '';
 		}
@@ -1090,7 +923,7 @@ class StringUtil
 		}
 		else
 		{
-			$arrFragments = array_map('trim', preg_split('/'.$strPattern.'/ui', $strString));
+			$arrFragments = array_map('trim', preg_split('/' . $strPattern . '/ui', $strString));
 		}
 
 		// Empty array
@@ -1113,15 +946,30 @@ class StringUtil
 	 */
 	public static function stripRootDir($path)
 	{
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
-		$length = \strlen($rootDir);
+		// Compare normalized version of the paths
+		$projectDir = Path::normalize(System::getContainer()->getParameter('kernel.project_dir'));
+		$normalizedPath = Path::normalize($path);
+		$length = \strlen($projectDir);
 
-		if (strncmp($path, $rootDir, $length) !== 0 || \strlen($path) <= $length || ($path[$length] !== '/' && $path[$length] !== '\\'))
+		if (strncmp($normalizedPath, $projectDir, $length) !== 0 || \strlen($normalizedPath) <= $length || $normalizedPath[$length] !== '/')
 		{
-			throw new \InvalidArgumentException(sprintf('Path "%s" is not inside the Contao root dir "%s"', $path, $rootDir));
+			throw new \InvalidArgumentException(sprintf('Path "%s" is not inside the Contao root dir "%s"', $path, $projectDir));
 		}
 
 		return (string) substr($path, $length + 1);
+	}
+
+	/**
+	 * Convert all ampersands into their HTML entity (default) or unencoded value
+	 *
+	 * @param string  $strString
+	 * @param boolean $blnEncode
+	 *
+	 * @return string
+	 */
+	public static function ampersand($strString, $blnEncode=true): string
+	{
+		return preg_replace('/&(amp;)?/i', ($blnEncode ? '&amp;' : '&'), $strString);
 	}
 }
 

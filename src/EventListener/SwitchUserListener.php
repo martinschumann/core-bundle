@@ -18,6 +18,9 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Event\SwitchUserEvent;
 
+/**
+ * @internal
+ */
 class SwitchUserListener
 {
     /**
@@ -41,7 +44,7 @@ class SwitchUserListener
      *
      * @throws \RuntimeException
      */
-    public function onSwitchUser(SwitchUserEvent $event): void
+    public function __invoke(SwitchUserEvent $event): void
     {
         $token = $this->tokenStorage->getToken();
 
@@ -49,12 +52,7 @@ class SwitchUserListener
             throw new \RuntimeException('The token storage did not contain a token.');
         }
 
-        $sourceUser = $token->getUser();
-
-        if ($sourceUser instanceof UserInterface) {
-            $sourceUser = $sourceUser->getUsername();
-        }
-
+        $sourceUser = $token->getUsername();
         $targetUser = $event->getTargetUser();
 
         if ($targetUser instanceof UserInterface) {

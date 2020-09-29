@@ -29,7 +29,6 @@ use TrueBV\Punycode;
  */
 class Idna
 {
-
 	/**
 	 * Encode an internationalized domain name
 	 *
@@ -39,7 +38,7 @@ class Idna
 	 */
 	public static function encode($strDomain)
 	{
-		if ($strDomain == '')
+		if (!$strDomain)
 		{
 			return '';
 		}
@@ -65,7 +64,7 @@ class Idna
 	 */
 	public static function decode($strDomain)
 	{
-		if ($strDomain == '')
+		if (!$strDomain)
 		{
 			return '';
 		}
@@ -91,7 +90,7 @@ class Idna
 	 */
 	public static function encodeEmail($strEmail)
 	{
-		if ($strEmail == '')
+		if (!$strEmail)
 		{
 			return '';
 		}
@@ -102,14 +101,29 @@ class Idna
 		}
 
 		$arrChunks = explode('@', $strEmail);
-		$strHost = static::encode(array_pop($arrChunks));
+		$strHost = array_pop($arrChunks);
 
-		if ($strHost == '')
+		if (!$strHost)
 		{
 			return '';
 		}
 
-		return implode('@', $arrChunks) . '@' . $strHost;
+		$strQuery = null;
+
+		// Strip the query string (see #2149)
+		if (strpos($strHost, '?') !== false)
+		{
+			list($strHost, $strQuery) = explode('?', $strHost, 2);
+		}
+
+		$strHost = static::encode($strHost);
+
+		if (!$strHost)
+		{
+			return '';
+		}
+
+		return implode('@', $arrChunks) . '@' . $strHost . ($strQuery ? '?' . $strQuery : '');
 	}
 
 	/**
@@ -121,7 +135,7 @@ class Idna
 	 */
 	public static function decodeEmail($strEmail)
 	{
-		if ($strEmail == '')
+		if (!$strEmail)
 		{
 			return '';
 		}
@@ -132,14 +146,29 @@ class Idna
 		}
 
 		$arrChunks = explode('@', $strEmail);
-		$strHost = static::decode(array_pop($arrChunks));
+		$strHost = array_pop($arrChunks);
 
-		if ($strHost == '')
+		if (!$strHost)
 		{
 			return '';
 		}
 
-		return implode('@', $arrChunks) . '@' . $strHost;
+		$strQuery = null;
+
+		// Strip the query string (see #2149)
+		if (strpos($strHost, '?') !== false)
+		{
+			list($strHost, $strQuery) = explode('?', $strHost, 2);
+		}
+
+		$strHost = static::decode($strHost);
+
+		if (!$strHost)
+		{
+			return '';
+		}
+
+		return implode('@', $arrChunks) . '@' . $strHost . ($strQuery ? '?' . $strQuery : '');
 	}
 
 	/**
@@ -153,7 +182,7 @@ class Idna
 	 */
 	public static function encodeUrl($strUrl)
 	{
-		if ($strUrl == '')
+		if (!$strUrl)
 		{
 			return '';
 		}
@@ -245,7 +274,7 @@ class Idna
 	 */
 	public static function decodeUrl($strUrl)
 	{
-		if ($strUrl == '')
+		if (!$strUrl)
 		{
 			return '';
 		}

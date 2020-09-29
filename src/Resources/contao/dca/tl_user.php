@@ -8,9 +8,24 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Automator;
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\Config;
+use Contao\CoreBundle\Exception\AccessDeniedException;
+use Contao\DataContainer;
+use Contao\Image;
+use Contao\Input;
+use Contao\Message;
+use Contao\StringUtil;
+use Contao\System;
+use Contao\Versions;
+use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+
 $GLOBALS['TL_DCA']['tl_user'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -44,7 +59,7 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		'sorting' => array
 		(
 			'mode'                    => 2,
-			'fields'                  => array('dateAdded DESC'),
+			'fields'                  => array('dateAdded'),
 			'flag'                    => 1,
 			'panelLayout'             => 'filter;sort,search,limit'
 		),
@@ -58,7 +73,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		(
 			'all' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['MSC']['all'],
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset()" accesskey="e"'
@@ -68,21 +82,18 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		(
 			'edit' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_user']['edit'],
 				'href'                => 'act=edit',
 				'icon'                => 'edit.svg',
 				'button_callback'     => array('tl_user', 'editUser')
 			),
 			'copy' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_user']['copy'],
 				'href'                => 'act=copy',
 				'icon'                => 'copy.svg',
 				'button_callback'     => array('tl_user', 'copyUser')
 			),
 			'delete' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_user']['delete'],
 				'href'                => 'act=delete',
 				'icon'                => 'delete.svg',
 				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"',
@@ -90,20 +101,17 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 			),
 			'toggle' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_user']['toggle'],
 				'icon'                => 'visible.svg',
 				'attributes'          => 'onclick="Backend.getScrollOffset();return AjaxRequest.toggleVisibility(this,%s)"',
 				'button_callback'     => array('tl_user', 'toggleIcon')
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_user']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg'
 			),
 			'su' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_user']['su'],
 				'href'                => 'key=su',
 				'icon'                => 'su.svg',
 				'button_callback'     => array('tl_user', 'switchUser')
@@ -119,8 +127,8 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		'admin'                       => '{name_legend},username,name,email;{backend_legend:hide},language,uploader,showHelp,thumbnails,useRTE,useCE;{theme_legend:hide},backendTheme,fullscreen;{password_legend:hide},pwChange,password;{admin_legend},admin;{account_legend},disable,start,stop',
 		'default'                     => '{name_legend},username,name,email;{backend_legend:hide},language,uploader,showHelp,thumbnails,useRTE,useCE;{theme_legend:hide},backendTheme,fullscreen;{password_legend:hide},pwChange,password;{admin_legend},admin;{groups_legend},groups,inherit;{account_legend},disable,start,stop',
 		'group'                       => '{name_legend},username,name,email;{backend_legend:hide},language,uploader,showHelp,thumbnails,useRTE,useCE;{theme_legend:hide},backendTheme,fullscreen;{password_legend:hide},pwChange,password;{admin_legend},admin;{groups_legend},groups,inherit;{account_legend},disable,start,stop',
-		'extend'                      => '{name_legend},username,name,email;{backend_legend:hide},language,uploader,showHelp,thumbnails,useRTE,useCE;{theme_legend:hide},backendTheme,fullscreen;{password_legend:hide},pwChange,password;{admin_legend},admin;{groups_legend},groups,inherit;{modules_legend},modules,themes;{pagemounts_legend},pagemounts,alpty;{filemounts_legend},filemounts,fop;{imageSizes_legend},imageSizes;{forms_legend},forms,formp;{amg_legend},amg;{account_legend},disable,start,stop',
-		'custom'                      => '{name_legend},username,name,email;{backend_legend:hide},language,uploader,showHelp,thumbnails,useRTE,useCE;{theme_legend:hide},backendTheme,fullscreen;{password_legend:hide},pwChange,password;{admin_legend},admin;{groups_legend},groups,inherit;{modules_legend},modules,themes;{pagemounts_legend},pagemounts,alpty;{filemounts_legend},filemounts,fop;{imageSizes_legend},imageSizes;{forms_legend},forms,formp;{amg_legend},amg;{account_legend},disable,start,stop'
+		'extend'                      => '{name_legend},username,name,email;{backend_legend:hide},language,uploader,showHelp,thumbnails,useRTE,useCE;{theme_legend:hide},backendTheme,fullscreen;{password_legend:hide},pwChange,password;{admin_legend},admin;{groups_legend},groups,inherit;{modules_legend},modules,themes;{elements_legend},elements,fields;{pagemounts_legend},pagemounts,alpty;{filemounts_legend},filemounts,fop;{imageSizes_legend},imageSizes;{forms_legend},forms,formp;{amg_legend},amg;{account_legend},disable,start,stop',
+		'custom'                      => '{name_legend},username,name,email;{backend_legend:hide},language,uploader,showHelp,thumbnails,useRTE,useCE;{theme_legend:hide},backendTheme,fullscreen;{password_legend:hide},pwChange,password;{admin_legend},admin;{groups_legend},groups,inherit;{modules_legend},modules,themes;{elements_legend},elements,fields;{pagemounts_legend},pagemounts,alpty;{filemounts_legend},filemounts,fop;{imageSizes_legend},imageSizes;{forms_legend},forms,formp;{amg_legend},amg;{account_legend},disable,start,stop'
 	),
 
 	// Fields
@@ -136,7 +144,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'username' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['username'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'sorting'                 => true,
@@ -147,7 +154,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'name' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['name'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'sorting'                 => true,
@@ -158,7 +164,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'email' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['email'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -167,33 +172,30 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'language' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['language'],
 			'default'                 => str_replace('-', '_', $GLOBALS['TL_LANGUAGE']),
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'select',
 			'eval'                    => array('rgxp'=>'locale', 'tl_class'=>'w50'),
-			'options_callback' => function ()
+			'options_callback' => static function ()
 			{
-				return Contao\System::getLanguages(true);
+				return System::getLanguages(true);
 			},
 			'sql'                     => "varchar(5) NOT NULL default ''"
 		),
 		'backendTheme' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['backendTheme'],
 			'exclude'                 => true,
 			'inputType'               => 'select',
-			'options_callback' => function ()
+			'options_callback' => static function ()
 			{
-				return Contao\Backend::getThemes();
+				return Backend::getThemes();
 			},
 			'eval'                    => array('tl_class'=>'w50'),
 			'sql'                     => "varchar(32) NOT NULL default ''"
 		),
 		'fullscreen' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['fullscreen'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50 m12'),
@@ -201,7 +203,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'uploader' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['uploader'],
 			'exclude'                 => true,
 			'inputType'               => 'select',
 			'options'                 => array('DropZone', 'FileUpload'),
@@ -211,7 +212,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'showHelp' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['showHelp'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50'),
@@ -219,7 +219,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'thumbnails' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['thumbnails'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50'),
@@ -227,7 +226,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'useRTE' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['useRTE'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50'),
@@ -235,7 +233,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'useCE' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['useCE'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50'),
@@ -246,12 +243,11 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 			'label'                   => &$GLOBALS['TL_LANG']['MSC']['password'],
 			'exclude'                 => true,
 			'inputType'               => 'password',
-			'eval'                    => array('mandatory'=>true, 'preserveTags'=>true, 'minlength'=>Contao\Config::get('minPasswordLength')),
+			'eval'                    => array('mandatory'=>true, 'preserveTags'=>true, 'minlength'=>Config::get('minPasswordLength')),
 			'sql'                     => "varchar(255) NOT NULL default ''"
 		),
 		'pwChange' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['pwChange'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'filter'                  => true,
@@ -259,8 +255,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'admin' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['admin'],
-			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'filter'                  => true,
 			'eval'                    => array('submitOnChange'=>true),
@@ -272,7 +266,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'groups' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['groups'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkboxWizard',
@@ -283,7 +276,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'inherit' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['inherit'],
 			'exclude'                 => true,
 			'inputType'               => 'radio',
 			'options'                 => array('group', 'extend', 'custom'),
@@ -293,9 +285,7 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'modules' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['modules'],
 			'exclude'                 => true,
-			'filter'                  => true,
 			'inputType'               => 'checkbox',
 			'options_callback'        => array('tl_user', 'getModules'),
 			'reference'               => &$GLOBALS['TL_LANG']['MOD'],
@@ -304,7 +294,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'themes' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['themes'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'options'                 => array('css', 'modules', 'layout', 'image_sizes', 'theme_import', 'theme_export'),
@@ -312,9 +301,26 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 			'eval'                    => array('multiple'=>true),
 			'sql'                     => "blob NULL"
 		),
+		'elements' => array
+		(
+			'exclude'                 => true,
+			'inputType'               => 'checkbox',
+			'options_callback'        => array('tl_user', 'getContentElements'),
+			'reference'               => &$GLOBALS['TL_LANG']['CTE'],
+			'eval'                    => array('multiple'=>true, 'helpwizard'=>true),
+			'sql'                     => "blob NULL"
+		),
+		'fields' => array
+		(
+			'exclude'                 => true,
+			'inputType'               => 'checkbox',
+			'options'                 => array_keys($GLOBALS['TL_FFL']),
+			'reference'               => &$GLOBALS['TL_LANG']['FFL'],
+			'eval'                    => array('multiple'=>true, 'helpwizard'=>true),
+			'sql'                     => "blob NULL"
+		),
 		'pagemounts' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['pagemounts'],
 			'exclude'                 => true,
 			'inputType'               => 'pageTree',
 			'eval'                    => array('multiple'=>true, 'fieldType'=>'checkbox'),
@@ -322,7 +328,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'alpty' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['alpty'],
 			'default'                 => array('regular', 'redirect', 'forward'),
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
@@ -333,7 +338,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'filemounts' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['filemounts'],
 			'exclude'                 => true,
 			'inputType'               => 'fileTree',
 			'eval'                    => array('multiple'=>true, 'fieldType'=>'checkbox'),
@@ -352,20 +356,18 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'imageSizes' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['imageSizes'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'reference'               => &$GLOBALS['TL_LANG']['MSC'],
 			'eval'                    => array('multiple'=>true),
-			'options_callback' => function ()
+			'options_callback' => static function ()
 			{
-				return Contao\System::getContainer()->get('contao.image.image_sizes')->getAllOptions();
+				return System::getContainer()->get('contao.image.image_sizes')->getAllOptions();
 			},
 			'sql'                     => "blob NULL"
 		),
 		'forms' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['forms'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'foreignKey'              => 'tl_form.title',
@@ -374,7 +376,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'formp' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['formp'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'options'                 => array('create', 'delete'),
@@ -384,7 +385,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'amg' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['amg'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'foreignKey'              => 'tl_member_group.name',
@@ -393,7 +393,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'disable' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['disable'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'flag'                    => 2,
@@ -406,7 +405,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'start' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['start'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'datim', 'datepicker'=>true, 'tl_class'=>'w50 wizard'),
@@ -414,7 +412,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'stop' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['stop'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'datim', 'datepicker'=>true, 'tl_class'=>'w50 wizard'),
@@ -422,7 +419,6 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'session' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['session'],
 			'exclude'                 => true,
 			'input_field_callback'    => array('tl_user', 'sessionField'),
 			'eval'                    => array('doNotShow'=>true, 'doNotCopy'=>true),
@@ -444,8 +440,7 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 		),
 		'useTwoFactor' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_user']['useTwoFactor'],
-			'eval'                    => array('isBoolean'=>true),
+			'eval'                    => array('isBoolean'=>true, 'doNotCopy'=>true),
 			'sql'                     => "char(1) NOT NULL default ''"
 		),
 		'lastLogin' => array
@@ -461,14 +456,24 @@ $GLOBALS['TL_DCA']['tl_user'] = array
 			'eval'                    => array('rgxp'=>'datim', 'doNotCopy'=>true),
 			'sql'                     => "int(10) unsigned NOT NULL default 0"
 		),
-		'loginCount' => array
+		'loginAttempts' => array
 		(
 			'eval'                    => array('doNotCopy'=>true),
-			'sql'                     => "smallint(5) unsigned NOT NULL default 3"
+			'sql'                     => "smallint(5) unsigned NOT NULL default 0"
 		),
 		'locked' => array
 		(
 			'eval'                    => array('rgxp'=>'datim', 'doNotCopy'=>true),
+			'sql'                     => "int(10) unsigned NOT NULL default 0"
+		),
+		'backupCodes' => array
+		(
+			'eval'                    => array('doNotCopy'=>true, 'doNotShow'=>true),
+			'sql'                     => "text NULL"
+		),
+		'trustedTokenVersion' => array
+		(
+			'eval'                    => array('doNotCopy'=>true, 'doNotShow'=>true),
 			'sql'                     => "int(10) unsigned NOT NULL default 0"
 		)
 	)
@@ -479,8 +484,12 @@ $GLOBALS['TL_DCA']['tl_user'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_user extends Contao\Backend
+class tl_user extends Backend
 {
+	/**
+	 * @var int
+	 */
+	private static $origUserId;
 
 	/**
 	 * Import the back end user object
@@ -488,13 +497,13 @@ class tl_user extends Contao\Backend
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('Contao\BackendUser', 'User');
+		$this->import(BackendUser::class, 'User');
 	}
 
 	/**
 	 * Check permissions to edit table tl_user
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
 	public function checkPermission()
 	{
@@ -503,8 +512,11 @@ class tl_user extends Contao\Backend
 			return;
 		}
 
+		// Unset the "admin" checkbox for regular users
+		unset($GLOBALS['TL_DCA']['tl_user']['fields']['admin']);
+
 		// Check current action
-		switch (Contao\Input::get('act'))
+		switch (Input::get('act'))
 		{
 			case 'create':
 			case 'select':
@@ -513,11 +525,11 @@ class tl_user extends Contao\Backend
 				break;
 
 			case 'delete':
-				if (Contao\Input::get('id') == $this->User->id)
+				if (Input::get('id') == $this->User->id)
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Attempt to delete own account ID ' . Contao\Input::get('id') . '.');
+					throw new AccessDeniedException('Attempt to delete own account ID ' . Input::get('id') . '.');
 				}
-				// no break;
+				// no break
 
 			case 'edit':
 			case 'copy':
@@ -525,19 +537,19 @@ class tl_user extends Contao\Backend
 			default:
 				$objUser = $this->Database->prepare("SELECT `admin` FROM tl_user WHERE id=?")
 										  ->limit(1)
-										  ->execute(Contao\Input::get('id'));
+										  ->execute(Input::get('id'));
 
-				if ($objUser->admin && Contao\Input::get('act') != '')
+				if ($objUser->admin && Input::get('act'))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to ' . Contao\Input::get('act') . ' administrator account ID ' . Contao\Input::get('id') . '.');
+					throw new AccessDeniedException('Not enough permissions to ' . Input::get('act') . ' administrator account ID ' . Input::get('id') . '.');
 				}
 				break;
 
 			case 'editAll':
 			case 'deleteAll':
 			case 'overrideAll':
-				/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
-				$objSession = Contao\System::getContainer()->get('session');
+				/** @var SessionInterface $objSession */
+				$objSession = System::getContainer()->get('session');
 
 				$session = $objSession->all();
 				$objUser = $this->Database->execute("SELECT id FROM tl_user WHERE `admin`=1");
@@ -550,19 +562,19 @@ class tl_user extends Contao\Backend
 	/**
 	 * Handle the profile page.
 	 *
-	 * @param Contao\DataContainer $dc
+	 * @param DataContainer $dc
 	 */
-	public function handleUserProfile(Contao\DataContainer $dc)
+	public function handleUserProfile(DataContainer $dc)
 	{
-		if (Contao\Input::get('do') != 'login')
+		if (Input::get('do') != 'login')
 		{
 			return;
 		}
 
 		// Should not happen because of the redirect but better safe than sorry
-		if (Contao\BackendUser::getInstance()->id != Contao\Input::get('id') || Contao\Input::get('act') != 'edit')
+		if (Input::get('act') != 'edit' || BackendUser::getInstance()->id != Input::get('id'))
 		{
-			throw new Contao\CoreBundle\Exception\AccessDeniedException('Not allowed to edit this page.');
+			throw new AccessDeniedException('Not allowed to edit this page.');
 		}
 
 		$GLOBALS['TL_DCA'][$dc->table]['config']['closed'] = true;
@@ -574,7 +586,7 @@ class tl_user extends Contao\Backend
 			'default' => $GLOBALS['TL_DCA'][$dc->table]['palettes']['login']
 		);
 
-		$arrFields = Contao\StringUtil::trimsplit('[,;]', $GLOBALS['TL_DCA'][$dc->table]['palettes']['default']);
+		$arrFields = StringUtil::trimsplit('[,;]', $GLOBALS['TL_DCA'][$dc->table]['palettes']['default']);
 
 		foreach ($arrFields as $strField)
 		{
@@ -587,47 +599,50 @@ class tl_user extends Contao\Backend
 	 */
 	public function addTemplateWarning()
 	{
-		if (Contao\Input::get('act') && Contao\Input::get('act') != 'select')
+		if (Input::get('act') && Input::get('act') != 'select')
 		{
 			return;
 		}
 
-		$objResult = $this->Database->query("SELECT COUNT(*) AS cnt FROM tl_user WHERE admin='' AND modules LIKE '%\"tpl_editor\"%'");
+		$objResult = $this->Database->query("SELECT EXISTS(SELECT * FROM tl_user WHERE admin='' AND modules LIKE '%\"tpl_editor\"%') as showTemplateWarning, EXISTS(SELECT * FROM tl_user WHERE admin='' AND themes LIKE '%\"theme_import\"%') as showThemeWarning");
 
-		if ($objResult->cnt > 0)
+		if ($objResult->showTemplateWarning)
 		{
-			Contao\Message::addInfo($GLOBALS['TL_LANG']['MSC']['userTemplateEditor']);
+			Message::addInfo($GLOBALS['TL_LANG']['MSC']['userTemplateEditor']);
+		}
+
+		if ($objResult->showThemeWarning)
+		{
+			Message::addInfo($GLOBALS['TL_LANG']['MSC']['userThemeImport']);
 		}
 	}
 
 	/**
 	 * Add an image to each record
 	 *
-	 * @param array                $row
-	 * @param string               $label
-	 * @param Contao\DataContainer $dc
-	 * @param array                $args
+	 * @param array         $row
+	 * @param string        $label
+	 * @param DataContainer $dc
+	 * @param array         $args
 	 *
 	 * @return array
 	 */
-	public function addIcon($row, $label, Contao\DataContainer $dc, $args)
+	public function addIcon($row, $label, DataContainer $dc, $args)
 	{
 		$image = $row['admin'] ? 'admin' : 'user';
-		$time = Contao\Date::floorToMinute();
-
-		$disabled = ($row['start'] !== '' && $row['start'] > $time) || ($row['stop'] !== '' && $row['stop'] < $time);
+		$disabled = ($row['start'] !== '' && $row['start'] > time()) || ($row['stop'] !== '' && $row['stop'] <= time());
 
 		if ($row['useTwoFactor'])
 		{
 			$image .= '_two_factor';
 		}
 
-		if ($row['disable'] || $disabled)
+		if ($disabled || $row['disable'])
 		{
 			$image .= '_';
 		}
 
-		$args[0] = sprintf('<div class="list_icon_new" style="background-image:url(\'%ssystem/themes/%s/icons/%s.svg\')" data-icon="%s.svg" data-icon-disabled="%s.svg">&nbsp;</div>', Contao\System::getContainer()->get('contao.assets.assets_context')->getStaticUrl(), Contao\Backend::getTheme(), $image, $disabled ? $image : rtrim($image, '_'), rtrim($image, '_') . '_');
+		$args[0] = sprintf('<div class="list_icon_new" style="background-image:url(\'%ssystem/themes/%s/icons/%s.svg\')" data-icon="%s.svg" data-icon-disabled="%s.svg">&nbsp;</div>', System::getContainer()->get('contao.assets.assets_context')->getStaticUrl(), Backend::getTheme(), $image, $disabled ? $image : rtrim($image, '_'), rtrim($image, '_') . '_');
 
 		return $args;
 	}
@@ -646,7 +661,7 @@ class tl_user extends Contao\Backend
 	 */
 	public function editUser($row, $href, $label, $title, $icon, $attributes)
 	{
-		return ($this->User->isAdmin || !$row['admin']) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return ($this->User->isAdmin || !$row['admin']) ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -669,7 +684,7 @@ class tl_user extends Contao\Backend
 			return '';
 		}
 
-		return ($this->User->isAdmin || !$row['admin']) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return ($this->User->isAdmin || !$row['admin']) ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -686,7 +701,7 @@ class tl_user extends Contao\Backend
 	 */
 	public function deleteUser($row, $href, $label, $title, $icon, $attributes)
 	{
-		return ($this->User->isAdmin || !$row['admin']) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return ($this->User->isAdmin || !$row['admin']) ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -704,118 +719,167 @@ class tl_user extends Contao\Backend
 	 */
 	public function switchUser($row, $href, $label, $title, $icon)
 	{
-		$authorizationChecker = Contao\System::getContainer()->get('security.authorization_checker');
+		$security = System::getContainer()->get('security.helper');
 
-		if (!$authorizationChecker->isGranted('ROLE_ALLOWED_TO_SWITCH') || $authorizationChecker->isGranted('ROLE_PREVIOUS_ADMIN'))
+		if (!$security->isGranted('ROLE_ALLOWED_TO_SWITCH'))
 		{
 			return '';
 		}
 
+		$disabled = false;
+
 		if ($this->User->id == $row['id'])
 		{
-			return Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+			$disabled = true;
+		}
+		elseif ($security->isGranted('ROLE_PREVIOUS_ADMIN'))
+		{
+			if (self::$origUserId === null)
+			{
+				/** @var TokenInterface $origToken */
+				$origToken = $security->getToken()->getOriginalToken();
+				$origUser = $origToken->getUser();
+
+				if ($origUser instanceof BackendUser)
+				{
+					self::$origUserId = $origUser->id;
+				}
+			}
+
+			if (self::$origUserId == $row['id'])
+			{
+				$disabled = true;
+			}
 		}
 
-		$router = Contao\System::getContainer()->get('router');
+		if ($disabled)
+		{
+			return Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
+		}
+
+		$router = System::getContainer()->get('router');
 		$url = $router->generate('contao_backend', array('_switch_user'=>$row['username']));
 
-		return '<a href="'.$url.'" title="'.Contao\StringUtil::specialchars($title).'">'.Contao\Image::getHtml($icon, $label).'</a> ';
+		return '<a href="' . $url . '" title="' . StringUtil::specialchars($title) . '">' . Image::getHtml($icon, $label) . '</a> ';
 	}
 
 	/**
 	 * Return a checkbox to delete session data
 	 *
-	 * @param Contao\DataContainer $dc
+	 * @param DataContainer $dc
 	 *
 	 * @return string
 	 */
-	public function sessionField(Contao\DataContainer $dc)
+	public function sessionField(DataContainer $dc)
 	{
-		if (Contao\Input::post('FORM_SUBMIT') == 'tl_user')
+		if (Input::post('FORM_SUBMIT') == 'tl_user')
 		{
-			$arrPurge = Contao\Input::post('purge');
+			$arrPurge = Input::post('purge');
 
-			if (\is_array($arrPurge))
+			if (is_array($arrPurge))
 			{
-				$this->import('Contao\Automator', 'Automator');
+				$this->import(Automator::class, 'Automator');
 
-				if (\in_array('purge_session', $arrPurge))
+				if (in_array('purge_session', $arrPurge))
 				{
-					/** @var Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface $objSessionBag */
-					$objSessionBag = Contao\System::getContainer()->get('session')->getBag('contao_backend');
+					/** @var AttributeBagInterface $objSessionBag */
+					$objSessionBag = System::getContainer()->get('session')->getBag('contao_backend');
 					$objSessionBag->clear();
-					Contao\Message::addConfirmation($GLOBALS['TL_LANG']['tl_user']['sessionPurged']);
+					Message::addConfirmation($GLOBALS['TL_LANG']['tl_user']['sessionPurged']);
 				}
 
-				if (\in_array('purge_images', $arrPurge))
+				if (in_array('purge_images', $arrPurge))
 				{
 					$this->Automator->purgeImageCache();
-					Contao\Message::addConfirmation($GLOBALS['TL_LANG']['tl_user']['htmlPurged']);
+					Message::addConfirmation($GLOBALS['TL_LANG']['tl_user']['htmlPurged']);
 				}
 
-				if (\in_array('purge_pages', $arrPurge))
+				if (in_array('purge_pages', $arrPurge))
 				{
 					$this->Automator->purgePageCache();
-					Contao\Message::addConfirmation($GLOBALS['TL_LANG']['tl_user']['tempPurged']);
+					Message::addConfirmation($GLOBALS['TL_LANG']['tl_user']['tempPurged']);
 				}
+
+				$this->reload();
 			}
 		}
 
 		return '
 <div class="widget">
   <fieldset class="tl_checkbox_container">
-    <legend>'.$GLOBALS['TL_LANG']['tl_user']['session'][0].'</legend>
-    <input type="checkbox" id="check_all_purge" class="tl_checkbox" onclick="Backend.toggleCheckboxGroup(this, \'ctrl_purge\')"> <label for="check_all_purge" style="color:#a6a6a6"><em>'.$GLOBALS['TL_LANG']['MSC']['selectAll'].'</em></label><br>
-    <input type="checkbox" name="purge[]" id="opt_purge_0" class="tl_checkbox" value="purge_session" onfocus="Backend.getScrollOffset()"> <label for="opt_purge_0">'.$GLOBALS['TL_LANG']['tl_user']['sessionLabel'].'</label><br>
-    <input type="checkbox" name="purge[]" id="opt_purge_1" class="tl_checkbox" value="purge_images" onfocus="Backend.getScrollOffset()"> <label for="opt_purge_1">'.$GLOBALS['TL_LANG']['tl_user']['htmlLabel'].'</label><br>
-    <input type="checkbox" name="purge[]" id="opt_purge_2" class="tl_checkbox" value="purge_pages" onfocus="Backend.getScrollOffset()"> <label for="opt_purge_2">'.$GLOBALS['TL_LANG']['tl_user']['tempLabel'].'</label>
-  </fieldset>'.$dc->help().'
+    <legend>' . $GLOBALS['TL_LANG']['tl_user']['session'][0] . '</legend>
+    <input type="checkbox" id="check_all_purge" class="tl_checkbox" onclick="Backend.toggleCheckboxGroup(this, \'ctrl_purge\')"> <label for="check_all_purge" style="color:#a6a6a6"><em>' . $GLOBALS['TL_LANG']['MSC']['selectAll'] . '</em></label><br>
+    <input type="checkbox" name="purge[]" id="opt_purge_0" class="tl_checkbox" value="purge_session" onfocus="Backend.getScrollOffset()"> <label for="opt_purge_0">' . $GLOBALS['TL_LANG']['tl_user']['sessionLabel'] . '</label><br>
+    <input type="checkbox" name="purge[]" id="opt_purge_1" class="tl_checkbox" value="purge_images" onfocus="Backend.getScrollOffset()"> <label for="opt_purge_1">' . $GLOBALS['TL_LANG']['tl_user']['htmlLabel'] . '</label><br>
+    <input type="checkbox" name="purge[]" id="opt_purge_2" class="tl_checkbox" value="purge_pages" onfocus="Backend.getScrollOffset()"> <label for="opt_purge_2">' . $GLOBALS['TL_LANG']['tl_user']['tempLabel'] . '</label>
+  </fieldset>' . $dc->help() . '
 </div>';
 	}
 
 	/**
 	 * Return all modules except profile modules
 	 *
+	 * @param DataContainer $dc
+	 *
 	 * @return array
 	 */
-	public function getModules()
+	public function getModules(DataContainer $dc)
 	{
 		$arrModules = array();
 
 		foreach ($GLOBALS['BE_MOD'] as $k=>$v)
 		{
-			if (!empty($v))
+			if (empty($v))
 			{
-				if ($k == 'accounts')
-				{
-					unset($v['login']);
-				}
-
-				if ($k == 'system')
-				{
-					unset($v['undo']);
-				}
-
-				$arrModules[$k] = array_keys($v);
+				continue;
 			}
+
+			foreach ($v as $kk=>$vv)
+			{
+				if (isset($vv['disablePermissionChecks']) && $vv['disablePermissionChecks'] === true)
+				{
+					unset($v[$kk]);
+				}
+			}
+
+			$arrModules[$k] = array_keys($v);
+		}
+
+		$modules = StringUtil::deserialize($dc->activeRecord->modules);
+
+		// Unset the template editor unless the user is an administrator or has been granted access to the template editor
+		if (!$this->User->isAdmin && (!is_array($modules) || !in_array('tpl_editor', $modules)) && ($key = array_search('tpl_editor', $arrModules['design'])) !== false)
+		{
+			unset($arrModules['design'][$key]);
+			$arrModules['design'] = array_values($arrModules['design']);
 		}
 
 		return $arrModules;
 	}
 
 	/**
+	 * Return all content elements
+	 *
+	 * @return array
+	 */
+	public function getContentElements()
+	{
+		return array_map('array_keys', $GLOBALS['TL_CTE']);
+	}
+
+	/**
 	 * Prevent administrators from downgrading their own account
 	 *
-	 * @param mixed                $varValue
-	 * @param Contao\DataContainer $dc
+	 * @param mixed         $varValue
+	 * @param DataContainer $dc
 	 *
 	 * @return mixed
 	 */
-	public function checkAdminStatus($varValue, Contao\DataContainer $dc)
+	public function checkAdminStatus($varValue, DataContainer $dc)
 	{
-		if ($varValue == '' && $this->User->id == $dc->id)
+		if (!$varValue && $this->User->id == $dc->id)
 		{
-			$varValue = 1;
+			$varValue = '1';
 		}
 
 		return $varValue;
@@ -824,12 +888,12 @@ class tl_user extends Contao\Backend
 	/**
 	 * Prevent administrators from disabling their own account
 	 *
-	 * @param mixed                $varValue
-	 * @param Contao\DataContainer $dc
+	 * @param mixed         $varValue
+	 * @param DataContainer $dc
 	 *
 	 * @return mixed
 	 */
-	public function checkAdminDisable($varValue, Contao\DataContainer $dc)
+	public function checkAdminDisable($varValue, DataContainer $dc)
 	{
 		if ($varValue == 1 && $this->User->id == $dc->id)
 		{
@@ -842,9 +906,9 @@ class tl_user extends Contao\Backend
 	/**
 	 * Store the date when the account has been added
 	 *
-	 * @param Contao\DataContainer $dc
+	 * @param DataContainer $dc
 	 */
-	public function storeDateAdded(Contao\DataContainer $dc)
+	public function storeDateAdded(DataContainer $dc)
 	{
 		// Return if there is no active record (override all)
 		if (!$dc->activeRecord || $dc->activeRecord->dateAdded > 0)
@@ -870,9 +934,9 @@ class tl_user extends Contao\Backend
 	 * Update the current user if something changes, otherwise they would be
 	 * logged out automatically
 	 *
-	 * @param Contao\DataContainer $dc
+	 * @param DataContainer $dc
 	 */
-	public function updateCurrentUser(Contao\DataContainer $dc)
+	public function updateCurrentUser(DataContainer $dc)
 	{
 		if ($this->User->id == $dc->id)
 		{
@@ -894,9 +958,9 @@ class tl_user extends Contao\Backend
 	 */
 	public function toggleIcon($row, $href, $label, $title, $icon, $attributes)
 	{
-		if (\strlen(Contao\Input::get('tid')))
+		if (Input::get('tid'))
 		{
-			$this->toggleVisibility(Contao\Input::get('tid'), (Contao\Input::get('state') == 1), (@func_get_arg(12) ?: null));
+			$this->toggleVisibility(Input::get('tid'), (Input::get('state') == 1), (@func_get_arg(12) ?: null));
 			$this->redirect($this->getReferer());
 		}
 
@@ -906,7 +970,7 @@ class tl_user extends Contao\Backend
 			return '';
 		}
 
-		$href .= '&amp;tid='.$row['id'].'&amp;state='.$row['disable'];
+		$href .= '&amp;tid=' . $row['id'] . '&amp;state=' . $row['disable'];
 
 		if ($row['disable'])
 		{
@@ -916,26 +980,26 @@ class tl_user extends Contao\Backend
 		// Protect admin accounts
 		if (!$this->User->isAdmin && $row['admin'])
 		{
-			return Contao\Image::getHtml($icon) . ' ';
+			return Image::getHtml($icon) . ' ';
 		}
 
-		return '<a href="'.$this->addToUrl($href).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label, 'data-state="' . ($row['disable'] ? 0 : 1) . '"').'</a> ';
+		return '<a href="' . $this->addToUrl($href) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label, 'data-state="' . ($row['disable'] ? 0 : 1) . '"') . '</a> ';
 	}
 
 	/**
 	 * Disable/enable a user group
 	 *
-	 * @param integer              $intId
-	 * @param boolean              $blnVisible
-	 * @param Contao\DataContainer $dc
+	 * @param integer       $intId
+	 * @param boolean       $blnVisible
+	 * @param DataContainer $dc
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
-	public function toggleVisibility($intId, $blnVisible, Contao\DataContainer $dc=null)
+	public function toggleVisibility($intId, $blnVisible, DataContainer $dc=null)
 	{
 		// Set the ID and action
-		Contao\Input::setGet('id', $intId);
-		Contao\Input::setGet('act', 'toggle');
+		Input::setGet('id', $intId);
+		Input::setGet('act', 'toggle');
 
 		if ($dc)
 		{
@@ -949,16 +1013,16 @@ class tl_user extends Contao\Backend
 		}
 
 		// Trigger the onload_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_user']['config']['onload_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_user']['config']['onload_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_user']['config']['onload_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$this->{$callback[0]}->{$callback[1]}($dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$callback($dc);
 				}
@@ -968,39 +1032,41 @@ class tl_user extends Contao\Backend
 		// Check the field access
 		if (!$this->User->hasAccess('tl_user::disable', 'alexf'))
 		{
-			throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to activate/deactivate user ID ' . $intId . '.');
+			throw new AccessDeniedException('Not enough permissions to activate/deactivate user ID ' . $intId . '.');
+		}
+
+		$objRow = $this->Database->prepare("SELECT * FROM tl_user WHERE id=?")
+								 ->limit(1)
+								 ->execute($intId);
+
+		if ($objRow->numRows < 1)
+		{
+			throw new AccessDeniedException('Invalid user ID ' . $intId . '.');
 		}
 
 		// Get the current record
 		if ($dc)
 		{
-			$objRow = $this->Database->prepare("SELECT * FROM tl_user WHERE id=?")
-									 ->limit(1)
-									 ->execute($intId);
-
-			if ($objRow->numRows)
-			{
-				$dc->activeRecord = $objRow;
-			}
+			$dc->activeRecord = $objRow;
 		}
 
-		$objVersions = new Contao\Versions('tl_user', $intId);
+		$objVersions = new Versions('tl_user', $intId);
 		$objVersions->initialize();
 
 		// Reverse the logic (users have disable=1)
 		$blnVisible = !$blnVisible;
 
 		// Trigger the save_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_user']['fields']['disable']['save_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_user']['fields']['disable']['save_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_user']['fields']['disable']['save_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$blnVisible = $this->{$callback[0]}->{$callback[1]}($blnVisible, $dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$blnVisible = $callback($blnVisible, $dc);
 				}
@@ -1020,16 +1086,16 @@ class tl_user extends Contao\Backend
 		}
 
 		// Trigger the onsubmit_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_user']['config']['onsubmit_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_user']['config']['onsubmit_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_user']['config']['onsubmit_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$this->{$callback[0]}->{$callback[1]}($dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$callback($dc);
 				}
@@ -1037,5 +1103,10 @@ class tl_user extends Contao\Backend
 		}
 
 		$objVersions->create();
+
+		if ($dc)
+		{
+			$dc->invalidateCacheTags();
+		}
 	}
 }

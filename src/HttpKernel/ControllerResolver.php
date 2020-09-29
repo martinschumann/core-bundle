@@ -28,19 +28,22 @@ class ControllerResolver implements ControllerResolverInterface
      */
     private $registry;
 
+    /**
+     * @internal Do not inherit from this class; decorate the "contao.controller_resolver" service instead
+     */
     public function __construct(ControllerResolverInterface $resolver, FragmentRegistry $registry)
     {
         $this->resolver = $resolver;
         $this->registry = $registry;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getController(Request $request)
     {
-        if ($request->attributes->has('_controller')) {
-            $fragmentConfig = $this->registry->get($request->attributes->get('_controller'));
+        if (
+            $request->attributes->has('_controller')
+            && \is_string($controller = $request->attributes->get('_controller'))
+        ) {
+            $fragmentConfig = $this->registry->get($controller);
 
             if (null !== $fragmentConfig) {
                 $request->attributes->set('_controller', $fragmentConfig->getController());
@@ -50,9 +53,6 @@ class ControllerResolver implements ControllerResolverInterface
         return $this->resolver->getController($request);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getArguments(Request $request, $controller): array
     {
         if (!method_exists($this->resolver, 'getArguments')) {

@@ -22,7 +22,6 @@ use Symfony\Component\HttpFoundation\Session\Session;
  */
 class BackendPage extends Backend
 {
-
 	/**
 	 * Current Ajax object
 	 * @var Ajax
@@ -139,11 +138,10 @@ class BackendPage extends Backend
 		$objTemplate->base = Environment::get('base');
 		$objTemplate->language = $GLOBALS['TL_LANGUAGE'];
 		$objTemplate->title = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['pagepicker']);
-		$objTemplate->host = Environment::get('host');
+		$objTemplate->host = Backend::getDecodedHostname();
 		$objTemplate->charset = Config::get('characterSet');
 		$objTemplate->addSearch = true;
 		$objTemplate->search = $GLOBALS['TL_LANG']['MSC']['search'];
-		$objTemplate->action = ampersand(Environment::get('request'));
 		$objTemplate->value = $objSessionBag->get('page_selector_search');
 		$objTemplate->breadcrumb = $GLOBALS['TL_DCA']['tl_page']['list']['sorting']['breadcrumb'];
 
@@ -156,7 +154,7 @@ class BackendPage extends Backend
 		if (Input::get('switch') && $this->User->hasAccess('files', 'modules'))
 		{
 			$objTemplate->switch = $GLOBALS['TL_LANG']['MSC']['filePicker'];
-			$objTemplate->switchHref = str_replace('contao/page?', 'contao/file?', ampersand(Environment::get('request')));
+			$objTemplate->switchHref = str_replace('contao/page?', 'contao/file?', StringUtil::ampersand(Environment::get('request')));
 		}
 
 		return $objTemplate->getResponse();

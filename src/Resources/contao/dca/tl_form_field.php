@@ -8,9 +8,21 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\Config;
+use Contao\CoreBundle\Exception\AccessDeniedException;
+use Contao\DataContainer;
+use Contao\Image;
+use Contao\Input;
+use Contao\StringUtil;
+use Contao\System;
+use Contao\Versions;
+use Contao\Widget;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+
 $GLOBALS['TL_DCA']['tl_form_field'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -20,14 +32,15 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		'markAsCopy'                  => 'label',
 		'onload_callback' => array
 		(
-			array('tl_form_field', 'checkPermission')
+			array('tl_form_field', 'checkPermission'),
+			array('tl_form_field', 'filterFormFields')
 		),
 		'sql' => array
 		(
 			'keys' => array
 			(
 				'id' => 'primary',
-				'pid' => 'index'
+				'pid,invisible' => 'index'
 			)
 		)
 	),
@@ -47,7 +60,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		(
 			'all' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['MSC']['all'],
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset()" accesskey="e"'
@@ -57,41 +69,38 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		(
 			'edit' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form_field']['edit'],
 				'href'                => 'act=edit',
-				'icon'                => 'edit.svg'
+				'icon'                => 'edit.svg',
+				'button_callback'     => array('tl_form_field', 'disableButton')
 			),
 			'copy' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form_field']['copy'],
 				'href'                => 'act=paste&amp;mode=copy',
 				'icon'                => 'copy.svg',
-				'attributes'          => 'onclick="Backend.getScrollOffset()"'
+				'attributes'          => 'onclick="Backend.getScrollOffset()"',
+				'button_callback'     => array('tl_form_field', 'disableButton')
 			),
 			'cut' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form_field']['cut'],
 				'href'                => 'act=paste&amp;mode=cut',
 				'icon'                => 'cut.svg',
 				'attributes'          => 'onclick="Backend.getScrollOffset()"'
 			),
 			'delete' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form_field']['delete'],
 				'href'                => 'act=delete',
 				'icon'                => 'delete.svg',
-				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"'
+				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"',
+				'button_callback'     => array('tl_form_field', 'disableButton')
 			),
 			'toggle' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form_field']['toggle'],
 				'icon'                => 'visible.svg',
 				'attributes'          => 'onclick="Backend.getScrollOffset();return AjaxRequest.toggleVisibility(this,%s)"',
 				'button_callback'     => array('tl_form_field', 'toggleIcon')
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form_field']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg'
 			)
@@ -101,19 +110,21 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 	// Palettes
 	'palettes' => array
 	(
-		'__selector__'                => array('type', 'multiple', 'storeFile', 'imageSubmit'),
+		'__selector__'                => array('type', 'multiple', 'storeFile', 'imageSubmit', 'rgxp'),
 		'default'                     => '{type_legend},type',
 		'explanation'                 => '{type_legend},type;{text_legend},text;{expert_legend:hide},class;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'fieldsetStart'               => '{type_legend},type;{fconfig_legend},label;{expert_legend:hide},class;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'fieldsetStop'                => '{type_legend},type;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'html'                        => '{type_legend},type;{text_legend},html;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'text'                        => '{type_legend},type,name,label;{fconfig_legend},mandatory,rgxp,placeholder;{expert_legend:hide},class,value,minlength,maxlength,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
+		'textdigit'                   => '{type_legend},type,name,label;{fconfig_legend},mandatory,rgxp,placeholder;{expert_legend:hide},class,value,minval,maxval,step,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'password'                    => '{type_legend},type,name,label;{fconfig_legend},mandatory,rgxp,placeholder;{expert_legend:hide},class,value,minlength,maxlength,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'textarea'                    => '{type_legend},type,name,label;{fconfig_legend},mandatory,rgxp,placeholder;{size_legend},size;{expert_legend:hide},class,value,minlength,maxlength,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'select'                      => '{type_legend},type,name,label;{fconfig_legend},mandatory,multiple;{options_legend},options;{expert_legend:hide},class,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'radio'                       => '{type_legend},type,name,label;{fconfig_legend},mandatory;{options_legend},options;{expert_legend:hide},class;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'checkbox'                    => '{type_legend},type,name,label;{fconfig_legend},mandatory;{options_legend},options;{expert_legend:hide},class;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'upload'                      => '{type_legend},type,name,label;{fconfig_legend},mandatory,extensions,maxlength;{store_legend:hide},storeFile;{expert_legend:hide},class,accesskey,tabindex,fSize;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
+		'range'                       => '{type_legend},type,name,label;{fconfig_legend},mandatory;{expert_legend:hide},class,value,minval,maxval,step,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'hidden'                      => '{type_legend},type,name,value;{fconfig_legend},mandatory,rgxp;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'captcha'                     => '{type_legend},type,label;{fconfig_legend},placeholder;{expert_legend:hide},class,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible',
 		'submit'                      => '{type_legend},type,slabel;{image_legend:hide},imageSubmit;{expert_legend:hide},class,accesskey,tabindex;{template_legend:hide},customTpl;{invisible_legend:hide},invisible'
@@ -150,18 +161,16 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'type' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['type'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'select',
 			'options_callback'        => array('tl_form_field', 'getFields'),
 			'eval'                    => array('helpwizard'=>true, 'submitOnChange'=>true, 'tl_class'=>'w50'),
 			'reference'               => &$GLOBALS['TL_LANG']['FFL'],
-			'sql'                     => "varchar(64) NOT NULL default 'text'"
+			'sql'                     => array('name'=>'type', 'type'=>'string', 'length'=>64, 'default'=>'text')
 		),
-		'label' => array // "label" needs to come before "name" so it gets the "(copy)" suffix (see #1062)
+		'label' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['label'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -170,7 +179,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'name' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['name'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -179,7 +187,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'text' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['text'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'textarea',
@@ -189,7 +196,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'html' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['html'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'textarea',
@@ -198,7 +204,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'options' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['options'],
 			'exclude'                 => true,
 			'inputType'               => 'optionWizard',
 			'eval'                    => array('mandatory'=>true, 'allowHtml'=>true),
@@ -210,7 +215,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'mandatory' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['mandatory'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
@@ -218,17 +222,15 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'rgxp' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['rgxp'],
 			'exclude'                 => true,
 			'inputType'               => 'select',
 			'options'                 => array('digit', 'alpha', 'alnum', 'extnd', 'date', 'time', 'datim', 'phone', 'email', 'url'),
 			'reference'               => &$GLOBALS['TL_LANG']['tl_form_field'],
-			'eval'                    => array('helpwizard'=>true, 'includeBlankOption'=>true, 'tl_class'=>'w50'),
+			'eval'                    => array('helpwizard'=>true, 'includeBlankOption'=>true, 'submitOnChange'=>true, 'tl_class'=>'w50'),
 			'sql'                     => "varchar(32) NOT NULL default ''"
 		),
 		'placeholder' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['placeholder'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -237,7 +239,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'minlength' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['minlength'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'natural', 'tl_class'=>'w50'),
@@ -245,15 +246,34 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'maxlength' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['maxlength'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'natural', 'tl_class'=>'w50'),
 			'sql'                     => "int(10) unsigned NOT NULL default 0"
 		),
+		'minval' => array
+		(
+			'exclude'                 => true,
+			'inputType'               => 'text',
+			'eval'                    => array('rgxp'=>'digit', 'tl_class'=>'w50'),
+			'sql'                     => "varchar(10) NOT NULL default ''"
+		),
+		'maxval' => array
+		(
+			'exclude'                 => true,
+			'inputType'               => 'text',
+			'eval'                    => array('rgxp'=>'digit', 'tl_class'=>'w50'),
+			'sql'                     => "varchar(10) NOT NULL default ''"
+		),
+		'step' => array
+		(
+			'exclude'                 => true,
+			'inputType'               => 'text',
+			'eval'                    => array('rgxp'=>'digit', 'tl_class'=>'w50'),
+			'sql'                     => "varchar(10) NOT NULL default ''"
+		),
 		'size' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['size'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('mandatory'=>true, 'multiple'=>true, 'size'=>2, 'rgxp'=>'natural', 'tl_class'=>'w50'),
@@ -261,7 +281,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'multiple' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['multiple'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('submitOnChange'=>true, 'tl_class'=>'clr'),
@@ -269,7 +288,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'mSize' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['mSize'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'natural'),
@@ -277,15 +295,17 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'extensions' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['extensions'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
-			'eval'                    => array('rgxp'=>'extnd', 'maxlength'=>255, 'tl_class'=>'w50'),
+			'eval'                    => array('mandatory'=>true, 'rgxp'=>'extnd', 'maxlength'=>255, 'tl_class'=>'w50'),
+			'save_callback' => array
+			(
+				array('tl_form_field', 'checkExtensions')
+			),
 			'sql'                     => "varchar(255) NOT NULL default 'jpg,jpeg,gif,png,pdf,doc,docx,xls,xlsx,ppt,pptx'"
 		),
 		'storeFile' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['storeFile'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('submitOnChange'=>true),
@@ -293,7 +313,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'uploadFolder' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['uploadFolder'],
 			'exclude'                 => true,
 			'inputType'               => 'fileTree',
 			'eval'                    => array('fieldType'=>'radio', 'tl_class'=>'clr'),
@@ -301,7 +320,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'useHomeDir' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['useHomeDir'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50'),
@@ -309,7 +327,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'doNotOverwrite' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['doNotOverwrite'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50'),
@@ -317,7 +334,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'class' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['class'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -326,7 +342,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'value' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['value'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -335,7 +350,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'accesskey' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['accesskey'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -344,7 +358,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'tabindex' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['tabindex'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -353,7 +366,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'fSize' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['fSize'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'natural', 'tl_class'=>'w50'),
@@ -361,16 +373,14 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'customTpl' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['customTpl'],
 			'exclude'                 => true,
 			'inputType'               => 'select',
 			'options_callback'        => array('tl_form_field', 'getFormFieldTemplates'),
-			'eval'                    => array('includeBlankOption'=>true, 'chosen'=>true, 'tl_class'=>'w50'),
+			'eval'                    => array('chosen'=>true, 'tl_class'=>'w50'),
 			'sql'                     => "varchar(64) NOT NULL default ''"
 		),
 		'slabel' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['slabel'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('mandatory'=>true, 'maxlength'=>255, 'tl_class'=>'w50 clr'),
@@ -378,7 +388,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'imageSubmit' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['imageSubmit'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('submitOnChange'=>true),
@@ -386,7 +395,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'singleSRC' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['singleSRC'],
 			'exclude'                 => true,
 			'inputType'               => 'fileTree',
 			'eval'                    => array('fieldType'=>'radio', 'filesOnly'=>true, 'mandatory'=>true, 'tl_class'=>'clr'),
@@ -394,7 +402,6 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
 		),
 		'invisible' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form_field']['invisible'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
@@ -408,22 +415,21 @@ $GLOBALS['TL_DCA']['tl_form_field'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_form_field extends Contao\Backend
+class tl_form_field extends Backend
 {
-
 	/**
 	 * Import the back end user object
 	 */
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('Contao\BackendUser', 'User');
+		$this->import(BackendUser::class, 'User');
 	}
 
 	/**
 	 * Check permissions to edit table tl_form_field
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
 	public function checkPermission()
 	{
@@ -432,8 +438,11 @@ class tl_form_field extends Contao\Backend
 			return;
 		}
 
+		/** @var SessionInterface $objSession */
+		$objSession = System::getContainer()->get('session');
+
 		// Set root IDs
-		if (empty($this->User->forms) || !\is_array($this->User->forms))
+		if (empty($this->User->forms) || !is_array($this->User->forms))
 		{
 			$root = array(0);
 		}
@@ -442,49 +451,50 @@ class tl_form_field extends Contao\Backend
 			$root = $this->User->forms;
 		}
 
-		$id = \strlen(Contao\Input::get('id')) ? Contao\Input::get('id') : CURRENT_ID;
+		$id = strlen(Input::get('id')) ? Input::get('id') : CURRENT_ID;
 
 		// Check current action
-		switch (Contao\Input::get('act'))
+		switch (Input::get('act'))
 		{
 			case 'paste':
 			case 'select':
-				if (!\in_array(CURRENT_ID, $root)) // check CURRENT_ID here (see #247)
+				// Check CURRENT_ID here (see #247)
+				if (!in_array(CURRENT_ID, $root))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to access form ID ' . $id . '.');
+					throw new AccessDeniedException('Not enough permissions to access form ID ' . $id . '.');
 				}
 				break;
 
 			case 'create':
 			case 'cut':
 			case 'copy':
-				$pid = Contao\Input::get('pid');
+				$pid = Input::get('pid');
 
 				// Get form ID
-				if (Contao\Input::get('mode') == 1)
+				if (Input::get('mode') == 1)
 				{
 					$objField = $this->Database->prepare("SELECT pid FROM tl_form_field WHERE id=?")
 											   ->limit(1)
-											   ->execute(Contao\Input::get('pid'));
+											   ->execute(Input::get('pid'));
 
 					if ($objField->numRows < 1)
 					{
-						throw new Contao\CoreBundle\Exception\AccessDeniedException('Invalid form field ID ' . Contao\Input::get('pid') . '.');
+						throw new AccessDeniedException('Invalid form field ID ' . Input::get('pid') . '.');
 					}
 
 					$pid = $objField->pid;
 				}
 
-				if (!\in_array($pid, $root))
+				if (!in_array($pid, $root))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to ' . Contao\Input::get('act') . ' form field ID ' . $id . ' to form ID ' . $pid . '.');
+					throw new AccessDeniedException('Not enough permissions to ' . Input::get('act') . ' form field ID ' . $id . ' to form ID ' . $pid . '.');
 				}
 
-				if (Contao\Input::get('act') == 'create')
+				if (Input::get('act') == 'create')
 				{
 					break;
 				}
-				// NO BREAK STATEMENT HERE
+				// no break
 
 			case 'edit':
 			case 'show':
@@ -496,12 +506,12 @@ class tl_form_field extends Contao\Backend
 
 				if ($objField->numRows < 1)
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Invalid form field ID ' . $id . '.');
+					throw new AccessDeniedException('Invalid form field ID ' . $id . '.');
 				}
 
-				if (!\in_array($objField->pid, $root))
+				if (!in_array($objField->pid, $root))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to ' . Contao\Input::get('act') . ' form field ID ' . $id . ' of form ID ' . $objField->pid . '.');
+					throw new AccessDeniedException('Not enough permissions to ' . Input::get('act') . ' form field ID ' . $id . ' of form ID ' . $objField->pid . '.');
 				}
 				break;
 
@@ -510,16 +520,13 @@ class tl_form_field extends Contao\Backend
 			case 'overrideAll':
 			case 'cutAll':
 			case 'copyAll':
-				if (!\in_array($id, $root))
+				if (!in_array($id, $root))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to access form ID ' . $id . '.');
+					throw new AccessDeniedException('Not enough permissions to access form ID ' . $id . '.');
 				}
 
 				$objForm = $this->Database->prepare("SELECT id FROM tl_form_field WHERE pid=?")
 										  ->execute($id);
-
-				/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
-				$objSession = Contao\System::getContainer()->get('session');
 
 				$session = $objSession->all();
 				$session['CURRENT']['IDS'] = array_intersect((array) $session['CURRENT']['IDS'], $objForm->fetchEach('id'));
@@ -527,15 +534,98 @@ class tl_form_field extends Contao\Backend
 				break;
 
 			default:
-				if (\strlen(Contao\Input::get('act')))
+				if (Input::get('act'))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Invalid command "' . Contao\Input::get('act') . '".');
+					throw new AccessDeniedException('Invalid command "' . Input::get('act') . '".');
 				}
-				elseif (!\in_array($id, $root))
+
+				if (!in_array($id, $root))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to access form ID ' . $id . '.');
+					throw new AccessDeniedException('Not enough permissions to access form ID ' . $id . '.');
 				}
 				break;
+		}
+	}
+
+	/**
+	 * Filter the form fields
+	 */
+	public function filterFormFields()
+	{
+		if ($this->User->isAdmin)
+		{
+			return;
+		}
+
+		if (empty($this->User->fields))
+		{
+			$GLOBALS['TL_DCA']['tl_form_field']['config']['closed'] = true;
+			$GLOBALS['TL_DCA']['tl_form_field']['config']['notEditable'] = true;
+		}
+		elseif (!in_array($GLOBALS['TL_DCA']['tl_form_field']['fields']['type']['sql']['default'], $this->User->fields))
+		{
+			$GLOBALS['TL_DCA']['tl_form_field']['fields']['type']['default'] = $this->User->fields[0];
+		}
+
+		/** @var SessionInterface $objSession */
+		$objSession = System::getContainer()->get('session');
+
+		// Prevent editing form fields with not allowed types
+		if (Input::get('act') == 'edit' || Input::get('act') == 'delete' || (Input::get('act') == 'paste' && Input::get('mode') == 'copy'))
+		{
+			$objField = $this->Database->prepare("SELECT type FROM tl_form_field WHERE id=?")
+									   ->execute(Input::get('id'));
+
+			if ($objField->numRows && !in_array($objField->type, $this->User->fields))
+			{
+				throw new AccessDeniedException('Not enough permissions to modify form fields of type "' . $objField->type . '".');
+			}
+		}
+
+		// Prevent editing content elements with not allowed types
+		if (Input::get('act') == 'editAll' || Input::get('act') == 'overrideAll' || Input::get('act') == 'deleteAll')
+		{
+			$session = $objSession->all();
+
+			if (!empty($session['CURRENT']['IDS']) && is_array($session['CURRENT']['IDS']))
+			{
+				if (empty($this->User->fields))
+				{
+					$session['CURRENT']['IDS'] = array();
+				}
+				else
+				{
+					$objFields = $this->Database->prepare("SELECT id FROM tl_form_field WHERE id IN(" . implode(',', array_map('\intval', $session['CURRENT']['IDS'])) . ") AND type IN(" . implode(',', array_fill(0, count($this->User->fields), '?')) . ")")
+												->execute(...$this->User->fields);
+
+					$session['CURRENT']['IDS'] = $objFields->fetchEach('id');
+				}
+
+				$objSession->replace($session);
+			}
+		}
+
+		// Prevent copying content elements with not allowed types
+		if (Input::get('act') == 'copyAll')
+		{
+			$session = $objSession->all();
+
+			if (!empty($session['CLIPBOARD']['tl_form_field']['id']) && is_array($session['CLIPBOARD']['tl_form_field']['id']))
+			{
+				if (empty($this->User->fields))
+				{
+					$session['CLIPBOARD']['tl_form_field']['id'] = array();
+				}
+				else
+				{
+					$objFields = $this->Database->prepare("SELECT id, type FROM tl_form_field WHERE id IN(" . implode(',', array_map('\intval', $session['CLIPBOARD']['tl_form_field']['id'])) . ") AND type IN(" . implode(',', array_fill(0, count($this->User->fields), '?')) . ")")
+												->execute(...$this->User->fields);
+
+					$session['CLIPBOARD']['tl_form_field']['id'] = $objFields->fetchEach('id');
+				}
+
+				$objSession->replace($session);
+			}
 		}
 	}
 
@@ -553,7 +643,7 @@ class tl_form_field extends Contao\Backend
 
 		$strType = '
 <div class="cte_type ' . $key . '">' . $GLOBALS['TL_LANG']['FFL'][$arrRow['type']][0] . ($arrRow['name'] ? ' (' . $arrRow['name'] . ')' : '') . '</div>
-<div class="limit_height' . (!Contao\Config::get('doNotCollapse') ? ' h32' : '') . '">';
+<div class="limit_height' . (!Config::get('doNotCollapse') ? ' h32' : '') . '">';
 
 		$strClass = $GLOBALS['TL_FFL'][$arrRow['type']];
 
@@ -562,7 +652,7 @@ class tl_form_field extends Contao\Backend
 			return '';
 		}
 
-		/** @var Contao\Widget $objWidget */
+		/** @var Widget $objWidget */
 		$objWidget = new $strClass($arrRow);
 
 		$strWidget = $objWidget->parse();
@@ -574,7 +664,7 @@ class tl_form_field extends Contao\Backend
 			return $strType . "\n" . $objWidget->value . "\n</div>\n";
 		}
 
-		return $strType . Contao\StringUtil::insertTagToSrc($strWidget) . '
+		return $strType . StringUtil::insertTagToSrc($strWidget) . '
 </div>' . "\n";
 	}
 
@@ -585,7 +675,31 @@ class tl_form_field extends Contao\Backend
 	 */
 	public function optionImportWizard()
 	{
-		return ' <a href="' . $this->addToUrl('key=option') . '" title="' . specialchars($GLOBALS['TL_LANG']['MSC']['ow_import'][1]) . '" onclick="Backend.getScrollOffset()">' . Contao\Image::getHtml('tablewizard.svg', $GLOBALS['TL_LANG']['MSC']['ow_import'][0]) . '</a>';
+		return ' <a href="' . $this->addToUrl('key=option') . '" title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['ow_import'][1]) . '" onclick="Backend.getScrollOffset()">' . Image::getHtml('tablewizard.svg', $GLOBALS['TL_LANG']['MSC']['ow_import'][0]) . '</a>';
+	}
+
+	/**
+	 * Check the configured extensions against the upload types
+	 *
+	 * @param mixed         $varValue
+	 * @param DataContainer $dc
+	 *
+	 * @return string
+	 */
+	public function checkExtensions($varValue, DataContainer $dc)
+	{
+		// Convert the extensions to lowercase
+		$varValue = strtolower($varValue);
+		$arrExtensions = StringUtil::trimsplit(',', $varValue);
+		$arrUploadTypes = StringUtil::trimsplit(',', strtolower(Config::get('uploadTypes')));
+		$arrNotAllowed = array_diff($arrExtensions, $arrUploadTypes);
+
+		if (0 !== count($arrNotAllowed))
+		{
+			throw new Exception(sprintf($GLOBALS['TL_LANG']['ERR']['forbiddenExtensions'], implode(', ', $arrNotAllowed)));
+		}
+
+		return $varValue;
 	}
 
 	/**
@@ -595,25 +709,67 @@ class tl_form_field extends Contao\Backend
 	 */
 	public function getFields()
 	{
-		$arrFields = $GLOBALS['TL_FFL'];
+		$fields = array();
 
-		// Add the translation
-		foreach (array_keys($arrFields) as $key)
+		foreach ($GLOBALS['TL_FFL'] as $k=>$v)
 		{
-			$arrFields[$key] = $GLOBALS['TL_LANG']['FFL'][$key][0];
+			if ($this->User->hasAccess($k, 'fields'))
+			{
+				$fields[] = $k;
+			}
 		}
 
-		return $arrFields;
+		return $fields;
 	}
 
 	/**
 	 * Return all form field templates as array
 	 *
+	 * @param DataContainer $dc
+	 *
 	 * @return array
 	 */
-	public function getFormFieldTemplates()
+	public function getFormFieldTemplates(DataContainer $dc)
 	{
-		return $this->getTemplateGroup('form_');
+		if (Input::get('act') == 'overrideAll')
+		{
+			return $this->getTemplateGroup('form_');
+		}
+
+		$default = 'form_' . $dc->activeRecord->type;
+
+		// Backwards compatibility
+		if ($dc->activeRecord->type == 'text')
+		{
+			$default = 'form_textfield';
+		}
+
+		$arrTemplates = $this->getTemplateGroup('form_' . $dc->activeRecord->type . '_', array(), $default);
+
+		// Backwards compatibility
+		if ($dc->activeRecord->type == 'text')
+		{
+			$arrTemplates += $this->getTemplateGroup('form_textfield_');
+		}
+
+		return $arrTemplates;
+	}
+
+	/**
+	 * Disable the button if the element type is not allowed
+	 *
+	 * @param array  $row
+	 * @param string $href
+	 * @param string $label
+	 * @param string $title
+	 * @param string $icon
+	 * @param string $attributes
+	 *
+	 * @return string
+	 */
+	public function disableButton($row, $href, $label, $title, $icon, $attributes)
+	{
+		return $this->User->hasAccess($row['type'], 'fields') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -630,9 +786,9 @@ class tl_form_field extends Contao\Backend
 	 */
 	public function toggleIcon($row, $href, $label, $title, $icon, $attributes)
 	{
-		if (\strlen(Contao\Input::get('tid')))
+		if (Input::get('tid'))
 		{
-			$this->toggleVisibility(Contao\Input::get('tid'), (Contao\Input::get('state') == 1), (@func_get_arg(12) ?: null));
+			$this->toggleVisibility(Input::get('tid'), (Input::get('state') == 1), (@func_get_arg(12) ?: null));
 			$this->redirect($this->getReferer());
 		}
 
@@ -642,28 +798,34 @@ class tl_form_field extends Contao\Backend
 			return '';
 		}
 
-		$href .= '&amp;tid='.$row['id'].'&amp;state='.$row['invisible'];
+		// Disable the button if the element type is not allowed
+		if (!$this->User->hasAccess($row['type'], 'fields'))
+		{
+			return Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
+		}
+
+		$href .= '&amp;tid=' . $row['id'] . '&amp;state=' . $row['invisible'];
 
 		if ($row['invisible'])
 		{
 			$icon = 'invisible.svg';
 		}
 
-		return '<a href="'.$this->addToUrl($href).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label, 'data-state="' . ($row['invisible'] ? 0 : 1) . '"').'</a> ';
+		return '<a href="' . $this->addToUrl($href) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label, 'data-state="' . ($row['invisible'] ? 0 : 1) . '"') . '</a> ';
 	}
 
 	/**
 	 * Toggle the visibility of a form field
 	 *
-	 * @param integer              $intId
-	 * @param boolean              $blnVisible
-	 * @param Contao\DataContainer $dc
+	 * @param integer       $intId
+	 * @param boolean       $blnVisible
+	 * @param DataContainer $dc
 	 */
-	public function toggleVisibility($intId, $blnVisible, Contao\DataContainer $dc=null)
+	public function toggleVisibility($intId, $blnVisible, DataContainer $dc=null)
 	{
 		// Set the ID and action
-		Contao\Input::setGet('id', $intId);
-		Contao\Input::setGet('act', 'toggle');
+		Input::setGet('id', $intId);
+		Input::setGet('act', 'toggle');
 
 		if ($dc)
 		{
@@ -671,16 +833,16 @@ class tl_form_field extends Contao\Backend
 		}
 
 		// Trigger the onload_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_form_field']['config']['onload_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_form_field']['config']['onload_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_form_field']['config']['onload_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$this->{$callback[0]}->{$callback[1]}($dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$callback($dc);
 				}
@@ -690,39 +852,46 @@ class tl_form_field extends Contao\Backend
 		// Check the field access
 		if (!$this->User->hasAccess('tl_form_field::invisible', 'alexf'))
 		{
-			throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to publish/unpublish form field ID ' . $intId . '.');
+			throw new AccessDeniedException('Not enough permissions to publish/unpublish form field ID ' . $intId . '.');
+		}
+
+		$objRow = $this->Database->prepare("SELECT * FROM tl_form_field WHERE id=?")
+								 ->limit(1)
+								 ->execute($intId);
+
+		if ($objRow->numRows < 1)
+		{
+			throw new AccessDeniedException('Invalid form field ID ' . $intId . '.');
+		}
+
+		if (!$this->User->hasAccess($objRow->type, 'fields'))
+		{
+			throw new AccessDeniedException('Not enough permissions to modify form fields of type "' . $objRow->type . '".');
 		}
 
 		// Set the current record
 		if ($dc)
 		{
-			$objRow = $this->Database->prepare("SELECT * FROM tl_form_field WHERE id=?")
-									 ->limit(1)
-									 ->execute($intId);
-
-			if ($objRow->numRows)
-			{
-				$dc->activeRecord = $objRow;
-			}
+			$dc->activeRecord = $objRow;
 		}
 
-		$objVersions = new Contao\Versions('tl_form_field', $intId);
+		$objVersions = new Versions('tl_form_field', $intId);
 		$objVersions->initialize();
 
 		// Reverse the logic (form fields have invisible=1)
 		$blnVisible = !$blnVisible;
 
 		// Trigger the save_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_form_field']['fields']['invisible']['save_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_form_field']['fields']['invisible']['save_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_form_field']['fields']['invisible']['save_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$blnVisible = $this->{$callback[0]}->{$callback[1]}($blnVisible, $dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$blnVisible = $callback($blnVisible, $dc);
 				}
@@ -742,16 +911,16 @@ class tl_form_field extends Contao\Backend
 		}
 
 		// Trigger the onsubmit_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_form_field']['config']['onsubmit_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_form_field']['config']['onsubmit_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_form_field']['config']['onsubmit_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$this->{$callback[0]}->{$callback[1]}($dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$callback($dc);
 				}
@@ -759,5 +928,10 @@ class tl_form_field extends Contao\Backend
 		}
 
 		$objVersions->create();
+
+		if ($dc)
+		{
+			$dc->invalidateCacheTags();
+		}
 	}
 }

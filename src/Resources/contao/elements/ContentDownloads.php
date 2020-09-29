@@ -20,7 +20,6 @@ use Contao\Model\Collection;
  */
 class ContentDownloads extends ContentElement
 {
-
 	/**
 	 * Files object
 	 * @var Collection|FilesModel
@@ -72,7 +71,7 @@ class ContentDownloads extends ContentElement
 		$file = Input::get('file', true);
 
 		// Send the file to the browser (see #4632 and #8375)
-		if ($file != '' && (!isset($_GET['cid']) || Input::get('cid') == $this->id))
+		if ($file && (!isset($_GET['cid']) || Input::get('cid') == $this->id))
 		{
 			while ($this->objFiles->next())
 			{
@@ -134,14 +133,15 @@ class ContentDownloads extends ContentElement
 					{
 						continue;
 					}
-					elseif ($objPage->rootFallbackLanguage !== null)
+
+					if ($objPage->rootFallbackLanguage !== null)
 					{
 						$arrMeta = $this->getMetaData($objFiles->meta, $objPage->rootFallbackLanguage);
 					}
 				}
 
 				// Use the file name as title if none is given
-				if ($arrMeta['title'] == '')
+				if (!$arrMeta['title'])
 				{
 					$arrMeta['title'] = StringUtil::specialchars($objFile->basename);
 				}
@@ -171,7 +171,7 @@ class ContentDownloads extends ContentElement
 					'link'      => $arrMeta['title'],
 					'caption'   => $arrMeta['caption'],
 					'href'      => $strHref,
-					'filesize'  => $this->getReadableSize($objFile->filesize, 1),
+					'filesize'  => $this->getReadableSize($objFile->filesize),
 					'icon'      => Image::getPath($objFile->icon),
 					'mime'      => $objFile->mime,
 					'meta'      => $arrMeta,
@@ -215,14 +215,15 @@ class ContentDownloads extends ContentElement
 						{
 							continue;
 						}
-						elseif ($objPage->rootFallbackLanguage !== null)
+
+						if ($objPage->rootFallbackLanguage !== null)
 						{
 							$arrMeta = $this->getMetaData($objSubfiles->meta, $objPage->rootFallbackLanguage);
 						}
 					}
 
 					// Use the file name as title if none is given
-					if ($arrMeta['title'] == '')
+					if (!$arrMeta['title'])
 					{
 						$arrMeta['title'] = StringUtil::specialchars($objFile->basename);
 					}
@@ -247,7 +248,7 @@ class ContentDownloads extends ContentElement
 						'link'      => $arrMeta['title'],
 						'caption'   => $arrMeta['caption'],
 						'href'      => $strHref,
-						'filesize'  => $this->getReadableSize($objFile->filesize, 1),
+						'filesize'  => $this->getReadableSize($objFile->filesize),
 						'icon'      => Image::getPath($objFile->icon),
 						'mime'      => $objFile->mime,
 						'meta'      => $arrMeta,
@@ -265,11 +266,17 @@ class ContentDownloads extends ContentElement
 		{
 			default:
 			case 'name_asc':
-				uksort($files, 'basename_natcasecmp');
+				uksort($files, static function ($a, $b): int
+				{
+					return strnatcasecmp(basename($a), basename($b));
+				});
 				break;
 
 			case 'name_desc':
-				uksort($files, 'basename_natcasercmp');
+				uksort($files, static function ($a, $b): int
+				{
+					return -strnatcasecmp(basename($a), basename($b));
+				});
 				break;
 
 			case 'date_asc':
@@ -282,40 +289,11 @@ class ContentDownloads extends ContentElement
 
 			// Deprecated since Contao 4.0, to be removed in Contao 5.0
 			case 'meta':
-				@trigger_error('The "meta" key in ContentDownloads::compile() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
-				// no break;
+				trigger_deprecation('contao/core-bundle', '4.0', 'The "meta" key in "Contao\ContentDownloads::compile()" has been deprecated and will no longer work in Contao 5.0.');
+				// no break
 
 			case 'custom':
-				if ($this->orderSRC != '')
-				{
-					$tmp = StringUtil::deserialize($this->orderSRC);
-
-					if (!empty($tmp) && \is_array($tmp))
-					{
-						// Remove all values
-						$arrOrder = array_map(function () {}, array_flip($tmp));
-
-						// Move the matching elements to their position in $arrOrder
-						foreach ($files as $k=>$v)
-						{
-							if (\array_key_exists($v['uuid'], $arrOrder))
-							{
-								$arrOrder[$v['uuid']] = $v;
-								unset($files[$k]);
-							}
-						}
-
-						// Append the left-over files at the end
-						if (!empty($files))
-						{
-							$arrOrder = array_merge($arrOrder, array_values($files));
-						}
-
-						// Remove empty (unreplaced) entries
-						$files = array_values(array_filter($arrOrder));
-						unset($arrOrder);
-					}
-				}
+				$files = ArrayUtil::sortByOrderField($files, $this->orderSRC);
 				break;
 
 			case 'random':

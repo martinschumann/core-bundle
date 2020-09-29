@@ -36,7 +36,6 @@ use Doctrine\DBAL\Driver\Statement as DoctrineStatement;
  */
 class Statement
 {
-
 	/**
 	 * Connection ID
 	 * @var Connection
@@ -92,21 +91,17 @@ class Statement
 		{
 			case 'query':
 				return $this->strQuery;
-				break;
 
 			case 'error':
 				$info = $this->statement->errorInfo();
 
 				return 'SQLSTATE ' . $info[0] . ': error ' . $info[1] . ': ' . $info[2];
-				break;
 
 			case 'affectedRows':
 				return $this->statement->rowCount();
-				break;
 
 			case 'insertId':
 				return $this->resConnection->lastInsertId();
-				break;
 		}
 
 		return null;
@@ -123,7 +118,7 @@ class Statement
 	 */
 	public function prepare($strQuery)
 	{
-		if ($strQuery == '')
+		if (!$strQuery)
 		{
 			throw new \Exception('Empty query string');
 		}
@@ -141,7 +136,7 @@ class Statement
 
 		foreach ($arrChunks as $k=>$v)
 		{
-			if (substr($v, 0, 1) == "'")
+			if (0 === strncmp($v, "'", 1))
 			{
 				continue;
 			}
@@ -177,9 +172,11 @@ class Statement
 		// INSERT
 		if (strncasecmp($this->strQuery, 'INSERT', 6) === 0)
 		{
-			$strQuery = sprintf('(%s) VALUES (%s)',
-								implode(', ', array_map('Database::quoteIdentifier', array_keys($arrParams))),
-								str_replace('%', '%%', implode(', ', $arrParams)));
+			$strQuery = sprintf(
+				'(%s) VALUES (%s)',
+				implode(', ', array_map('Database::quoteIdentifier', array_keys($arrParams))),
+				str_replace('%', '%%', implode(', ', $arrParams))
+			);
 		}
 
 		// UPDATE
@@ -268,7 +265,7 @@ class Statement
 		}
 
 		// Make sure there is a query string
-		if ($this->strQuery == '')
+		if (!$this->strQuery)
 		{
 			throw new \Exception('Empty query string');
 		}
@@ -327,9 +324,6 @@ class Statement
 					break;
 
 				case 'object':
-					$arrValues[$k] = $this->resConnection->quote(serialize($v));
-					break;
-
 				case 'array':
 					$arrValues[$k] = $this->resConnection->quote(serialize($v));
 					break;
@@ -363,7 +357,7 @@ class Statement
 	 */
 	public function executeUncached()
 	{
-		@trigger_error('Using Statement::executeUncached() has been deprecated and will no longer work in Contao 5.0. Use Statement::execute() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Statement::executeUncached()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Statement::execute()" instead.');
 
 		return \call_user_func_array(array($this, 'execute'), \func_get_args());
 	}
@@ -378,7 +372,7 @@ class Statement
 	 */
 	public function executeCached()
 	{
-		@trigger_error('Using Statement::executeCached() has been deprecated and will no longer work in Contao 5.0. Use Statement::execute() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Statement::executeCached()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Statement::execute()" instead.');
 
 		return \call_user_func_array(array($this, 'execute'), \func_get_args());
 	}

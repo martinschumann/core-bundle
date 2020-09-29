@@ -24,7 +24,6 @@ use Patchwork\Utf8;
  */
 class FormPassword extends Widget
 {
-
 	/**
 	 * Submit user input
 	 *
@@ -138,8 +137,9 @@ class FormPassword extends Widget
 		if (!$this->hasErrors())
 		{
 			$this->blnSubmitInput = true;
+			$encoder = System::getContainer()->get('security.encoder_factory')->getEncoder(FrontendUser::class);
 
-			return password_hash($varInput, PASSWORD_DEFAULT);
+			return $encoder->encodePassword($varInput, null);
 		}
 
 		return '';
@@ -166,12 +166,14 @@ class FormPassword extends Widget
 	 */
 	public function generate()
 	{
-		return sprintf('<input type="password" name="%s" id="ctrl_%s" class="text password%s" value=""%s%s',
-						$this->strName,
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						$this->getAttributes(),
-						$this->strTagEnding);
+		return sprintf(
+			'<input type="password" name="%s" id="ctrl_%s" class="text password%s" value=""%s%s',
+			$this->strName,
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			$this->getAttributes(),
+			$this->strTagEnding
+		);
 	}
 
 	/**
@@ -181,12 +183,14 @@ class FormPassword extends Widget
 	 */
 	public function generateConfirmationLabel()
 	{
-		return sprintf('<label for="ctrl_%s_confirm" class="confirm%s">%s%s%s</label>',
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						($this->mandatory ? '<span class="invisible">'.$GLOBALS['TL_LANG']['MSC']['mandatory'].' </span>' : ''),
-						sprintf($GLOBALS['TL_LANG']['MSC']['confirmation'], $this->strLabel),
-						($this->mandatory ? '<span class="mandatory">*</span>' : ''));
+		return sprintf(
+			'<label for="ctrl_%s_confirm" class="confirm%s">%s%s%s</label>',
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			($this->mandatory ? '<span class="invisible">' . $GLOBALS['TL_LANG']['MSC']['mandatory'] . ' </span>' : ''),
+			sprintf($GLOBALS['TL_LANG']['MSC']['confirmation'], $this->strLabel),
+			($this->mandatory ? '<span class="mandatory">*</span>' : '')
+		);
 	}
 
 	/**
@@ -196,12 +200,14 @@ class FormPassword extends Widget
 	 */
 	public function generateConfirmation()
 	{
-		return sprintf('<input type="password" name="%s_confirm" id="ctrl_%s_confirm" class="text password confirm%s" value=""%s%s',
-						$this->strName,
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						$this->getAttributes(),
-						$this->strTagEnding);
+		return sprintf(
+			'<input type="password" name="%s_confirm" id="ctrl_%s_confirm" class="text password confirm%s" value=""%s%s',
+			$this->strName,
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			$this->getAttributes(),
+			$this->strTagEnding
+		);
 	}
 }
 

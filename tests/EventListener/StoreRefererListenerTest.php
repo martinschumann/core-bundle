@@ -15,18 +15,15 @@ namespace Contao\CoreBundle\Tests\EventListener;
 use Contao\CoreBundle\ContaoCoreBundle;
 use Contao\CoreBundle\EventListener\StoreRefererListener;
 use Contao\CoreBundle\Tests\TestCase;
-use PHPUnit\Framework\MockObject\MockObject;
+use Contao\User;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver;
-use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken;
-use Symfony\Component\Security\Core\Authentication\Token\RememberMeToken;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\Security;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 class StoreRefererListenerTest extends TestCase
 {
@@ -35,20 +32,14 @@ class StoreRefererListenerTest extends TestCase
      */
     public function testStoresTheReferer(Request $request, ?array $currentReferer, ?array $expectedReferer): void
     {
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->method('getToken')
-            ->willReturn($this->createMock(UsernamePasswordToken::class))
-        ;
-
         // Set the current referer URLs
         $session = $this->mockSession();
         $session->set('referer', $currentReferer);
 
         $request->setSession($session);
 
-        $listener = $this->getListener($tokenStorage);
-        $listener->onKernelResponse($this->getResponseEvent($request));
+        $listener = $this->getListener($this->createMock(User::class));
+        $listener($this->getResponseEvent($request));
 
         $this->assertSame($expectedReferer, $session->get('referer'));
     }
@@ -61,10 +52,6 @@ class StoreRefererListenerTest extends TestCase
         $request->attributes->set('_scope', ContaoCoreBundle::SCOPE_BACKEND);
         $request->server->set('REQUEST_URI', '/path/of/contao?having&query&string=1');
 
-        $requestFrontend = clone $request;
-        $requestFrontend->attributes->set('_route', 'contao_frontend');
-        $requestFrontend->attributes->set('_scope', ContaoCoreBundle::SCOPE_FRONTEND);
-
         $requestWithRefInUrl = new Request();
         $requestWithRefInUrl->attributes->set('_route', 'contao_backend');
         $requestWithRefInUrl->attributes->set('_contao_referer_id', 'dummyTestRefererId');
@@ -72,11 +59,7 @@ class StoreRefererListenerTest extends TestCase
         $requestWithRefInUrl->server->set('REQUEST_URI', '/path/of/contao?having&query&string=1');
         $requestWithRefInUrl->query->set('ref', 'dummyTestRefererId');
 
-        $requestWithRefInUrlFrontend = clone $requestWithRefInUrl;
-        $requestWithRefInUrlFrontend->attributes->set('_route', 'contao_frontend');
-        $requestWithRefInUrlFrontend->attributes->set('_scope', ContaoCoreBundle::SCOPE_FRONTEND);
-
-        yield 'Test current referer null returns correct new referer for back end scope' => [
+        yield 'Test current referer null returns correct new referer' => [
             $request,
             null,
             [
@@ -87,7 +70,7 @@ class StoreRefererListenerTest extends TestCase
             ],
         ];
 
-        yield 'Test referer returns correct new referer for back end scope' => [
+        yield 'Test referer returns correct new referer' => [
             $requestWithRefInUrl,
             [
                 'dummyTestRefererId' => [
@@ -100,24 +83,6 @@ class StoreRefererListenerTest extends TestCase
                     'last' => 'hi/I/am/your_current_referer.html',
                     'current' => 'path/of/contao?having&query&string=1',
                 ],
-            ],
-        ];
-
-        yield 'Test current referer null returns null for front end scope' => [
-            $requestFrontend,
-            null,
-            null,
-        ];
-
-        yield 'Test referer returns correct new referer for front end scope' => [
-            $requestWithRefInUrlFrontend,
-            [
-                'last' => '',
-                'current' => 'hi/I/am/your_current_referer.html',
-            ],
-            [
-                'last' => 'hi/I/am/your_current_referer.html',
-                'current' => 'path/of/contao?having&query&string=1',
             ],
         ];
 
@@ -152,21 +117,15 @@ class StoreRefererListenerTest extends TestCase
         $request->attributes->set('_scope', ContaoCoreBundle::SCOPE_BACKEND);
         $request->setMethod(Request::METHOD_POST);
 
-        $responseEvent = new FilterResponseEvent(
+        $responseEvent = new ResponseEvent(
             $this->createMock(KernelInterface::class),
             $request,
             HttpKernelInterface::MASTER_REQUEST,
             new Response('', 404)
         );
 
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->never())
-            ->method('getToken')
-        ;
-
-        $listener = $this->getListener($tokenStorage);
-        $listener->onKernelResponse($responseEvent);
+        $listener = $this->getListener();
+        $listener($responseEvent);
     }
 
     public function testDoesNotStoreTheRefererIfTheResponseStatusIsNot200(): void
@@ -174,27 +133,21 @@ class StoreRefererListenerTest extends TestCase
         $request = new Request();
         $request->attributes->set('_scope', ContaoCoreBundle::SCOPE_BACKEND);
 
-        $responseEvent = new FilterResponseEvent(
+        $responseEvent = new ResponseEvent(
             $this->createMock(KernelInterface::class),
             $request,
             HttpKernelInterface::MASTER_REQUEST,
             new Response('', 404)
         );
 
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->never())
-            ->method('getToken')
-        ;
-
-        $listener = $this->getListener($tokenStorage);
-        $listener->onKernelResponse($responseEvent);
+        $listener = $this->getListener();
+        $listener($responseEvent);
     }
 
     /**
-     * @dataProvider noUserProvider
+     * @dataProvider noContaoUserProvider
      */
-    public function testDoesNotStoreTheRefererIfThereIsNoUser(AnonymousToken $noUserReturn = null): void
+    public function testDoesNotStoreTheRefererIfThereIsNoContaoUser(UserInterface $user = null): void
     {
         $session = $this->createMock(SessionInterface::class);
         $session
@@ -202,25 +155,18 @@ class StoreRefererListenerTest extends TestCase
             ->method('set')
         ;
 
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->once())
-            ->method('getToken')
-            ->willReturn($noUserReturn)
-        ;
-
         $request = new Request();
         $request->setSession($session);
         $request->attributes->set('_scope', ContaoCoreBundle::SCOPE_BACKEND);
 
-        $listener = $this->getListener($tokenStorage);
-        $listener->onKernelResponse($this->getResponseEvent($request));
+        $listener = $this->getListener($user, true);
+        $listener($this->getResponseEvent($request));
     }
 
-    public function noUserProvider(): \Generator
+    public function noContaoUserProvider(): \Generator
     {
         yield [null];
-        yield [new AnonymousToken('key', 'anon.')];
+        yield [$this->createMock(UserInterface::class)];
     }
 
     public function testDoesNotStoreTheRefererIfNotAContaoRequest(): void
@@ -235,7 +181,7 @@ class StoreRefererListenerTest extends TestCase
         $request->setSession($session);
 
         $listener = $this->getListener();
-        $listener->onKernelResponse($this->getResponseEvent($request));
+        $listener($this->getResponseEvent($request));
     }
 
     public function testDoesNotStoreTheRefererUponSubrequests(): void
@@ -251,10 +197,10 @@ class StoreRefererListenerTest extends TestCase
         $request->attributes->set('_scope', ContaoCoreBundle::SCOPE_BACKEND);
 
         $kernel = $this->createMock(KernelInterface::class);
-        $event = new FilterResponseEvent($kernel, $request, HttpKernelInterface::SUB_REQUEST, new Response());
+        $event = new ResponseEvent($kernel, $request, HttpKernelInterface::SUB_REQUEST, new Response());
 
         $listener = $this->getListener();
-        $listener->onKernelResponse($event);
+        $listener($event);
     }
 
     public function testDoesNotStoreTheRefererIfTheBackEndSessionCannotBeModified(): void
@@ -265,65 +211,41 @@ class StoreRefererListenerTest extends TestCase
             ->method('set')
         ;
 
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->method('getToken')
-            ->willReturn($this->createMock(UsernamePasswordToken::class))
-        ;
-
         $request = new Request();
         $request->setSession($session);
         $request->attributes->set('_scope', ContaoCoreBundle::SCOPE_BACKEND);
 
-        $listener = $this->getListener($tokenStorage);
-        $listener->onKernelResponse($this->getResponseEvent($request));
+        $listener = $this->getListener($this->createMock(User::class));
+        $listener($this->getResponseEvent($request));
     }
 
-    /**
-     * @dataProvider noSessionProvider
-     */
-    public function testFailsToStoreTheRefererIfThereIsNoSession(string $scope): void
+    public function testFailsToStoreTheRefererIfThereIsNoSession(): void
     {
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->once())
-            ->method('getToken')
-            ->willReturn($this->createMock(UsernamePasswordToken::class))
-        ;
-
         $request = new Request();
         $request->attributes->set('_route', 'contao_backend');
-        $request->attributes->set('_scope', $scope);
+        $request->attributes->set('_scope', ContaoCoreBundle::SCOPE_BACKEND);
 
-        $listener = $this->getListener($tokenStorage);
+        $listener = $this->getListener($this->createMock(User::class));
 
         $this->expectException('RuntimeException');
         $this->expectExceptionMessage('The request did not contain a session.');
 
-        $listener->onKernelResponse($this->getResponseEvent($request));
+        $listener($this->getResponseEvent($request));
     }
 
-    public function noSessionProvider(): \Generator
+    private function getListener(UserInterface $user = null, $expectsSecurityCall = false): StoreRefererListener
     {
-        yield [ContaoCoreBundle::SCOPE_BACKEND];
-        yield [ContaoCoreBundle::SCOPE_FRONTEND];
+        $security = $this->createMock(Security::class);
+        $security
+            ->expects($expectsSecurityCall || null !== $user ? $this->once() : $this->never())
+            ->method('getUser')
+            ->willReturn($user)
+        ;
+
+        return new StoreRefererListener($security, $this->mockScopeMatcher());
     }
 
-    /**
-     * @param TokenStorageInterface&MockObject $tokenStorage
-     */
-    private function getListener(TokenStorageInterface $tokenStorage = null): StoreRefererListener
-    {
-        if (null === $tokenStorage) {
-            $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        }
-
-        $trustResolver = new AuthenticationTrustResolver(AnonymousToken::class, RememberMeToken::class);
-
-        return new StoreRefererListener($tokenStorage, $trustResolver, $this->mockScopeMatcher());
-    }
-
-    private function getResponseEvent(Request $request = null): FilterResponseEvent
+    private function getResponseEvent(Request $request = null): ResponseEvent
     {
         $kernel = $this->createMock(KernelInterface::class);
 
@@ -331,6 +253,6 @@ class StoreRefererListenerTest extends TestCase
             $request = new Request();
         }
 
-        return new FilterResponseEvent($kernel, $request, HttpKernelInterface::MASTER_REQUEST, new Response());
+        return new ResponseEvent($kernel, $request, HttpKernelInterface::MASTER_REQUEST, new Response());
     }
 }

@@ -18,7 +18,8 @@ use Contao\CoreBundle\Picker\PickerConfig;
 use Knp\Menu\MenuFactory;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\RouterInterface;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\Security\Core\Security;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 class PickerTest extends TestCase
 {
@@ -27,9 +28,6 @@ class PickerTest extends TestCase
      */
     private $picker;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -42,7 +40,7 @@ class PickerTest extends TestCase
 
         $factory = new MenuFactory();
         $router = $this->createMock(RouterInterface::class);
-        $provider = new PagePickerProvider($factory, $router, $translator);
+        $provider = new PagePickerProvider($factory, $router, $translator, $this->getSecurityHelper());
         $config = new PickerConfig('page', [], 5, 'pagePicker');
 
         $this->picker = new Picker($factory, [$provider], $config);
@@ -58,7 +56,7 @@ class PickerTest extends TestCase
         $menu = $this->picker->getMenu();
 
         $this->assertSame('picker', $menu->getName());
-        $this->assertSame(1, $menu->count());
+        $this->assertCount(1, $menu);
 
         $pagePicker = $menu->getChild('pagePicker');
 
@@ -81,7 +79,7 @@ class PickerTest extends TestCase
     {
         $factory = new MenuFactory();
         $router = $this->createMock(RouterInterface::class);
-        $provider = new PagePickerProvider($factory, $router);
+        $provider = new PagePickerProvider($factory, $router, null, $this->getSecurityHelper());
         $config = new PickerConfig('page');
         $picker = new Picker($factory, [$provider], $config);
 
@@ -98,7 +96,7 @@ class PickerTest extends TestCase
         $factory = new MenuFactory();
         $router = $this->createMock(RouterInterface::class);
         $translator = $this->createMock(TranslatorInterface::class);
-        $provider = new PagePickerProvider($factory, $router, $translator);
+        $provider = new PagePickerProvider($factory, $router, $translator, $this->getSecurityHelper());
         $config = new PickerConfig('page');
         $picker = new Picker($factory, [$provider], $config);
 
@@ -115,5 +113,16 @@ class PickerTest extends TestCase
         $this->expectExceptionMessage('No picker menu items found');
 
         $picker->getCurrentUrl();
+    }
+
+    private function getSecurityHelper(): Security
+    {
+        $security = $this->createMock(Security::class);
+        $security
+            ->method('isGranted')
+            ->willReturn(true)
+        ;
+
+        return $security;
     }
 }

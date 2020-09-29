@@ -27,7 +27,6 @@ use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
  */
 class FileSelector extends Widget
 {
-
 	/**
 	 * Submit user input
 	 * @var boolean
@@ -73,7 +72,7 @@ class FileSelector extends Widget
 		$this->import(BackendUser::class, 'User');
 		$this->convertValuesToPaths();
 
-		if ($this->extensions != '')
+		if ($this->extensions)
 		{
 			$this->arrValidFileTypes = StringUtil::trimsplit(',', strtolower($this->extensions));
 		}
@@ -87,7 +86,7 @@ class FileSelector extends Widget
 			$strKeyword = ltrim(Input::postRaw('keyword'), '*');
 
 			// Make sure the regular expression is valid
-			if ($strKeyword != '')
+			if ($strKeyword)
 			{
 				try
 				{
@@ -110,7 +109,7 @@ class FileSelector extends Widget
 		$arrFound = array();
 
 		// Search for a specific file
-		if ($for != '')
+		if ((string) $for !== '')
 		{
 			// Wrap in a try catch block in case the regular expression is invalid (see #7743)
 			try
@@ -148,7 +147,7 @@ class FileSelector extends Widget
 					$arrPaths = array();
 
 					// Respect existing limitations
-					if ($this->path != '')
+					if ($this->path)
 					{
 						while ($objRoot->next())
 						{
@@ -176,24 +175,21 @@ class FileSelector extends Widget
 							$arrPaths[] = ($objRoot->type == 'folder') ? $objRoot->path : \dirname($objRoot->path);
 						}
 					}
-					else
+					elseif (\is_array($this->User->filemounts))
 					{
-						if (\is_array($this->User->filemounts))
+						while ($objRoot->next())
 						{
-							while ($objRoot->next())
+							// Show only mounted folders to regular users
+							foreach ($this->User->filemounts as $path)
 							{
-								// Show only mounted folders to regular users
-								foreach ($this->User->filemounts as $path)
+								if (strncmp($path . '/', $objRoot->path . '/', \strlen($path) + 1) === 0)
 								{
-									if (strncmp($path . '/', $objRoot->path . '/', \strlen($path) + 1) === 0)
+									if ($objRoot->type == 'folder' || empty($this->arrValidFileTypes) || \in_array($objRoot->extension, $this->arrValidFileTypes))
 									{
-										if ($objRoot->type == 'folder' || empty($this->arrValidFileTypes) || \in_array($objRoot->extension, $this->arrValidFileTypes))
-										{
-											$arrFound[] = $objRoot->path;
-										}
-
-										$arrPaths[] = ($objRoot->type == 'folder') ? $objRoot->path : \dirname($objRoot->path);
+										$arrFound[] = $objRoot->path;
 									}
+
+									$arrPaths[] = ($objRoot->type == 'folder') ? $objRoot->path : \dirname($objRoot->path);
 								}
 							}
 						}
@@ -202,18 +198,17 @@ class FileSelector extends Widget
 					$GLOBALS['TL_DCA']['tl_files']['list']['sorting']['root'] = array_unique($arrPaths);
 				}
 			}
-			catch (\Exception $e) {}
+			catch (\Exception $e)
+			{
+			}
 		}
 
 		$strNode = $objSessionBag->get('tl_files_picker');
 
 		// Unset the node if it is not within the path (see #5899)
-		if ($strNode != '' && $this->path != '')
+		if ($strNode && $this->path && strncmp($strNode . '/', $this->path . '/', \strlen($this->path) + 1) !== 0)
 		{
-			if (strncmp($strNode . '/', $this->path . '/', \strlen($this->path) + 1) !== 0)
-			{
-				$objSessionBag->remove('tl_files_picker');
-			}
+			$objSessionBag->remove('tl_files_picker');
 		}
 
 		// Add the breadcrumb menu
@@ -222,7 +217,7 @@ class FileSelector extends Widget
 			Backend::addFilesBreadcrumb('tl_files_picker');
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Root nodes (breadcrumb menu)
 		if (!empty($GLOBALS['TL_DCA']['tl_files']['list']['sorting']['root']))
@@ -230,14 +225,14 @@ class FileSelector extends Widget
 			$root = $GLOBALS['TL_DCA']['tl_files']['list']['sorting']['root'];
 
 			// Allow only those roots that are within the custom path
-			if ($this->path != '')
+			if ($this->path)
 			{
 				$root = array_intersect(preg_grep('/^' . preg_quote($this->path, '/') . '(?:$|\/)/', $root), $root);
 
 				if (empty($root))
 				{
 					// Set all folders inside the custom path as root nodes
-					$root = array_map(function ($el) { return $this->path . '/' . $el; }, scan($rootDir . '/' . $this->path));
+					$root = array_map(function ($el) { return $this->path . '/' . $el; }, Folder::scan($projectDir . '/' . $this->path));
 
 					// Hide the breadcrumb
 					$GLOBALS['TL_DCA']['tl_file']['list']['sorting']['breadcrumb'] = '';
@@ -248,20 +243,20 @@ class FileSelector extends Widget
 
 			foreach ($nodes as $node)
 			{
-				$tree .= $this->renderFiletree($rootDir . '/' . $node, 0, true, true, $arrFound);
+				$tree .= $this->renderFiletree($projectDir . '/' . $node, 0, true, true, $arrFound);
 			}
 		}
 
 		// Show a custom path (see #4926)
-		elseif ($this->path != '')
+		elseif ($this->path)
 		{
-			$tree .= $this->renderFiletree($rootDir . '/' . $this->path, 0, false, $this->isProtectedPath($this->path), $arrFound);
+			$tree .= $this->renderFiletree($projectDir . '/' . $this->path, 0, false, $this->isProtectedPath($this->path), $arrFound);
 		}
 
 		// Start from root
 		elseif ($this->User->isAdmin)
 		{
-			$tree .= $this->renderFiletree($rootDir . '/' . Config::get('uploadPath'), 0, false, true, $arrFound);
+			$tree .= $this->renderFiletree($projectDir . '/' . Config::get('uploadPath'), 0, false, true, $arrFound);
 		}
 
 		// Show mounted files to regular users
@@ -271,7 +266,7 @@ class FileSelector extends Widget
 
 			foreach ($nodes as $node)
 			{
-				$tree .= $this->renderFiletree($rootDir . '/' . $node, 0, true, true, $arrFound);
+				$tree .= $this->renderFiletree($projectDir . '/' . $node, 0, true, true, $arrFound);
 			}
 		}
 
@@ -287,8 +282,8 @@ class FileSelector extends Widget
 		}
 
 		// Return the tree
-		return '<ul class="tl_listing tree_view picker_selector'.(($this->strClass != '') ? ' ' . $this->strClass : '').'" id="'.$this->strId.'" data-callback="reloadFiletree">
-    <li class="tl_folder_top"><div class="tl_left">'.Image::getHtml($GLOBALS['TL_DCA']['tl_files']['list']['sorting']['icon'] ?: 'filemounts.svg').' '.$GLOBALS['TL_LANG']['MOD']['files'][0].'</div> <div class="tl_right">&nbsp;</div><div style="clear:both"></div></li><li class="parent" id="'.$this->strId.'_parent"><ul>'.$tree.$strReset.'
+		return '<ul class="tl_listing tree_view picker_selector' . ($this->strClass ? ' ' . $this->strClass : '') . '" id="' . $this->strId . '" data-callback="reloadFiletree">
+    <li class="tl_folder_top"><div class="tl_left">' . Image::getHtml($GLOBALS['TL_DCA']['tl_files']['list']['sorting']['icon'] ?: 'filemounts.svg') . ' ' . $GLOBALS['TL_LANG']['MOD']['files'][0] . '</div> <div class="tl_right">&nbsp;</div><div style="clear:both"></div></li><li class="parent" id="' . $this->strId . '_parent"><ul>' . $tree . $strReset . '
   </ul></li></ul>';
 	}
 
@@ -316,7 +311,7 @@ class FileSelector extends Widget
 		switch ($GLOBALS['TL_DCA'][$this->strTable]['config']['dataContainer'])
 		{
 			case 'File':
-				if (Config::get($this->strField) != '')
+				if (Config::get($this->strField))
 				{
 					$this->varValue = Config::get($this->strField);
 				}
@@ -343,7 +338,7 @@ class FileSelector extends Widget
 
 		$this->convertValuesToPaths();
 
-		if ($this->extensions != '')
+		if ($this->extensions)
 		{
 			$this->arrValidFileTypes = StringUtil::trimsplit(',', $this->extensions);
 		}
@@ -386,11 +381,11 @@ class FileSelector extends Widget
 		$xtnode = 'tree_' . $this->strTable . '_' . $this->strName;
 
 		// Get session data and toggle nodes
-		if (Input::get($flag.'tg'))
+		if (Input::get($flag . 'tg'))
 		{
-			$session[$node][Input::get($flag.'tg')] = (isset($session[$node][Input::get($flag.'tg')]) && $session[$node][Input::get($flag.'tg')] == 1) ? 0 : 1;
+			$session[$node][Input::get($flag . 'tg')] = (isset($session[$node][Input::get($flag . 'tg')]) && $session[$node][Input::get($flag . 'tg')] == 1) ? 0 : 1;
 			$objSessionBag->replace($session);
-			$this->redirect(preg_replace('/(&(amp;)?|\?)'.$flag.'tg=[^& ]*/i', '', Environment::get('request')));
+			$this->redirect(preg_replace('/(&(amp;)?|\?)' . $flag . 'tg=[^& ]*/i', '', Environment::get('request')));
 		}
 
 		$return = '';
@@ -408,7 +403,7 @@ class FileSelector extends Widget
 		// Scan directory and sort the result
 		else
 		{
-			foreach (scan($path) as $v)
+			foreach (Folder::scan($path) as $v)
 			{
 				if (strncmp($v, '.', 1) === 0)
 				{
@@ -444,7 +439,7 @@ class FileSelector extends Widget
 		// Process folders
 		for ($f=0, $c=\count($folders); $f<$c; $f++)
 		{
-			$content = scan($folders[$f]);
+			$content = Folder::scan($folders[$f]);
 			$currentFolder = StringUtil::stripRootDir($folders[$f]);
 			$countFiles = \count($content);
 
@@ -475,7 +470,7 @@ class FileSelector extends Widget
 			$session[$node][$tid] = is_numeric($session[$node][$tid]) ? $session[$node][$tid] : 0;
 			$currentFolder = StringUtil::stripRootDir($folders[$f]);
 			$blnIsOpen = (!empty($arrFound) || $session[$node][$tid] == 1 || \count(preg_grep('/^' . preg_quote($currentFolder, '/') . '\//', $this->varValue)) > 0);
-			$return .= "\n    " . '<li class="'.$folderClass.' toggle_select hover-div"><div class="tl_left" style="padding-left:'.$intMargin.'px">';
+			$return .= "\n    " . '<li class="' . $folderClass . ' toggle_select hover-div"><div class="tl_left" style="padding-left:' . $intMargin . 'px">';
 
 			// Add a toggle button if there are childs
 			if ($countFiles > 0)
@@ -483,7 +478,7 @@ class FileSelector extends Widget
 				$folderAttribute = '';
 				$img = $blnIsOpen ? 'folMinus.svg' : 'folPlus.svg';
 				$alt = $blnIsOpen ? $GLOBALS['TL_LANG']['MSC']['collapseNode'] : $GLOBALS['TL_LANG']['MSC']['expandNode'];
-				$return .= '<a href="'.Backend::addToUrl($flag.'tg='.$tid).'" title="'.StringUtil::specialchars($alt).'" onclick="return AjaxRequest.toggleFiletree(this,\''.$xtnode.'_'.$tid.'\',\''.$currentFolder.'\',\''.$this->strField.'\',\''.$this->strName.'\','.$level.')">'.Image::getHtml($img, '', 'style="margin-right:2px"').'</a>';
+				$return .= '<a href="' . Backend::addToUrl($flag . 'tg=' . $tid) . '" title="' . StringUtil::specialchars($alt) . '" onclick="return AjaxRequest.toggleFiletree(this,\'' . $xtnode . '_' . $tid . '\',\'' . $currentFolder . '\',\'' . $this->strField . '\',\'' . $this->strName . '\',' . $level . ')">' . Image::getHtml($img, '', 'style="margin-right:2px"') . '</a>';
 			}
 
 			$protected = $blnProtected;
@@ -495,10 +490,10 @@ class FileSelector extends Widget
 			}
 
 			$folderImg = $protected ? 'folderCP.svg' : 'folderC.svg';
-			$folderLabel = ($this->files || $this->filesOnly) ? '<strong>'.StringUtil::specialchars(basename($currentFolder)).'</strong>' : StringUtil::specialchars(basename($currentFolder));
+			$folderLabel = ($this->files || $this->filesOnly) ? '<strong>' . StringUtil::specialchars(basename($currentFolder)) . '</strong>' : StringUtil::specialchars(basename($currentFolder));
 
 			// Add the current folder
-			$return .= Image::getHtml($folderImg, '', $folderAttribute).' <a href="' . Backend::addToUrl('fn='.$this->urlEncode($currentFolder)) . '" title="'.StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['selectNode']).'">'.$folderLabel.'</a></div> <div class="tl_right">';
+			$return .= Image::getHtml($folderImg, '', $folderAttribute) . ' <a href="' . Backend::addToUrl('fn=' . $this->urlEncode($currentFolder)) . '" title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['selectNode']) . '">' . $folderLabel . '</a></div> <div class="tl_right">';
 
 			// Add a checkbox or radio button
 			if (!$this->filesOnly)
@@ -506,12 +501,12 @@ class FileSelector extends Widget
 				switch ($this->fieldType)
 				{
 					case 'checkbox':
-						$return .= '<input type="checkbox" name="'.$this->strName.'[]" id="'.$this->strName.'_'.md5($currentFolder).'" class="tl_tree_checkbox" value="'.StringUtil::specialchars($currentFolder).'" onfocus="Backend.getScrollOffset()"'.$this->optionChecked($currentFolder, $this->varValue).'>';
+						$return .= '<input type="checkbox" name="' . $this->strName . '[]" id="' . $this->strName . '_' . md5($currentFolder) . '" class="tl_tree_checkbox" value="' . StringUtil::specialchars($currentFolder) . '" onfocus="Backend.getScrollOffset()"' . $this->optionChecked($currentFolder, $this->varValue) . '>';
 						break;
 
 					default:
 					case 'radio':
-						$return .= '<input type="radio" name="'.$this->strName.'" id="'.$this->strName.'_'.md5($currentFolder).'" class="tl_tree_radio" value="'.StringUtil::specialchars($currentFolder).'" onfocus="Backend.getScrollOffset()"'.$this->optionChecked($currentFolder, $this->varValue).'>';
+						$return .= '<input type="radio" name="' . $this->strName . '" id="' . $this->strName . '_' . md5($currentFolder) . '" class="tl_tree_radio" value="' . StringUtil::specialchars($currentFolder) . '" onfocus="Backend.getScrollOffset()"' . $this->optionChecked($currentFolder, $this->varValue) . '>';
 						break;
 				}
 			}
@@ -521,7 +516,7 @@ class FileSelector extends Widget
 			// Call the next node
 			if ($blnIsOpen)
 			{
-				$return .= '<li class="parent" id="'.$xtnode.'_'.$tid.'"><ul class="level_'.$level.'">';
+				$return .= '<li class="parent" id="' . $xtnode . '_' . $tid . '"><ul class="level_' . $level . '">';
 				$return .= $this->renderFiletree($folders[$f], ($intMargin + $intSpacing), false, $protected, $arrFound);
 				$return .= '</ul></li>';
 			}
@@ -549,12 +544,12 @@ class FileSelector extends Widget
 					continue;
 				}
 
-				$return .= "\n    " . '<li class="tl_file toggle_select hover-div"><div class="tl_left" style="padding-left:'.($intMargin + $intSpacing).'px">';
-				$thumbnail .= ' <span class="tl_gray">('.$this->getReadableSize($objFile->filesize);
+				$return .= "\n    " . '<li class="tl_file toggle_select hover-div"><div class="tl_left" style="padding-left:' . ($intMargin + $intSpacing) . 'px">';
+				$thumbnail .= ' <span class="tl_gray">(' . $this->getReadableSize($objFile->filesize);
 
 				if ($objFile->width && $objFile->height)
 				{
-					$thumbnail .= ', '.$objFile->width.'x'.$objFile->height.' px';
+					$thumbnail .= ', ' . $objFile->width . 'x' . $objFile->height . ' px';
 				}
 
 				$thumbnail .= ')</span>';
@@ -562,28 +557,28 @@ class FileSelector extends Widget
 				// Generate thumbnail
 				if ($objFile->isImage && $objFile->viewHeight > 0 && Config::get('thumbnails') && ($objFile->isSvgImage || ($objFile->height <= Config::get('gdMaxImgHeight') && $objFile->width <= Config::get('gdMaxImgWidth'))))
 				{
-					$rootDir = System::getContainer()->getParameter('kernel.project_dir');
-					$thumbnail .= '<br>' . Image::getHtml(System::getContainer()->get('contao.image.image_factory')->create($rootDir . '/' . rawurldecode($currentEncoded), array(100, 75, ResizeConfiguration::MODE_BOX))->getUrl($rootDir), '', 'style="margin:0 0 2px -18px"');
-					$importantPart = System::getContainer()->get('contao.image.image_factory')->create($rootDir . '/' . rawurldecode($currentEncoded))->getImportantPart();
+					$projectDir = System::getContainer()->getParameter('kernel.project_dir');
+					$thumbnail .= '<br>' . Image::getHtml(System::getContainer()->get('contao.image.image_factory')->create($projectDir . '/' . rawurldecode($currentEncoded), array(100, 75, ResizeConfiguration::MODE_BOX))->getUrl($projectDir), '', 'style="margin:0 0 2px -18px"');
+					$importantPart = System::getContainer()->get('contao.image.image_factory')->create($projectDir . '/' . rawurldecode($currentEncoded))->getImportantPart();
 
-					if ($importantPart->getPosition()->getX() > 0 || $importantPart->getPosition()->getY() > 0 || $importantPart->getSize()->getWidth() < $objFile->width || $importantPart->getSize()->getHeight() < $objFile->height)
+					if ($importantPart->getX() > 0 || $importantPart->getY() > 0 || $importantPart->getWidth() < 1 || $importantPart->getHeight() < 1)
 					{
-						$thumbnail .= ' ' . Image::getHtml(System::getContainer()->get('contao.image.image_factory')->create($rootDir . '/' . rawurldecode($currentEncoded), (new ResizeConfiguration())->setWidth(80)->setHeight(60)->setMode(ResizeConfiguration::MODE_BOX)->setZoomLevel(100))->getUrl($rootDir), '', 'style="margin:0 0 2px 0;vertical-align:bottom"');
+						$thumbnail .= ' ' . Image::getHtml(System::getContainer()->get('contao.image.image_factory')->create($projectDir . '/' . rawurldecode($currentEncoded), (new ResizeConfiguration())->setWidth(80)->setHeight(60)->setMode(ResizeConfiguration::MODE_BOX)->setZoomLevel(100))->getUrl($projectDir), '', 'style="margin:0 0 2px 0;vertical-align:bottom"');
 					}
 				}
 
-				$return .= Image::getHtml($objFile->icon, $objFile->mime).' '.StringUtil::convertEncoding(StringUtil::specialchars(basename($currentFile)), Config::get('characterSet')).$thumbnail.'</div> <div class="tl_right">';
+				$return .= Image::getHtml($objFile->icon, $objFile->mime) . ' ' . StringUtil::convertEncoding(StringUtil::specialchars(basename($currentFile)), Config::get('characterSet')) . $thumbnail . '</div> <div class="tl_right">';
 
 				// Add checkbox or radio button
 				switch ($this->fieldType)
 				{
 					case 'checkbox':
-						$return .= '<input type="checkbox" name="'.$this->strName.'[]" id="'.$this->strName.'_'.md5($currentFile).'" class="tl_tree_checkbox" value="'.StringUtil::specialchars($currentFile).'" onfocus="Backend.getScrollOffset()"'.$this->optionChecked($currentFile, $this->varValue).'>';
+						$return .= '<input type="checkbox" name="' . $this->strName . '[]" id="' . $this->strName . '_' . md5($currentFile) . '" class="tl_tree_checkbox" value="' . StringUtil::specialchars($currentFile) . '" onfocus="Backend.getScrollOffset()"' . $this->optionChecked($currentFile, $this->varValue) . '>';
 						break;
 
 					default:
 					case 'radio':
-						$return .= '<input type="radio" name="'.$this->strName.'" id="'.$this->strName.'_'.md5($currentFile).'" class="tl_tree_radio" value="'.StringUtil::specialchars($currentFile).'" onfocus="Backend.getScrollOffset()"'.$this->optionChecked($currentFile, $this->varValue).'>';
+						$return .= '<input type="radio" name="' . $this->strName . '" id="' . $this->strName . '_' . md5($currentFile) . '" class="tl_tree_radio" value="' . StringUtil::specialchars($currentFile) . '" onfocus="Backend.getScrollOffset()"' . $this->optionChecked($currentFile, $this->varValue) . '>';
 						break;
 				}
 
@@ -631,7 +626,7 @@ class FileSelector extends Widget
 		}
 
 		// Return if the custom path is not within the upload path (see #8562)
-		if ($this->path != '' && strpos($this->path, Config::get('uploadPath') . '/') !== 0)
+		if ($this->path && strpos($this->path, Config::get('uploadPath') . '/') !== 0)
 		{
 			return;
 		}
@@ -653,18 +648,17 @@ class FileSelector extends Widget
 	 */
 	protected function isProtectedPath($path)
 	{
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		do
 		{
-			if (file_exists($rootDir . '/' . $path . '/.public'))
+			if (file_exists($projectDir . '/' . $path . '/.public'))
 			{
 				return false;
 			}
 
 			$path = \dirname($path);
-		}
-		while ($path != '.');
+		} while ($path != '.');
 
 		return true;
 	}

@@ -12,12 +12,18 @@ declare(strict_types=1);
 
 namespace Contao\CoreBundle\Tests\Contao;
 
+use Contao\CoreBundle\Framework\Adapter;
+use Contao\CoreBundle\Image\ImageFactory;
 use Contao\CoreBundle\Image\LegacyResizer;
 use Contao\CoreBundle\Tests\TestCase;
 use Contao\File;
+use Contao\FilesModel;
 use Contao\Image;
+use Contao\Image\DeferredImageInterface;
 use Contao\Image\ResizeCalculator;
+use Contao\ImagineSvg\Imagine as ImagineSvg;
 use Contao\System;
+use Imagine\Gd\Imagine as ImagineGd;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\NullLogger;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -26,8 +32,10 @@ use Symfony\Component\Filesystem\Filesystem;
 class ImageTest extends TestCase
 {
     /**
-     * {@inheritdoc}
+     * @var Filesystem
      */
+    private $filesystem;
+
     public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
@@ -44,14 +52,12 @@ class ImageTest extends TestCase
         $fs->mkdir(static::getTempDir().'/system/tmp');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         parent::setUp();
 
-        copy(__DIR__.'/../Fixtures/images/dummy.jpg', $this->getTempDir().'/dummy.jpg');
+        $this->filesystem = new Filesystem();
+        $this->filesystem->copy(__DIR__.'/../Fixtures/images/dummy.jpg', $this->getTempDir().'/dummy.jpg');
 
         $GLOBALS['TL_CONFIG']['debugMode'] = false;
         $GLOBALS['TL_CONFIG']['gdMaxImgWidth'] = 3000;
@@ -64,7 +70,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testFailsIfTheFileDoesNotExist(): void
     {
@@ -82,7 +88,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testFailsIfTheFileExtensionIsInvalid(): void
     {
@@ -102,7 +108,7 @@ class ImageTest extends TestCase
      * @group legacy
      * @dataProvider getComputeResizeDataWithoutImportantPart
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesImagesWithoutImportantPart(array $arguments, array $expectedResult): void
     {
@@ -562,7 +568,7 @@ class ImageTest extends TestCase
      * @group legacy
      * @dataProvider getComputeResizeDataWithImportantPart
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesImagesWithImportantPart(array $arguments, array $expectedResult): void
     {
@@ -740,7 +746,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testSupportsReadingAndWritingValues(): void
     {
@@ -829,12 +835,16 @@ class ImageTest extends TestCase
         $this->assertSame($imageObj->getTargetHeight(), 0);
         $imageObj->setTargetHeight(20);
         $this->assertSame($imageObj->getTargetHeight(), 20);
+
+        /** @phpstan-ignore-next-line  */
         $imageObj->setTargetHeight(50.125);
         $this->assertSame($imageObj->getTargetHeight(), 50);
 
         $this->assertSame($imageObj->getTargetWidth(), 0);
         $imageObj->setTargetWidth(20);
         $this->assertSame($imageObj->getTargetWidth(), 20);
+
+        /** @phpstan-ignore-next-line  */
         $imageObj->setTargetWidth(50.125);
         $this->assertSame($imageObj->getTargetWidth(), 50);
 
@@ -858,7 +868,7 @@ class ImageTest extends TestCase
      * @group legacy
      * @dataProvider getCacheName
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testReturnsTheCacheName(array $arguments, string $expectedCacheName): void
     {
@@ -938,7 +948,7 @@ class ImageTest extends TestCase
      * @group legacy
      * @dataProvider getZoomLevel
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testFailsIfTheZoomValueIsOutOfBounds(int $value): void
     {
@@ -966,7 +976,7 @@ class ImageTest extends TestCase
      * @group legacy
      * @dataProvider getGetLegacy
      *
-     * @expectedDeprecation Using Image::get() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using "Contao\Image::get()" has been deprecated %s.
      */
     public function testFactorsImagesInTheLegacyMethod(array $arguments): void
     {
@@ -989,13 +999,18 @@ class ImageTest extends TestCase
 
     /**
      * @group legacy
+     * @psalm-suppress NullArgument
      *
-     * @expectedDeprecation Using Image::get() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using "Contao\Image::get()" has been deprecated %s.
      */
     public function testDoesNotFactorImagesInTheLegacyMethodIfTheArgumentIsInvalid(): void
     {
         $this->assertNull(Image::get('', 100, 100));
+
+        /** @phpstan-ignore-next-line  */
         $this->assertNull(Image::get(0, 100, 100));
+
+        /** @phpstan-ignore-next-line  */
         $this->assertNull(Image::get(null, 100, 100));
     }
 
@@ -1003,7 +1018,7 @@ class ImageTest extends TestCase
      * @group legacy
      * @dataProvider getResizeLegacy
      *
-     * @expectedDeprecation Using Image::resize() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using "Contao\Image::resize()" has been deprecated %s.
      */
     public function testResizesImagesInTheLegacyMethod(array $arguments): void
     {
@@ -1027,7 +1042,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testDoesNotResizeMatchingImages(): void
     {
@@ -1046,7 +1061,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testCropsImages(): void
     {
@@ -1065,7 +1080,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testCropsImagesWithTargetPath(): void
     {
@@ -1085,7 +1100,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testCropsImagesWithExistingTargetPath(): void
     {
@@ -1108,11 +1123,11 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesSvgImages(): void
     {
-        file_put_contents(
+        $this->filesystem->dumpFile(
             $this->getTempDir().'/dummy1.svg',
             '<?xml version="1.0" encoding="utf-8"?>
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -1152,11 +1167,11 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesSvgImagesWithPercentageDimensions(): void
     {
-        file_put_contents(
+        $this->filesystem->dumpFile(
             $this->getTempDir().'/dummy2.svg',
             '<?xml version="1.0" encoding="utf-8"?>
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -1196,11 +1211,11 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesSvgImagesWithoutDimensions(): void
     {
-        file_put_contents(
+        $this->filesystem->dumpFile(
             $this->getTempDir().'/dummy3.svg',
             '<?xml version="1.0" encoding="utf-8"?>
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -1238,11 +1253,11 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesSvgImagesWithoutViewBox(): void
     {
-        file_put_contents(
+        $this->filesystem->dumpFile(
             $this->getTempDir().'/dummy4.svg',
             '<?xml version="1.0" encoding="utf-8"?>
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -1271,7 +1286,7 @@ class ImageTest extends TestCase
         /** @var \DOMElement $firstChild */
         $firstChild = $doc->documentElement->firstChild;
 
-        $this->assertSame('0 0 200.1 100.1', $firstChild->getAttribute('viewBox'));
+        $this->assertSame('0 0 3202 1602', $firstChild->getAttribute('viewBox'));
         $this->assertSame('-50', $firstChild->getAttribute('x'));
         $this->assertSame('0', $firstChild->getAttribute('y'));
         $this->assertSame('200', $firstChild->getAttribute('width'));
@@ -1281,11 +1296,11 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesSvgImagesWithoutViewBoxAndDimensions(): void
     {
-        file_put_contents(
+        $this->filesystem->dumpFile(
             $this->getTempDir().'/dummy5.svg',
             '<?xml version="1.0" encoding="utf-8"?>
             <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
@@ -1309,11 +1324,11 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testResizesSvgzImages(): void
     {
-        file_put_contents(
+        $this->filesystem->dumpFile(
             $this->getTempDir().'/dummy.svgz',
             gzencode(
                 '<?xml version="1.0" encoding="utf-8"?>
@@ -1354,12 +1369,12 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testExecutesTheResizeHook(): void
     {
         $GLOBALS['TL_HOOKS'] = [
-            'executeResize' => [[\get_class($this), 'executeResizeHookCallback']],
+            'executeResize' => [[static::class, 'executeResizeHookCallback']],
         ];
 
         $file = new File('dummy.jpg');
@@ -1386,7 +1401,7 @@ class ImageTest extends TestCase
         $imageObj = new Image($file);
         $imageObj->setTargetWidth($file->width)->setTargetHeight($file->height);
 
-        file_put_contents($this->getTempDir().'/target.jpg', '');
+        $this->filesystem->dumpFile($this->getTempDir().'/target.jpg', '');
 
         $imageObj->setTargetPath('target.jpg');
         $imageObj->executeResize();
@@ -1410,10 +1425,10 @@ class ImageTest extends TestCase
             .'_'.$imageObj->getResizeMode()
             .'_'.$imageObj->getTargetPath()
             .'_'.str_replace('\\', '-', \get_class($imageObj))
-            .'.jpg'
-        ;
+            .'.jpg';
 
-        file_put_contents(System::getContainer()->getParameter('kernel.project_dir').'/'.$path, '');
+        $fs = new Filesystem();
+        $fs->dumpFile(System::getContainer()->getParameter('kernel.project_dir').'/'.$path, '');
 
         return $path;
     }
@@ -1421,7 +1436,7 @@ class ImageTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using new Contao\Image() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using the "Contao\Image" class has been deprecated %s.
      */
     public function testExecutesTheGetImageHook(): void
     {
@@ -1432,8 +1447,16 @@ class ImageTest extends TestCase
         $imageObj->setTargetWidth(50)->setTargetHeight(50);
         $imageObj->executeResize();
 
+        /** @var DeferredImageInterface $deferredImage */
+        $deferredImage = System::getContainer()
+            ->get('contao.image.image_factory')
+            ->create(System::getContainer()->getParameter('kernel.project_dir').'/'.$imageObj->getResizedPath())
+        ;
+
+        System::getContainer()->get('contao.image.resizer')->resizeDeferredImage($deferredImage);
+
         $GLOBALS['TL_HOOKS'] = [
-            'getImage' => [[\get_class($this), 'getImageHookCallback']],
+            'getImage' => [[static::class, 'getImageHookCallback']],
         ];
 
         $imageObj = new Image($file);
@@ -1468,11 +1491,7 @@ class ImageTest extends TestCase
         unset($GLOBALS['TL_HOOKS']);
     }
 
-    /**
-     * @param object $fileObj
-     * @param object $imageObj
-     */
-    public static function getImageHookCallback(string $originalPath, int $targetWidth, int $targetHeight, string $resizeMode, string $cacheName, $fileObj, string $targetPath, $imageObj): string
+    public static function getImageHookCallback(string $originalPath, int $targetWidth, int $targetHeight, string $resizeMode, string $cacheName, object $fileObj, string $targetPath, object $imageObj): string
     {
         // Do not include $cacheName as it is dynamic (mtime)
         $path = 'assets/'
@@ -1484,10 +1503,10 @@ class ImageTest extends TestCase
             .'_'.str_replace('\\', '-', \get_class($fileObj))
             .'_'.$targetPath
             .'_'.str_replace('\\', '-', \get_class($imageObj))
-            .'.jpg'
-        ;
+            .'.jpg';
 
-        file_put_contents(System::getContainer()->getParameter('kernel.project_dir').'/'.$path, '');
+        $fs = new Filesystem();
+        $fs->dumpFile(System::getContainer()->getParameter('kernel.project_dir').'/'.$path, '');
 
         return $path;
     }
@@ -1496,7 +1515,7 @@ class ImageTest extends TestCase
      * @group legacy
      * @dataProvider getGetPixelValueData
      *
-     * @expectedDeprecation Using Image::getPixelValue() has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.3: Using "Contao\Image::getPixelValue()" has been deprecated %s.
      */
     public function testReadsThePixelValue(string $value, int $expected): void
     {
@@ -1523,10 +1542,27 @@ class ImageTest extends TestCase
         $container->setParameter('contao.image.target_dir', $this->getTempDir().'/assets/images');
         $container->setParameter('contao.web_dir', $this->getTempDir().'/web');
 
+        $framework = $this->mockContaoFramework([
+            FilesModel::class => $this->createMock(Adapter::class),
+        ]);
+
         $resizer = new LegacyResizer($container->getParameter('contao.image.target_dir'), new ResizeCalculator());
-        $resizer->setFramework($this->mockContaoFramework());
+        $resizer->setFramework($framework);
+
+        $factory = new ImageFactory(
+            $resizer,
+            new ImagineGd(),
+            new ImagineSvg(),
+            new Filesystem(),
+            $framework,
+            $container->getParameter('contao.image.bypass_cache'),
+            $container->getParameter('contao.image.imagine_options'),
+            $container->getParameter('contao.image.valid_extensions'),
+            $container->getParameter('kernel.project_dir').'/'.$container->getParameter('contao.upload_path')
+        );
 
         $container->set('contao.image.resizer', $resizer);
+        $container->set('contao.image.image_factory', $factory);
         $container->set('filesystem', new Filesystem());
         $container->set('monolog.logger.contao', new NullLogger());
 

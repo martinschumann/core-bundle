@@ -10,6 +10,9 @@
 
 namespace Contao;
 
+use Symfony\Component\Filesystem\Filesystem;
+use Webmozart\PathUtil\Path;
+
 /**
  * Loads and writes the local configuration file
  *
@@ -20,7 +23,6 @@ namespace Contao;
  */
 class Config
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var Config
@@ -97,7 +99,9 @@ class Config
 	/**
 	 * Prevent cloning of the object (Singleton)
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Return the current object instance (Singleton)
@@ -181,7 +185,7 @@ class Config
 		if (static::$blnHasLcf)
 		{
 			$strMode = 'top';
-			$resFile = fopen($this->strRootDir . '/system/config/localconfig.php', 'rb');
+			$resFile = fopen($this->strRootDir . '/system/config/localconfig.php', 'r');
 
 			while (!feof($resFile))
 			{
@@ -213,7 +217,7 @@ class Config
 				{
 					$this->strBottom .= $strLine;
 				}
-				elseif ($strTrim != '')
+				elseif ($strTrim)
 				{
 					$arrChunks = array_map('trim', explode('=', $strLine, 2));
 					$this->arrData[$arrChunks[0]] = $arrChunks[1];
@@ -229,7 +233,7 @@ class Config
 	 */
 	public function save()
 	{
-		if ($this->strTop == '')
+		if (!$this->strTop)
 		{
 			$this->strTop = '<?php';
 		}
@@ -245,42 +249,52 @@ class Config
 		$strFile .= "### INSTALL SCRIPT STOP ###\n";
 		$this->strBottom = trim($this->strBottom);
 
-		if ($this->strBottom != '')
+		if ($this->strBottom)
 		{
 			$strFile .= "\n" . $this->strBottom . "\n";
 		}
 
-		$strTemp = md5(uniqid(mt_rand(), true));
+		$strTemp = Path::join($this->strRootDir, 'system/tmp', md5(uniqid(mt_rand(), true)));
 
 		// Write to a temp file first
-		$objFile = fopen($this->strRootDir . '/system/tmp/' . $strTemp, 'wb');
+		$objFile = fopen($strTemp, 'w');
 		fwrite($objFile, $strFile);
 		fclose($objFile);
 
 		// Make sure the file has been written (see #4483)
-		if (!filesize($this->strRootDir . '/system/tmp/' . $strTemp))
+		if (!filesize($strTemp))
 		{
-			System::log('The local configuration file could not be written. Have your reached your quota limit?', __METHOD__, TL_ERROR);
+			System::log('The local configuration file could not be written. Have you reached your quota limit?', __METHOD__, TL_ERROR);
 
 			return;
 		}
 
+		$fs = new Filesystem();
+
 		// Adjust the file permissions (see #8178)
-		$this->Files->chmod('system/tmp/' . $strTemp, 0666 & ~umask());
+		$fs->chmod($strTemp, 0666 & ~umask());
+
+		$strDestination = Path::join($this->strRootDir, 'system/config/localconfig.php');
+
+		// Get the realpath in case it is a symlink (see #2209)
+		if ($realpath = realpath($strDestination))
+		{
+			$strDestination = $realpath;
+		}
 
 		// Then move the file to its final destination
-		$this->Files->rename('system/tmp/' . $strTemp, 'system/config/localconfig.php');
+		$fs->rename($strTemp, $strDestination, true);
 
 		// Reset the Zend OPcache
 		if (\function_exists('opcache_invalidate'))
 		{
-			opcache_invalidate($this->strRootDir . '/system/config/localconfig.php', true);
+			opcache_invalidate($strDestination, true);
 		}
 
 		// Recompile the APC file (thanks to Trenker)
 		if (\function_exists('apc_compile_file') && !ini_get('apc.stat'))
 		{
-			apc_compile_file($this->strRootDir . '/system/config/localconfig.php');
+			apc_compile_file($strDestination);
 		}
 
 		$this->blnIsModified = false;
@@ -306,7 +320,7 @@ class Config
 	 */
 	public function getActiveModules()
 	{
-		@trigger_error('Using Config::getActiveModules() has been deprecated and will no longer work in Contao 5.0. Use the container parameter "kernel.bundles" instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Config::getActiveModules()" has been deprecated and will no longer work in Contao 5.0. Use "kernel.bundles" instead.');
 
 		return ModuleLoader::getActive();
 	}
@@ -362,23 +376,18 @@ class Config
 	 *
 	 * @param string $strKey The short key
 	 *
-	 * @return mixed|null The configuration value
+	 * @return mixed The configuration value
 	 */
 	public static function get($strKey)
 	{
-		if (isset($GLOBALS['TL_CONFIG'][$strKey]))
-		{
-			return $GLOBALS['TL_CONFIG'][$strKey];
-		}
-
-		return null;
+		return $GLOBALS['TL_CONFIG'][$strKey] ?? null;
 	}
 
 	/**
 	 * Temporarily set a configuration value
 	 *
 	 * @param string $strKey   The short key
-	 * @param string $varValue The configuration value
+	 * @param mixed  $varValue The configuration value
 	 */
 	public static function set($strKey, $varValue)
 	{
@@ -430,12 +439,12 @@ class Config
 		include __DIR__ . '/../../config/agents.php';
 		include __DIR__ . '/../../config/mimetypes.php';
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Include the local configuration file
-		if (($blnHasLcf = file_exists($rootDir . '/system/config/localconfig.php')) === true)
+		if (($blnHasLcf = file_exists($projectDir . '/system/config/localconfig.php')) === true)
 		{
-			include $rootDir . '/system/config/localconfig.php';
+			include $projectDir . '/system/config/localconfig.php';
 		}
 
 		static::loadParameters();
@@ -479,7 +488,10 @@ class Config
 			'encryptionKey'    => 'contao.encryption_key',
 			'urlSuffix'        => 'contao.url_suffix',
 			'uploadPath'       => 'contao.upload_path',
+			'editableFiles'    => 'contao.editable_files',
 			'debugMode'        => 'kernel.debug',
+			'enableSearch'     => 'contao.search.default_indexer.enable',
+			'indexProtected'   => 'contao.search.index_protected',
 		);
 
 		foreach ($arrMap as $strKey=>$strParam)
@@ -488,6 +500,15 @@ class Config
 			{
 				$GLOBALS['TL_CONFIG'][$strKey] = $container->getParameter($strParam);
 			}
+		}
+
+		$objRequest = $container->get('request_stack')->getCurrentRequest();
+
+		/** @var PageModel $objPage */
+		if (null !== $objRequest && ($objPage = $objRequest->attributes->get('pageModel')) instanceof PageModel)
+		{
+			$GLOBALS['TL_CONFIG']['addLanguageToUrl'] = $objPage->urlPrefix !== '';
+			$GLOBALS['TL_CONFIG']['urlSuffix'] = $objPage->urlSuffix;
 		}
 
 		if ($container->hasParameter('contao.image.valid_extensions'))
@@ -510,7 +531,7 @@ class Config
 	 */
 	protected function escape($varValue)
 	{
-		if (is_numeric($varValue) && !preg_match('/e|^[+-]?0[^.]/', $varValue) && $varValue < PHP_INT_MAX)
+		if (is_numeric($varValue) && $varValue < PHP_INT_MAX && !preg_match('/e|^[+-]?0[^.]/', $varValue))
 		{
 			return $varValue;
 		}

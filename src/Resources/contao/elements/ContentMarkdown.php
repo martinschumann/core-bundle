@@ -19,7 +19,6 @@ use Michelf\MarkdownExtra;
  */
 class ContentMarkdown extends ContentElement
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -33,13 +32,15 @@ class ContentMarkdown extends ContentElement
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE')
-		{
-			$return = '<pre>'. StringUtil::specialchars($this->code) .'</pre>';
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
 
-			if ($this->headline != '')
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
+		{
+			$return = '<pre>' . StringUtil::specialchars($this->code) . '</pre>';
+
+			if ($this->headline)
 			{
-				$return = '<'. $this->hl .'>'. $this->headline .'</'. $this->hl .'>'. $return;
+				$return = '<' . $this->hl . '>' . $this->headline . '</' . $this->hl . '>' . $return;
 			}
 
 			return $return;

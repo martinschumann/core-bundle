@@ -19,65 +19,59 @@ use Contao\StringUtil;
 use Contao\Validator;
 use Knp\Menu\FactoryInterface;
 use Symfony\Component\Routing\RouterInterface;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\Security\Core\Security;
+use Symfony\Contracts\Translation\TranslatorInterface;
+use Webmozart\PathUtil\Path;
 
-class FilePickerProvider extends AbstractPickerProvider implements DcaPickerProviderInterface, FrameworkAwareInterface
+class FilePickerProvider extends AbstractInsertTagPickerProvider implements DcaPickerProviderInterface, FrameworkAwareInterface
 {
     use FrameworkAwareTrait;
+
+    /**
+     * @var Security
+     */
+    private $security;
 
     /**
      * @var string
      */
     private $uploadPath;
 
-    public function __construct(FactoryInterface $menuFactory, RouterInterface $router, TranslatorInterface $translator, string $uploadPath)
+    /**
+     * @internal Do not inherit from this class; decorate the "contao.picker.file_provider" service instead
+     */
+    public function __construct(FactoryInterface $menuFactory, RouterInterface $router, TranslatorInterface $translator, Security $security, string $uploadPath)
     {
         parent::__construct($menuFactory, $router, $translator);
 
+        $this->security = $security;
         $this->uploadPath = $uploadPath;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getName(): string
     {
         return 'filePicker';
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function supportsContext($context): bool
     {
-        return \in_array($context, ['file', 'link'], true) && $this->getUser()->hasAccess('files', 'modules');
+        return \in_array($context, ['file', 'link'], true) && $this->security->isGranted('contao_user.modules', 'files');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function supportsValue(PickerConfig $config): bool
     {
-        $value = $config->getValue();
-
         if ('file' === $config->getContext()) {
-            return Validator::isUuid($value);
+            return Validator::isUuid($config->getValue());
         }
 
-        return false !== strpos($value, '{{file::') || 0 === strpos($value, $this->uploadPath);
+        return $this->isMatchingInsertTag($config) || Path::isBasePath($this->uploadPath, $config->getValue());
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDcaTable(): string
     {
         return 'tl_files';
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getDcaAttributes(PickerConfig $config): array
     {
         if ('file' === $config->getContext()) {
@@ -87,9 +81,6 @@ class FilePickerProvider extends AbstractPickerProvider implements DcaPickerProv
         return $this->getLinkDcaAttributes($config);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function convertDcaValue(PickerConfig $config, $value): string
     {
         if ('file' === $config->getContext()) {
@@ -101,18 +92,20 @@ class FilePickerProvider extends AbstractPickerProvider implements DcaPickerProv
         $filesModel = $filesAdapter->findByPath(rawurldecode($value));
 
         if ($filesModel instanceof FilesModel) {
-            return '{{file::'.StringUtil::binToUuid($filesModel->uuid).'}}';
+            return sprintf($this->getInsertTag($config), StringUtil::binToUuid($filesModel->uuid));
         }
 
         return $value;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function getRouteParameters(PickerConfig $config = null): array
     {
         return ['do' => 'files'];
+    }
+
+    protected function getDefaultInsertTag(): string
+    {
+        return '{{file::%s}}';
     }
 
     /**
@@ -180,11 +173,13 @@ class FilePickerProvider extends AbstractPickerProvider implements DcaPickerProv
         $value = $config->getValue();
 
         if ($value) {
-            if (false !== strpos($value, '{{file::')) {
-                $value = str_replace(['{{file::', '}}'], '', $value);
+            $chunks = $this->getInsertTagChunks($config);
+
+            if (false !== strpos($value, $chunks[0])) {
+                $value = str_replace($chunks, '', $value);
             }
 
-            if (0 === strpos($value, $this->uploadPath.'/')) {
+            if (Path::isBasePath($this->uploadPath, $value)) {
                 $attributes['value'] = $this->urlEncode($value);
             } else {
                 $attributes['value'] = $this->urlEncode($this->convertValueToPath($value));

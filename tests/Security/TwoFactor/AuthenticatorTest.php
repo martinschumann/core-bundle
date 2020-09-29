@@ -37,6 +37,25 @@ class AuthenticatorTest extends TestCase
         $this->assertFalse($authenticator->validateCode($user, 'foobar'));
     }
 
+    public function testValidatesTheCodeOfPreviousWindow(): void
+    {
+        $secret = random_bytes(128);
+        $now = 1586161036;
+        $fourtySecondsAgo = $now - 40;
+
+        $totp = TOTP::create(Base32::encodeUpperUnpadded($secret));
+
+        /** @var BackendUser&MockObject $user */
+        $user = $this->mockClassWithProperties(BackendUser::class);
+        $user->secret = $secret;
+
+        $authenticator = new Authenticator();
+
+        $this->assertTrue($authenticator->validateCode($user, $totp->at($now), $now));
+        $this->assertTrue($authenticator->validateCode($user, $totp->at($fourtySecondsAgo), $now));
+        $this->assertFalse($authenticator->validateCode($user, 'foobar', $now));
+    }
+
     public function testGeneratesTheProvisionUri(): void
     {
         $secret = random_bytes(128);
@@ -54,15 +73,15 @@ class AuthenticatorTest extends TestCase
         $request = $this->createMock(Request::class);
         $request
             ->expects($this->exactly(2))
-            ->method('getSchemeAndHttpHost')
-            ->willReturn('https://example.com')
+            ->method('getHttpHost')
+            ->willReturn('example.com')
         ;
 
         $authenticator = new Authenticator();
 
         $this->assertSame(
             sprintf(
-                'otpauth://totp/https%%3A%%2F%%2Fexample.com:foobar@https%%3A%%2F%%2Fexample.com?secret=%s&issuer=https%%3A%%2F%%2Fexample.com',
+                'otpauth://totp/example.com:foobar@example.com?secret=%s&issuer=example.com',
                 Base32::encodeUpperUnpadded($secret)
             ),
             $authenticator->getProvisionUri($user, $request)
@@ -70,7 +89,7 @@ class AuthenticatorTest extends TestCase
 
         $this->assertNotSame(
             sprintf(
-                'otpauth://totp/https%%3A%%2F%%2Fexample.com:foobar@https%%3A%%2F%%2Fexample.com?secret=%s&issuer=https%%3A%%2F%%2Fexample.com',
+                'otpauth://totp/example.com:foobar@example.com?secret=%s&issuer=example.com',
                 Base32::encodeUpperUnpadded('foobar')
             ),
             $authenticator->getProvisionUri($user, $request)
@@ -97,14 +116,14 @@ SVG;
         $request = $this->createMock(Request::class);
         $request
             ->expects($this->once())
-            ->method('getSchemeAndHttpHost')
-            ->willReturn('https://example.com')
+            ->method('getHttpHost')
+            ->willReturn('example.com')
         ;
 
         $authenticator = new Authenticator();
         $svg = $authenticator->getQrCode($user, $request);
 
-        $this->assertSame(7192, \strlen($svg));
+        $this->assertSame(5897, \strlen($svg));
         $this->assertSame(0, strpos($svg, $beginSvg));
     }
 }

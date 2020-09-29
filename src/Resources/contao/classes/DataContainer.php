@@ -22,20 +22,19 @@ use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
 /**
  * Provide methods to handle data container arrays.
  *
- * @property integer $id
- * @property string  $table
- * @property mixed   $value
- * @property string  $field
- * @property string  $inputName
- * @property string  $palette
- * @property object  $activeRecord
- * @property array   $rootIds
+ * @property integer     $id
+ * @property string      $table
+ * @property mixed       $value
+ * @property string      $field
+ * @property string      $inputName
+ * @property string      $palette
+ * @property object|null $activeRecord
+ * @property array       $rootIds
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
 abstract class DataContainer extends Backend
 {
-
 	/**
 	 * Current ID
 	 * @var integer
@@ -185,35 +184,27 @@ abstract class DataContainer extends Backend
 		{
 			case 'id':
 				return $this->intId;
-				break;
 
 			case 'table':
 				return $this->strTable;
-				break;
 
 			case 'value':
 				return $this->varValue;
-				break;
 
 			case 'field':
 				return $this->strField;
-				break;
 
 			case 'inputName':
 				return $this->strInputName;
-				break;
 
 			case 'palette':
 				return $this->strPalette;
-				break;
 
 			case 'activeRecord':
 				return $this->objActiveRecord;
-				break;
 
 			case 'createNewVersion':
 				return $this->blnCreateNewVersion;
-				break;
 		}
 
 		return parent::__get($strKey);
@@ -222,7 +213,7 @@ abstract class DataContainer extends Backend
 	/**
 	 * Render a row of a box and return it as HTML string
 	 *
-	 * @param string $strPalette
+	 * @param string|array|null $strPalette
 	 *
 	 * @return string
 	 *
@@ -244,13 +235,13 @@ abstract class DataContainer extends Backend
 		// Toggle line wrap (textarea)
 		if ($arrData['inputType'] == 'textarea' && !isset($arrData['eval']['rte']))
 		{
-			$xlabel .= ' ' . Image::getHtml('wrap.svg', $GLOBALS['TL_LANG']['MSC']['wordWrap'], 'title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['wordWrap']) . '" class="toggleWrap" onclick="Backend.toggleWrap(\'ctrl_'.$this->strInputName.'\')"');
+			$xlabel .= ' ' . Image::getHtml('wrap.svg', $GLOBALS['TL_LANG']['MSC']['wordWrap'], 'title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['wordWrap']) . '" class="toggleWrap" onclick="Backend.toggleWrap(\'ctrl_' . $this->strInputName . '\')"');
 		}
 
 		// Add the help wizard
 		if ($arrData['eval']['helpwizard'])
 		{
-			$xlabel .= ' <a href="contao/help.php?table='.$this->strTable.'&amp;field='.$this->strField.'" title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['helpWizard']) . '" onclick="Backend.openModalIframe({\'title\':\''.StringUtil::specialchars(str_replace("'", "\\'", $arrData['label'][0])).'\',\'url\':this.href});return false">'.Image::getHtml('about.svg', $GLOBALS['TL_LANG']['MSC']['helpWizard']).'</a>';
+			$xlabel .= ' <a href="contao/help.php?table=' . $this->strTable . '&amp;field=' . $this->strField . '" title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['helpWizard']) . '" onclick="Backend.openModalIframe({\'title\':\'' . StringUtil::specialchars(str_replace("'", "\\'", $arrData['label'][0])) . '\',\'url\':this.href});return false">' . Image::getHtml('about.svg', $GLOBALS['TL_LANG']['MSC']['helpWizard']) . '</a>';
 		}
 
 		// Add a custom xlabel
@@ -277,7 +268,8 @@ abstract class DataContainer extends Backend
 
 			return $this->{$arrData['input_field_callback'][0]}->{$arrData['input_field_callback'][1]}($this, $xlabel);
 		}
-		elseif (\is_callable($arrData['input_field_callback']))
+
+		if (\is_callable($arrData['input_field_callback']))
 		{
 			return $arrData['input_field_callback']($this, $xlabel);
 		}
@@ -293,7 +285,6 @@ abstract class DataContainer extends Backend
 
 		$arrData['eval']['required'] = false;
 
-		// Use strlen() here (see #3277)
 		if ($arrData['eval']['mandatory'])
 		{
 			if (\is_array($this->varValue))
@@ -303,12 +294,10 @@ abstract class DataContainer extends Backend
 					$arrData['eval']['required'] = true;
 				}
 			}
-			else
+			// Use strlen() here (see #3277)
+			elseif (!\strlen($this->varValue))
 			{
-				if (!\strlen($this->varValue))
-				{
-					$arrData['eval']['required'] = true;
-				}
+				$arrData['eval']['required'] = true;
 			}
 		}
 
@@ -353,14 +342,10 @@ abstract class DataContainer extends Backend
 				// Use the given palette ($strPalette is an array in editAll mode)
 				$newPaletteFields = \is_array($strPalette) ? $strPalette : StringUtil::trimsplit('[,;]', $strPalette);
 
-				// Re-check the palette if the current field is a selector field
-				if (isset($GLOBALS['TL_DCA'][$this->strTable]['palettes']['__selector__']) && \in_array($this->strField, $GLOBALS['TL_DCA'][$this->strTable]['palettes']['__selector__']))
+				// Recompile the palette if the current field is a selector field and the value has changed
+				if (isset($GLOBALS['TL_DCA'][$this->strTable]['palettes']['__selector__']) && $this->varValue != Input::post($this->strInputName) && \in_array($this->strField, $GLOBALS['TL_DCA'][$this->strTable]['palettes']['__selector__']))
 				{
-					// If the field value has changed, recompile the palette
-					if ($this->varValue != Input::post($this->strInputName))
-					{
-						$newPaletteFields = StringUtil::trimsplit('[,;]', $this->getPalette());
-					}
+					$newPaletteFields = StringUtil::trimsplit('[,;]', $this->getPalette());
 				}
 			}
 
@@ -384,23 +369,23 @@ abstract class DataContainer extends Backend
 			// Deprecated since Contao 4.2, to be removed in Contao 5.0
 			if (!isset($_POST[$this->strInputName]) && \in_array($this->strInputName, $paletteFields))
 			{
-				@trigger_error('Using FORM_FIELDS has been deprecated and will no longer work in Contao 5.0. Make sure to always submit at least an empty string in your widget.', E_USER_DEPRECATED);
+				trigger_deprecation('contao/core-bundle', '4.2', 'Using $_POST[\'FORM_FIELDS\'] has been deprecated and will no longer work in Contao 5.0. Make sure to always submit at least an empty string in your widget.');
 			}
 
 			// Validate and save the field
-			if (\in_array($this->strInputName, $paletteFields) || Input::get('act') == 'overrideAll')
+			if ($objWidget->submitInput() && (\in_array($this->strInputName, $paletteFields) || Input::get('act') == 'overrideAll'))
 			{
 				$objWidget->validate();
 
 				if ($objWidget->hasErrors())
 				{
 					// Skip mandatory fields on auto-submit (see #4077)
-					if (Input::post('SUBMIT_TYPE') != 'auto' || !$objWidget->mandatory || $objWidget->value != '')
+					if (!$objWidget->mandatory || $objWidget->value || Input::post('SUBMIT_TYPE') != 'auto')
 					{
 						$this->noReload = true;
 					}
 				}
-				elseif ($objWidget->submitInput())
+				else
 				{
 					$varValue = $objWidget->value;
 
@@ -442,7 +427,7 @@ abstract class DataContainer extends Backend
 		if ($arrData['eval']['datepicker'])
 		{
 			$rgxp = $arrData['eval']['rgxp'];
-			$format = Date::formatToJs(Config::get($rgxp.'Format'));
+			$format = Date::formatToJs(Config::get($rgxp . 'Format'));
 
 			switch ($rgxp)
 			{
@@ -467,7 +452,7 @@ abstract class DataContainer extends Backend
 				$strOnSelect = ",\n        onSelect: function() { Backend.autoSubmit(\"" . $this->strTable . "\"); }";
 			}
 
-			$wizard .= ' ' . Image::getHtml('assets/datepicker/images/icon.svg', '', 'title="'.StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['datepicker']).'" id="toggle_' . $objWidget->id . '" style="cursor:pointer"') . '
+			$wizard .= ' ' . Image::getHtml('assets/datepicker/images/icon.svg', '', 'title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['datepicker']) . '" id="toggle_' . $objWidget->id . '" style="cursor:pointer"') . '
   <script>
     window.addEvent("domready", function() {
       new Picker.Date($("ctrl_' . $objWidget->id . '"), {
@@ -490,7 +475,7 @@ abstract class DataContainer extends Backend
 			// Support single fields as well (see #5240)
 			$strKey = $arrData['eval']['multiple'] ? $this->strField . '_0' : $this->strField;
 
-			$wizard .= ' ' . Image::getHtml('pickcolor.svg', $GLOBALS['TL_LANG']['MSC']['colorpicker'], 'title="'.StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['colorpicker']).'" id="moo_' . $this->strField . '" style="cursor:pointer"') . '
+			$wizard .= ' ' . Image::getHtml('pickcolor.svg', $GLOBALS['TL_LANG']['MSC']['colorpicker'], 'title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['colorpicker']) . '" id="moo_' . $this->strField . '" style="cursor:pointer"') . '
   <script>
     window.addEvent("domready", function() {
       var cl = $("ctrl_' . $strKey . '").value.hexToRgb(true) || [255, 0, 0];
@@ -532,7 +517,7 @@ abstract class DataContainer extends Backend
 			}
 		}
 
-		if ($wizard != '')
+		if ($wizard)
 		{
 			$objWidget->wizard = $wizard;
 
@@ -605,16 +590,16 @@ abstract class DataContainer extends Backend
 		}
 
 		// Handle multi-select fields in "override all" mode
-		elseif (Input::get('act') == 'overrideAll' && ($arrData['inputType'] == 'checkbox' || $arrData['inputType'] == 'checkboxWizard') && $arrData['eval']['multiple'])
+		elseif (($arrData['inputType'] == 'checkbox' || $arrData['inputType'] == 'checkboxWizard') && $arrData['eval']['multiple'] && Input::get('act') == 'overrideAll')
 		{
 			$updateMode = '
 </div>
 <div class="widget">
   <fieldset class="tl_radio_container">
   <legend>' . $GLOBALS['TL_LANG']['MSC']['updateMode'] . '</legend>
-    <input type="radio" name="'.$this->strInputName.'_update" id="opt_'.$this->strInputName.'_update_1" class="tl_radio" value="add" onfocus="Backend.getScrollOffset()"> <label for="opt_'.$this->strInputName.'_update_1">' . $GLOBALS['TL_LANG']['MSC']['updateAdd'] . '</label><br>
-    <input type="radio" name="'.$this->strInputName.'_update" id="opt_'.$this->strInputName.'_update_2" class="tl_radio" value="remove" onfocus="Backend.getScrollOffset()"> <label for="opt_'.$this->strInputName.'_update_2">' . $GLOBALS['TL_LANG']['MSC']['updateRemove'] . '</label><br>
-    <input type="radio" name="'.$this->strInputName.'_update" id="opt_'.$this->strInputName.'_update_0" class="tl_radio" value="replace" checked="checked" onfocus="Backend.getScrollOffset()"> <label for="opt_'.$this->strInputName.'_update_0">' . $GLOBALS['TL_LANG']['MSC']['updateReplace'] . '</label>
+    <input type="radio" name="' . $this->strInputName . '_update" id="opt_' . $this->strInputName . '_update_1" class="tl_radio" value="add" onfocus="Backend.getScrollOffset()"> <label for="opt_' . $this->strInputName . '_update_1">' . $GLOBALS['TL_LANG']['MSC']['updateAdd'] . '</label><br>
+    <input type="radio" name="' . $this->strInputName . '_update" id="opt_' . $this->strInputName . '_update_2" class="tl_radio" value="remove" onfocus="Backend.getScrollOffset()"> <label for="opt_' . $this->strInputName . '_update_2">' . $GLOBALS['TL_LANG']['MSC']['updateRemove'] . '</label><br>
+    <input type="radio" name="' . $this->strInputName . '_update" id="opt_' . $this->strInputName . '_update_0" class="tl_radio" value="replace" checked="checked" onfocus="Backend.getScrollOffset()"> <label for="opt_' . $this->strInputName . '_update_0">' . $GLOBALS['TL_LANG']['MSC']['updateReplace'] . '</label>
   </fieldset>';
 		}
 
@@ -629,33 +614,39 @@ abstract class DataContainer extends Backend
 			{
 				$blnCanResize = true;
 
-				// Check the maximum width and height if the GDlib is used to resize images
-				if (!$objFile->isSvgImage && System::getContainer()->get('contao.image.imagine') instanceof Imagine)
+				if ($objFile->isSvgImage)
 				{
-					$blnCanResize = $objFile->height <= Config::get('gdMaxImgHeight') && $objFile->width <= Config::get('gdMaxImgWidth');
+					// SVG images with undefined sizes cannot be resized
+					if (!$objFile->viewWidth || !$objFile->viewHeight)
+					{
+						$blnCanResize= false;
+					}
 				}
-
-				$image = Image::getPath('placeholder.svg');
+				elseif (System::getContainer()->get('contao.image.imagine') instanceof Imagine)
+				{
+					// Check the maximum width and height if the GDlib is used to resize images
+					if ($objFile->height > Config::get('gdMaxImgHeight') || $objFile->width > Config::get('gdMaxImgWidth'))
+					{
+						$blnCanResize = false;
+					}
+				}
 
 				if ($blnCanResize)
 				{
-					if ($objFile->width > 699 || $objFile->height > 524 || !$objFile->width || !$objFile->height)
-					{
-						$container = System::getContainer();
-						$rootDir = $container->getParameter('kernel.project_dir');
-						$image = rawurldecode($container->get('contao.image.image_factory')->create($rootDir . '/' . $objFile->path, array(699, 524, ResizeConfiguration::MODE_BOX))->getUrl($rootDir));
-					}
-					else
-					{
-						$image = $objFile->path;
-					}
+					$container = System::getContainer();
+					$projectDir = $container->getParameter('kernel.project_dir');
+					$image = rawurldecode($container->get('contao.image.image_factory')->create($projectDir . '/' . $objFile->path, array(699, 524, ResizeConfiguration::MODE_BOX))->getUrl($projectDir));
+				}
+				else
+				{
+					$image = Image::getPath('placeholder.svg');
 				}
 
 				$objImage = new File($image);
 				$ctrl = 'ctrl_preview_' . substr(md5($image), 0, 8);
 
 				$strPreview = '
-<div id="' . $ctrl . '" class="tl_edit_preview" data-original-width="' . $objFile->viewWidth . '" data-original-height="' . $objFile->viewHeight . '">
+<div id="' . $ctrl . '" class="tl_edit_preview">
   <img src="' . $objImage->dataUri . '" width="' . $objImage->width . '" height="' . $objImage->height . '" alt="">
 </div>';
 
@@ -690,13 +681,13 @@ abstract class DataContainer extends Backend
 	{
 		$return = $GLOBALS['TL_DCA'][$this->strTable]['fields'][$this->strField]['label'][1];
 
-		if (!Config::get('showHelp') || $GLOBALS['TL_DCA'][$this->strTable]['fields'][$this->strField]['inputType'] == 'password' || $return == '')
+		if (!$return || $GLOBALS['TL_DCA'][$this->strTable]['fields'][$this->strField]['inputType'] == 'password' || !Config::get('showHelp'))
 		{
 			return '';
 		}
 
 		return '
-  <p class="tl_help tl_tip' . $strClass . '">'.$return.'</p>';
+  <p class="tl_help tl_tip' . $strClass . '">' . $return . '</p>';
 	}
 
 	/**
@@ -717,8 +708,8 @@ abstract class DataContainer extends Backend
 
 			foreach ($return as $k=>$v)
 			{
-				$buffer[] = ($k%2 == 0) ? $v : $v.$names[$i];
-				$buffer[] = ($k%2 == 0) ? $v.$names[$i] : $v;
+				$buffer[] = ($k%2 == 0) ? $v : $v . $names[$i];
+				$buffer[] = ($k%2 == 0) ? $v . $names[$i] : $v;
 			}
 
 			$return = $buffer;
@@ -737,7 +728,7 @@ abstract class DataContainer extends Backend
 	protected function switchToEdit($id)
 	{
 		$arrKeys = array();
-		$arrUnset = array('act', 'id', 'table');
+		$arrUnset = array('act', 'id', 'table', 'mode', 'pid');
 
 		foreach (array_keys($_GET) as $strKey)
 		{
@@ -749,7 +740,7 @@ abstract class DataContainer extends Backend
 
 		$strUrl = TL_SCRIPT . '?' . implode('&', $arrKeys);
 
-		return $strUrl . (!empty($arrKeys) ? '&' : '') . (Input::get('table') ? 'table='.Input::get('table').'&amp;' : '').'act=edit&amp;id='.rawurlencode($id);
+		return $strUrl . (!empty($arrKeys) ? '&' : '') . (Input::get('table') ? 'table=' . Input::get('table') . '&amp;' : '') . 'act=edit&amp;id=' . rawurlencode($id);
 	}
 
 	/**
@@ -778,10 +769,22 @@ abstract class DataContainer extends Backend
 		{
 			$v = \is_array($v) ? $v : array($v);
 			$id = StringUtil::specialchars(rawurldecode($arrRow['id']));
+			$label = $title = $k;
 
-			$label = $v['label'][0] ?: $k;
-			$title = sprintf($v['label'][1] ?: $k, $id);
-			$attributes = ($v['attributes'] != '') ? ' ' . ltrim(sprintf($v['attributes'], $id, $id)) : '';
+			if (isset($v['label']))
+			{
+				if (\is_array($v['label']))
+				{
+					$label = $v['label'][0];
+					$title = sprintf($v['label'][1], $id);
+				}
+				else
+				{
+					$label = $title = sprintf($v['label'], $id);
+				}
+			}
+
+			$attributes = !empty($v['attributes']) ? ' ' . ltrim(sprintf($v['attributes'], $id, $id)) : '';
 
 			// Add the key as CSS class
 			if (strpos($attributes, 'class="') !== false)
@@ -800,7 +803,8 @@ abstract class DataContainer extends Backend
 				$return .= $this->{$v['button_callback'][0]}->{$v['button_callback'][1]}($arrRow, $v['href'], $label, $title, $v['icon'], $attributes, $strTable, $arrRootIds, $arrChildRecordIds, $blnCircularReference, $strPrevious, $strNext, $this);
 				continue;
 			}
-			elseif (\is_callable($v['button_callback']))
+
+			if (\is_callable($v['button_callback']))
 			{
 				$return .= $v['button_callback']($arrRow, $v['href'], $label, $title, $v['icon'], $attributes, $strTable, $arrRootIds, $arrChildRecordIds, $blnCircularReference, $strPrevious, $strNext, $this);
 				continue;
@@ -817,10 +821,10 @@ abstract class DataContainer extends Backend
 					}
 					else
 					{
-						$href = $this->addToUrl($v['href'].'&amp;id='.$arrRow['id'].'&amp;popup=1');
+						$href = $this->addToUrl($v['href'] . '&amp;id=' . $arrRow['id'] . '&amp;popup=1');
 					}
 
-					$return .= '<a href="'.$href.'" title="'.StringUtil::specialchars($title).'" onclick="Backend.openModalIframe({\'title\':\''.StringUtil::specialchars(str_replace("'", "\\'", sprintf($GLOBALS['TL_LANG'][$strTable]['show'][1], $arrRow['id']))).'\',\'url\':this.href});return false"'.$attributes.'>'.Image::getHtml($v['icon'], $label).'</a> ';
+					$return .= '<a href="' . $href . '" title="' . StringUtil::specialchars($title) . '" onclick="Backend.openModalIframe({\'title\':\'' . StringUtil::specialchars(str_replace("'", "\\'", $label)) . '\',\'url\':this.href});return false"' . $attributes . '>' . Image::getHtml($v['icon'], $label) . '</a> ';
 				}
 				else
 				{
@@ -830,10 +834,10 @@ abstract class DataContainer extends Backend
 					}
 					else
 					{
-						$href = $this->addToUrl($v['href'].'&amp;id='.$arrRow['id'].(Input::get('nb') ? '&amp;nc=1' : ''));
+						$href = $this->addToUrl($v['href'] . '&amp;id=' . $arrRow['id'] . (Input::get('nb') ? '&amp;nc=1' : ''));
 					}
 
-					$return .= '<a href="'.$href.'" title="'.StringUtil::specialchars($title).'"'.$attributes.'>'.Image::getHtml($v['icon'], $label).'</a> ';
+					$return .= '<a href="' . $href . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($v['icon'], $label) . '</a> ';
 				}
 
 				continue;
@@ -847,16 +851,16 @@ abstract class DataContainer extends Backend
 				$label = $GLOBALS['TL_LANG'][$strTable][$dir][0] ?: $dir;
 				$title = $GLOBALS['TL_LANG'][$strTable][$dir][1] ?: $dir;
 
-				$label = Image::getHtml($dir.'.svg', $label);
+				$label = Image::getHtml($dir . '.svg', $label);
 				$href = $v['href'] ?: '&amp;act=move';
 
 				if ($dir == 'up')
 				{
-					$return .= ((is_numeric($strPrevious) && (empty($GLOBALS['TL_DCA'][$strTable]['list']['sorting']['root']) || !\in_array($arrRow['id'], $arrRootIds))) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$arrRow['id']).'&amp;sid='. (int) $strPrevious .'" title="'.StringUtil::specialchars($title).'"'.$attributes.'>'.$label.'</a> ' : Image::getHtml('up_.svg')).' ';
+					$return .= ((is_numeric($strPrevious) && (empty($GLOBALS['TL_DCA'][$strTable]['list']['sorting']['root']) || !\in_array($arrRow['id'], $arrRootIds))) ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $arrRow['id']) . '&amp;sid=' . (int) $strPrevious . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . $label . '</a> ' : Image::getHtml('up_.svg')) . ' ';
 				}
 				else
 				{
-					$return .= ((is_numeric($strNext) && (empty($GLOBALS['TL_DCA'][$strTable]['list']['sorting']['root']) || !\in_array($arrRow['id'], $arrRootIds))) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$arrRow['id']).'&amp;sid='. (int) $strNext .'" title="'.StringUtil::specialchars($title).'"'.$attributes.'>'.$label.'</a> ' : Image::getHtml('down_.svg')).' ';
+					$return .= ((is_numeric($strNext) && (empty($GLOBALS['TL_DCA'][$strTable]['list']['sorting']['root']) || !\in_array($arrRow['id'], $arrRootIds))) ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $arrRow['id']) . '&amp;sid=' . (int) $strNext . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . $label . '</a> ' : Image::getHtml('down_.svg')) . ' ';
 				}
 			}
 		}
@@ -880,7 +884,7 @@ abstract class DataContainer extends Backend
 
 		foreach ($GLOBALS['TL_DCA'][$this->strTable]['list']['global_operations'] as $k=>$v)
 		{
-			if (Input::get('act') == 'select' && !$v['showOnSelect'])
+			if (!$v['showOnSelect'] && Input::get('act') == 'select')
 			{
 				continue;
 			}
@@ -888,7 +892,7 @@ abstract class DataContainer extends Backend
 			$v = \is_array($v) ? $v : array($v);
 			$label = \is_array($v['label']) ? $v['label'][0] : $v['label'];
 			$title = \is_array($v['label']) ? $v['label'][1] : $v['label'];
-			$attributes = ($v['attributes'] != '') ? ' ' . ltrim($v['attributes']) : '';
+			$attributes = !empty($v['attributes']) ? ' ' . ltrim($v['attributes']) : '';
 
 			// Custom icon (see #5541)
 			if ($v['icon'])
@@ -901,14 +905,15 @@ abstract class DataContainer extends Backend
 					$v['icon'] = Image::getPath($v['icon']);
 				}
 
-				$attributes = sprintf('style="background-image:url(\'%s\')"', Controller::addAssetsUrlTo($v['icon'])) . $attributes;
+				$attributes = sprintf(' style="background-image:url(\'%s\')"', Controller::addAssetsUrlTo($v['icon'])) . $attributes;
 			}
 
-			if ($label == '')
+			if (!$label)
 			{
 				$label = $k;
 			}
-			if ($title == '')
+
+			if (!$title)
 			{
 				$title = $label;
 			}
@@ -920,7 +925,8 @@ abstract class DataContainer extends Backend
 				$return .= $this->{$v['button_callback'][0]}->{$v['button_callback'][1]}($v['href'], $label, $title, $v['class'], $attributes, $this->strTable, $this->root);
 				continue;
 			}
-			elseif (\is_callable($v['button_callback']))
+
+			if (\is_callable($v['button_callback']))
 			{
 				$return .= $v['button_callback']($v['href'], $label, $title, $v['class'], $attributes, $this->strTable, $this->root);
 				continue;
@@ -935,7 +941,7 @@ abstract class DataContainer extends Backend
 				$href = $this->addToUrl($v['href']);
 			}
 
-			$return .= '<a href="'.$href.'" class="'.$v['class'].'" title="'.StringUtil::specialchars($title).'"'.$attributes.'>'.$label.'</a> ';
+			$return .= '<a href="' . $href . '" class="' . $v['class'] . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . $label . '</a> ';
 		}
 
 		return $return;
@@ -967,10 +973,22 @@ abstract class DataContainer extends Backend
 
 			$v = \is_array($v) ? $v : array($v);
 			$id = StringUtil::specialchars(rawurldecode($arrRow['id']));
+			$label = $title = $k;
 
-			$label = $v['label'][0] ?: $k;
-			$title = sprintf($v['label'][1] ?: $k, $id);
-			$attributes = ($v['attributes'] != '') ? ' ' . ltrim(sprintf($v['attributes'], $id, $id)) : '';
+			if (isset($v['label']))
+			{
+				if (\is_array($v['label']))
+				{
+					$label = $v['label'][0];
+					$title = sprintf($v['label'][1], $id);
+				}
+				else
+				{
+					$label = $title = sprintf($v['label'], $id);
+				}
+			}
+
+			$attributes = !empty($v['attributes']) ? ' ' . ltrim(sprintf($v['attributes'], $id, $id)) : '';
 
 			// Add the key as CSS class
 			if (strpos($attributes, 'class="') !== false)
@@ -999,7 +1017,8 @@ abstract class DataContainer extends Backend
 				$return .= $this->{$v['button_callback'][0]}->{$v['button_callback'][1]}($arrRow, $v['href'], $label, $title, $v['icon'], $attributes, $strPtable, array(), null, false, null, null, $this);
 				continue;
 			}
-			elseif (\is_callable($v['button_callback']))
+
+			if (\is_callable($v['button_callback']))
 			{
 				$return .= $v['button_callback']($arrRow, $v['href'], $label, $title, $v['icon'], $attributes, $strPtable, array(), null, false, null, null, $this);
 				continue;
@@ -1013,10 +1032,10 @@ abstract class DataContainer extends Backend
 				}
 				else
 				{
-					$href = $this->addToUrl($v['href'].'&amp;id='.$arrRow['id'].'&amp;popup=1');
+					$href = $this->addToUrl($v['href'] . '&amp;id=' . $arrRow['id'] . '&amp;popup=1');
 				}
 
-				$return .= '<a href="'.$href.'" title="'.StringUtil::specialchars($title).'" onclick="Backend.openModalIframe({\'title\':\''.StringUtil::specialchars(str_replace("'", "\\'", sprintf($GLOBALS['TL_LANG'][$strPtable]['show'][1], $arrRow['id']))).'\',\'url\':this.href});return false"'.$attributes.'>'.Image::getHtml($v['icon'], $label).'</a> ';
+				$return .= '<a href="' . $href . '" title="' . StringUtil::specialchars($title) . '" onclick="Backend.openModalIframe({\'title\':\'' . StringUtil::specialchars(str_replace("'", "\\'", sprintf(\is_array($GLOBALS['TL_LANG'][$strPtable]['show']) ? $GLOBALS['TL_LANG'][$strPtable]['show'][1] : $GLOBALS['TL_LANG'][$strPtable]['show'], $arrRow['id']))) . '\',\'url\':this.href});return false"' . $attributes . '>' . Image::getHtml($v['icon'], $label) . '</a> ';
 			}
 			else
 			{
@@ -1026,10 +1045,10 @@ abstract class DataContainer extends Backend
 				}
 				else
 				{
-					$href = $this->addToUrl($v['href'].'&amp;id='.$arrRow['id'].(Input::get('nb') ? '&amp;nc=1' : ''));
+					$href = $this->addToUrl($v['href'] . '&amp;id=' . $arrRow['id'] . (Input::get('nb') ? '&amp;nc=1' : ''));
 				}
 
-				$return .= '<a href="'.$href.'" title="'.StringUtil::specialchars($title).'"'.$attributes.'>'.Image::getHtml($v['icon'], $label).'</a> ';
+				$return .= '<a href="' . $href . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($v['icon'], $label) . '</a> ';
 			}
 		}
 
@@ -1045,14 +1064,9 @@ abstract class DataContainer extends Backend
 	 */
 	public function initPicker(PickerInterface $picker)
 	{
-		if (!empty($_GET['act']))
-		{
-			return null;
-		}
-
 		$provider = $picker->getCurrentProvider();
 
-		if (!$provider instanceof DcaPickerProviderInterface || $provider->getDcaTable() != $this->strTable)
+		if (!$provider instanceof DcaPickerProviderInterface || $provider->getDcaTable($picker->getConfig()) != $this->strTable)
 		{
 			return null;
 		}
@@ -1062,7 +1076,7 @@ abstract class DataContainer extends Backend
 		$this->objPicker = $picker;
 		$this->strPickerFieldType = $attributes['fieldType'];
 
-		$this->objPickerCallback = function ($value) use ($picker, $provider)
+		$this->objPickerCallback = static function ($value) use ($picker, $provider)
 		{
 			return $provider->convertDcaValue($picker->getConfig(), $value);
 		};
@@ -1090,13 +1104,34 @@ abstract class DataContainer extends Backend
 		switch ($this->strPickerFieldType)
 		{
 			case 'checkbox':
-				return ' <input type="checkbox" name="picker[]" id="picker_'.$id.'" class="tl_tree_checkbox" value="'.StringUtil::specialchars(\call_user_func($this->objPickerCallback, $value)).'" onfocus="Backend.getScrollOffset()"'.Widget::optionChecked($value, $this->arrPickerValue).$attributes.'>';
+				return ' <input type="checkbox" name="picker[]" id="picker_' . $id . '" class="tl_tree_checkbox" value="' . StringUtil::specialchars(\call_user_func($this->objPickerCallback, $value)) . '" onfocus="Backend.getScrollOffset()"' . Widget::optionChecked($value, $this->arrPickerValue) . $attributes . '>';
 
 			case 'radio':
-				return ' <input type="radio" name="picker" id="picker_'.$id.'" class="tl_tree_radio" value="'.StringUtil::specialchars(\call_user_func($this->objPickerCallback, $value)).'" onfocus="Backend.getScrollOffset()"'.Widget::optionChecked($value, $this->arrPickerValue).$attributes.'>';
+				return ' <input type="radio" name="picker" id="picker_' . $id . '" class="tl_tree_radio" value="' . StringUtil::specialchars(\call_user_func($this->objPickerCallback, $value)) . '" onfocus="Backend.getScrollOffset()"' . Widget::optionChecked($value, $this->arrPickerValue) . $attributes . '>';
 		}
 
 		return '';
+	}
+
+	/**
+	 * Return the data-picker-value attribute with the currently selected picker values (see #1816)
+	 *
+	 * @return string
+	 */
+	protected function getPickerValueAttribute()
+	{
+		// Only load the previously selected values for the checkbox field type (see #2346)
+		if ($this->strPickerFieldType != 'checkbox')
+		{
+			return '';
+		}
+
+		$values = array_map($this->objPickerCallback, $this->arrPickerValue);
+		$values = array_map('strval', $values);
+		$values = json_encode($values);
+		$values = htmlspecialchars($values);
+
+		return ' data-picker-value="' . $values . '"';
 	}
 
 	/**
@@ -1106,7 +1141,7 @@ abstract class DataContainer extends Backend
 	 */
 	protected function panel()
 	{
-		if ($GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['panelLayout'] == '')
+		if (!$GLOBALS['TL_DCA'][$this->strTable]['list']['sorting']['panelLayout'])
 		{
 			return '';
 		}
@@ -1119,10 +1154,12 @@ abstract class DataContainer extends Backend
 
 			$data = $objSessionBag->all();
 
-			unset($data['filter'][$this->strTable]);
-			unset($data['filter'][$this->strTable.'_'.CURRENT_ID]);
-			unset($data['sorting'][$this->strTable]);
-			unset($data['search'][$this->strTable]);
+			unset(
+				$data['filter'][$this->strTable],
+				$data['filter'][$this->strTable . '_' . CURRENT_ID],
+				$data['sorting'][$this->strTable],
+				$data['search'][$this->strTable]
+			);
 
 			$objSessionBag->replace($data);
 
@@ -1171,14 +1208,14 @@ abstract class DataContainer extends Backend
 				}
 
 				// Add the panel if it is not empty
-				if ($panel != '')
+				if ($panel)
 				{
 					$panels = $panel . $panels;
 				}
 			}
 
 			// Add the group if it is not empty
-			if ($panels != '')
+			if ($panels)
 			{
 				$arrPanels[] = $panels;
 			}
@@ -1218,10 +1255,10 @@ abstract class DataContainer extends Backend
 		}
 
 		$return = '
-<form action="'.ampersand(Environment::get('request'), true).'" class="tl_form" method="post" aria-label="'.StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['searchAndFilter']).'">
+<form class="tl_form" method="post" aria-label="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['searchAndFilter']) . '">
 <div class="tl_formbody">
   <input type="hidden" name="FORM_SUBMIT" value="tl_filters">
-  <input type="hidden" name="REQUEST_TOKEN" value="'.REQUEST_TOKEN.'">
+  <input type="hidden" name="REQUEST_TOKEN" value="' . REQUEST_TOKEN . '">
   ' . $return . '
 </div>
 </form>';
@@ -1233,10 +1270,8 @@ abstract class DataContainer extends Backend
 	 * Invalidate the cache tags associated with a given DC
 	 *
 	 * Call this whenever an entry is modified (added, updated, deleted).
-	 *
-	 * @param DataContainer $dc
 	 */
-	protected function invalidateCacheTags(self $dc)
+	public function invalidateCacheTags()
 	{
 		if (!System::getContainer()->has('fos_http_cache.cache_manager'))
 		{
@@ -1244,27 +1279,27 @@ abstract class DataContainer extends Backend
 		}
 
 		$ns = 'contao.db.';
-		$tags = array($ns . $dc->table, $ns . $dc->table . '.' . $dc->id);
+		$tags = array($ns . $this->table, $ns . $this->table . '.' . $this->id);
 
-		if ($dc->ptable && $dc->activeRecord && $dc->activeRecord->pid > 0)
+		if (!empty($this->ptable) && $this->activeRecord && $this->activeRecord->pid > 0)
 		{
-			$tags[] = $ns . $dc->ptable;
-			$tags[] = $ns . $dc->ptable . '.' . $dc->activeRecord->pid;
+			$tags[] = $ns . $this->ptable;
+			$tags[] = $ns . $this->ptable . '.' . $this->activeRecord->pid;
 		}
 
 		// Trigger the oninvalidate_cache_tags_callback
-		if (\is_array($GLOBALS['TL_DCA'][$dc->table]['config']['oninvalidate_cache_tags_callback']))
+		if (\is_array($GLOBALS['TL_DCA'][$this->table]['config']['oninvalidate_cache_tags_callback']))
 		{
-			foreach ($GLOBALS['TL_DCA'][$dc->table]['config']['oninvalidate_cache_tags_callback'] as $callback)
+			foreach ($GLOBALS['TL_DCA'][$this->table]['config']['oninvalidate_cache_tags_callback'] as $callback)
 			{
 				if (\is_array($callback))
 				{
 					$this->import($callback[0]);
-					$tags = $this->{$callback[0]}->{$callback[1]}($dc, $tags);
+					$tags = $this->{$callback[0]}->{$callback[1]}($this, $tags);
 				}
 				elseif (\is_callable($callback))
 				{
-					$tags = $callback($dc, $tags);
+					$tags = $callback($this, $tags);
 				}
 			}
 		}

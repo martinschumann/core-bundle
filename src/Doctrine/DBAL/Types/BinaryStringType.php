@@ -20,34 +20,22 @@ use Doctrine\DBAL\Types\Type;
  */
 class BinaryStringType extends Type
 {
-    /**
-     * @var string
-     */
     public const NAME = 'binary_string';
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform): string
+    public function getSQLDeclaration(array $column, AbstractPlatform $platform): string
     {
-        if (!empty($fieldDeclaration['fixed'])) {
-            return $platform->getBinaryTypeDeclarationSQL($fieldDeclaration);
+        if (!empty($column['fixed'])) {
+            return $platform->getBinaryTypeDeclarationSQL($column);
         }
 
-        return $platform->getBlobTypeDeclarationSQL($fieldDeclaration);
+        return $platform->getBlobTypeDeclarationSQL($column);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getName(): string
     {
         return self::NAME;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function requiresSQLCommentHint(AbstractPlatform $platform): bool
     {
         return true;

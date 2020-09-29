@@ -1,7 +1,7 @@
 <?php
 
-/**
- * Contao Open Source CMS
+/*
+ * This file is part of Contao.
  *
  * (c) Leo Feyer
  *
@@ -17,7 +17,6 @@ namespace Contao;
  */
 class FormFieldsetStart extends Widget
 {
-
 	/**
 	 * Template
 	 *
@@ -41,8 +40,9 @@ class FormFieldsetStart extends Widget
 	 */
 	public function parse($arrAttributes=null)
 	{
-		// Return a wildcard in the back end
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 			$objTemplate->title = $this->label;
@@ -60,9 +60,11 @@ class FormFieldsetStart extends Widget
 	 */
 	public function generate()
 	{
-		return sprintf('<fieldset%s>%s',
-						($this->strClass ? ' class="' . $this->strClass . '"' : ''),
-						($this->label ? '<legend>' . $this->label . '</legend>' : ''));
+		return sprintf(
+			'<fieldset%s>%s',
+			($this->strClass ? ' class="' . $this->strClass . '"' : ''),
+			($this->label ? '<legend>' . $this->label . '</legend>' : '')
+		);
 	}
 }
 

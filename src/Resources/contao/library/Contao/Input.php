@@ -31,7 +31,6 @@ use Patchwork\Utf8;
  */
 class Input
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var Input
@@ -129,7 +128,7 @@ class Input
 
 			if ($varValue === null)
 			{
-				return $varValue;
+				return null;
 			}
 
 			$varValue = static::decodeEntities($varValue);
@@ -170,7 +169,7 @@ class Input
 
 			if ($varValue === null)
 			{
-				return $varValue;
+				return null;
 			}
 
 			$varValue = static::decodeEntities($varValue);
@@ -210,7 +209,7 @@ class Input
 
 			if ($varValue === null)
 			{
-				return $varValue;
+				return null;
 			}
 
 			$varValue = static::preserveBasicEntities($varValue);
@@ -244,7 +243,7 @@ class Input
 
 			if ($varValue === null)
 			{
-				return $varValue;
+				return null;
 			}
 
 			static::$arrCache[$strCacheKey][$strKey] = $varValue;
@@ -305,8 +304,7 @@ class Input
 
 		$strKey = static::cleanKey($strKey);
 
-		unset(static::$arrCache['getEncoded'][$strKey]);
-		unset(static::$arrCache['getDecoded'][$strKey]);
+		unset(static::$arrCache['getEncoded'][$strKey], static::$arrCache['getDecoded'][$strKey]);
 
 		if ($varValue === null)
 		{
@@ -333,12 +331,14 @@ class Input
 	{
 		$strKey = static::cleanKey($strKey);
 
-		unset(static::$arrCache['postEncoded'][$strKey]);
-		unset(static::$arrCache['postDecoded'][$strKey]);
-		unset(static::$arrCache['postHtmlEncoded'][$strKey]);
-		unset(static::$arrCache['postHtmlDecoded'][$strKey]);
-		unset(static::$arrCache['postRaw'][$strKey]);
-		unset(static::$arrCache['postUnsafeRaw'][$strKey]);
+		unset(
+			static::$arrCache['postEncoded'][$strKey],
+			static::$arrCache['postDecoded'][$strKey],
+			static::$arrCache['postHtmlEncoded'][$strKey],
+			static::$arrCache['postHtmlDecoded'][$strKey],
+			static::$arrCache['postRaw'][$strKey],
+			static::$arrCache['postUnsafeRaw'][$strKey]
+		);
 
 		if ($varValue === null)
 		{
@@ -360,8 +360,7 @@ class Input
 	{
 		$strKey = static::cleanKey($strKey);
 
-		unset(static::$arrCache['cookieEncoded'][$strKey]);
-		unset(static::$arrCache['cookieDecoded'][$strKey]);
+		unset(static::$arrCache['cookieEncoded'][$strKey], static::$arrCache['cookieDecoded'][$strKey]);
 
 		if ($varValue === null)
 		{
@@ -481,7 +480,7 @@ class Input
 	 */
 	public static function stripTags($varValue, $strAllowedTags='')
 	{
-		if ($varValue === null || $varValue == '')
+		if (!$varValue)
 		{
 			return $varValue;
 		}
@@ -498,9 +497,9 @@ class Input
 		}
 
 		// Encode opening arrow brackets (see #3998)
-		$varValue = preg_replace_callback('@</?([^\s<>/]*)@', function ($matches) use ($strAllowedTags)
+		$varValue = preg_replace_callback('@</?([^\s<>/]*)@', static function ($matches) use ($strAllowedTags)
 		{
-			if ($matches[1] == '' || stripos($strAllowedTags, '<' . strtolower($matches[1]) . '>') === false)
+			if (!$matches[1] || stripos($strAllowedTags, '<' . strtolower($matches[1]) . '>') === false)
 			{
 				$matches[0] = str_replace('<', '&lt;', $matches[0]);
 			}
@@ -531,7 +530,7 @@ class Input
 	 */
 	public static function xssClean($varValue, $blnStrictMode=false)
 	{
-		if ($varValue === null || $varValue == '')
+		if (!$varValue)
 		{
 			return $varValue;
 		}
@@ -560,13 +559,8 @@ class Input
 		$varValue = preg_replace('/\r+/', '', $varValue);
 
 		// Replace unicode entities
-		$varValue = preg_replace_callback('~&#x([0-9a-f]+);~i', function ($matches) {
-			return Utf8::chr(hexdec($matches[1]));
-		}, $varValue);
-
-		$varValue = preg_replace_callback('~&#([0-9]+);~', function ($matches) {
-			return Utf8::chr($matches[1]);
-		}, $varValue);
+		$varValue = preg_replace_callback('~&#x([0-9a-f]+);~i', static function ($matches) { return Utf8::chr(hexdec($matches[1])); }, $varValue);
+		$varValue = preg_replace_callback('~&#([0-9]+);~', static function ($matches) { return Utf8::chr($matches[1]); }, $varValue);
 
 		// Remove null bytes
 		$varValue = str_replace(\chr(0), '', $varValue);
@@ -660,7 +654,7 @@ class Input
 	 */
 	public static function decodeEntities($varValue)
 	{
-		if ($varValue === null || $varValue == '')
+		if (!$varValue)
 		{
 			return $varValue;
 		}
@@ -692,7 +686,7 @@ class Input
 	 */
 	public static function preserveBasicEntities($varValue)
 	{
-		if ($varValue === null || $varValue == '')
+		if (!$varValue)
 		{
 			return $varValue;
 		}
@@ -727,7 +721,7 @@ class Input
 	 */
 	public static function encodeSpecialChars($varValue)
 	{
-		if ($varValue === null || $varValue == '')
+		if (!$varValue)
 		{
 			return $varValue;
 		}
@@ -758,7 +752,18 @@ class Input
 	 */
 	public static function encodeInsertTags($varValue)
 	{
-		return str_replace(array('{{', '}}'), array('&#123;&#123;', '&#125;&#125;'), $varValue);
+		// Recursively encode insert tags
+		if (\is_array($varValue))
+		{
+			foreach ($varValue as $k=>$v)
+			{
+				$varValue[$k] = static::encodeInsertTags($v);
+			}
+
+			return $varValue;
+		}
+
+		return str_replace(array('{{', '}}'), array('&#123;&#123;', '&#125;&#125;'), (string) $varValue);
 	}
 
 	/**
@@ -808,7 +813,9 @@ class Input
 	 * @deprecated Deprecated since Contao 4.0, to be removed in Contao 5.0.
 	 *             The Input class is now static.
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Return the object instance (Singleton)
@@ -820,7 +827,7 @@ class Input
 	 */
 	public static function getInstance()
 	{
-		@trigger_error('Using Input::getInstance() has been deprecated and will no longer work in Contao 5.0. The Input class is now static.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Input::getInstance()" has been deprecated and will no longer work in Contao 5.0. The "Contao\Input" class is now static.');
 
 		if (static::$objInstance === null)
 		{

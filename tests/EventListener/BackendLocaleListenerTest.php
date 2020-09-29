@@ -18,12 +18,11 @@ use Contao\CoreBundle\Tests\TestCase;
 use Contao\FrontendUser;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelInterface;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\Security\Core\Security;
+use Symfony\Contracts\Translation\LocaleAwareInterface;
 
 class BackendLocaleListenerTest extends TestCase
 {
@@ -33,18 +32,11 @@ class BackendLocaleListenerTest extends TestCase
         $user = $this->mockClassWithProperties(BackendUser::class);
         $user->language = 'de';
 
-        $token = $this->createMock(TokenInterface::class);
-        $token
+        $security = $this->createMock(Security::class);
+        $security
             ->expects($this->once())
             ->method('getUser')
             ->willReturn($user)
-        ;
-
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->once())
-            ->method('getToken')
-            ->willReturn($token)
         ;
 
         $request = $this->createMock(Request::class);
@@ -54,7 +46,7 @@ class BackendLocaleListenerTest extends TestCase
             ->with('de')
         ;
 
-        $translator = $this->createMock(TranslatorInterface::class);
+        $translator = $this->createMock(LocaleAwareInterface::class);
         $translator
             ->expects($this->once())
             ->method('setLocale')
@@ -62,57 +54,27 @@ class BackendLocaleListenerTest extends TestCase
         ;
 
         $kernel = $this->createMock(KernelInterface::class);
-        $event = new GetResponseEvent($kernel, $request, HttpKernelInterface::MASTER_REQUEST);
+        $event = new RequestEvent($kernel, $request, HttpKernelInterface::MASTER_REQUEST);
 
         $GLOBALS['TL_LANGUAGE'] = 'en';
 
-        $listener = new BackendLocaleListener($tokenStorage, $translator);
-        $listener->onKernelRequest($event);
+        $listener = new BackendLocaleListener($security, $translator);
+        $listener($event);
 
         $this->assertSame('de', $GLOBALS['TL_LANGUAGE']);
 
         unset($GLOBALS['TL_LANGUAGE']);
     }
 
-    public function testDoesNotSetTheLocaleIfThereIsNoToken(): void
-    {
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->once())
-            ->method('getToken')
-            ->willReturn(null)
-        ;
-
-        $request = $this->createMock(Request::class);
-        $request
-            ->expects($this->never())
-            ->method('setLocale')
-        ;
-
-        $kernel = $this->createMock(KernelInterface::class);
-        $event = new GetResponseEvent($kernel, $request, HttpKernelInterface::MASTER_REQUEST);
-        $translator = $this->createMock(TranslatorInterface::class);
-
-        $listener = new BackendLocaleListener($tokenStorage, $translator);
-        $listener->onKernelRequest($event);
-    }
-
     public function testDoesNotSetTheLocaleIfNotABackendUser(): void
     {
-        $token = $this->createMock(TokenInterface::class);
-        $token
+        $security = $this->createMock(Security::class);
+        $security
             ->expects($this->once())
             ->method('getUser')
             ->willReturn($this->createMock(FrontendUser::class))
         ;
 
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->once())
-            ->method('getToken')
-            ->willReturn($token)
-        ;
-
         $request = $this->createMock(Request::class);
         $request
             ->expects($this->never())
@@ -120,27 +82,23 @@ class BackendLocaleListenerTest extends TestCase
         ;
 
         $kernel = $this->createMock(KernelInterface::class);
-        $event = new GetResponseEvent($kernel, new Request(), HttpKernelInterface::MASTER_REQUEST);
-        $translator = $this->createMock(TranslatorInterface::class);
+        $event = new RequestEvent($kernel, new Request(), HttpKernelInterface::MASTER_REQUEST);
+        $translator = $this->createMock(LocaleAwareInterface::class);
 
-        $listener = new BackendLocaleListener($tokenStorage, $translator);
-        $listener->onKernelRequest($event);
+        $listener = new BackendLocaleListener($security, $translator);
+        $listener($event);
     }
 
     public function testDoesNotSetTheLocaleIfNoUserLanguage(): void
     {
-        $token = $this->createMock(TokenInterface::class);
-        $token
+        /** @var BackendUser&MockObject $user */
+        $user = $this->mockClassWithProperties(BackendUser::class);
+
+        $security = $this->createMock(Security::class);
+        $security
             ->expects($this->once())
             ->method('getUser')
-            ->willReturn($token)
-        ;
-
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage
-            ->expects($this->once())
-            ->method('getToken')
-            ->willReturn($token)
+            ->willReturn($user)
         ;
 
         $request = $this->createMock(Request::class);
@@ -150,10 +108,10 @@ class BackendLocaleListenerTest extends TestCase
         ;
 
         $kernel = $this->createMock(KernelInterface::class);
-        $event = new GetResponseEvent($kernel, $request, HttpKernelInterface::MASTER_REQUEST);
-        $translator = $this->createMock(TranslatorInterface::class);
+        $event = new RequestEvent($kernel, $request, HttpKernelInterface::MASTER_REQUEST);
+        $translator = $this->createMock(LocaleAwareInterface::class);
 
-        $listener = new BackendLocaleListener($tokenStorage, $translator);
-        $listener->onKernelRequest($event);
+        $listener = new BackendLocaleListener($security, $translator);
+        $listener($event);
     }
 }

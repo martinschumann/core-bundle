@@ -15,58 +15,53 @@ namespace Contao\CoreBundle\DependencyInjection\Compiler;
 use Contao\CoreBundle\HttpKernel\Bundle\ContaoModuleBundle;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Webmozart\PathUtil\Path;
 
+/**
+ * @internal
+ */
 class AddResourcesPathsPass implements CompilerPassInterface
 {
-    /**
-     * {@inheritdoc}
-     */
     public function process(ContainerBuilder $container): void
     {
         $container->setParameter('contao.resources_paths', $this->getResourcesPaths($container));
     }
 
     /**
-     * @return string[]
+     * @return array<string>
      */
     private function getResourcesPaths(ContainerBuilder $container): array
     {
         $paths = [];
-        $rootDir = $container->getParameter('kernel.project_dir');
+        $projectDir = $container->getParameter('kernel.project_dir');
 
-        foreach ($container->getParameter('kernel.bundles') as $name => $class) {
+        $bundles = $container->getParameter('kernel.bundles');
+        $meta = $container->getParameter('kernel.bundles_metadata');
+
+        foreach ($bundles as $name => $class) {
             if (ContaoModuleBundle::class === $class) {
-                $paths[] = sprintf('%s/system/modules/%s', $rootDir, $name);
-            } elseif (null !== ($path = $this->getResourcesPathFromClassName($class))) {
+                $paths[] = $meta[$name]['path'];
+            } elseif (is_dir($path = Path::join($meta[$name]['path'], 'Resources/contao'))) {
+                $paths[] = $path;
+            } elseif (is_dir($path = Path::join($meta[$name]['path'], 'contao'))) {
                 $paths[] = $path;
             }
         }
 
-        if (is_dir($rootDir.'/contao')) {
-            $paths[] = $rootDir.'/contao';
+        if (is_dir($path = Path::join($projectDir, 'contao'))) {
+            $paths[] = $path;
         }
 
-        if (is_dir($rootDir.'/app/Resources/contao')) {
-            @trigger_error('Using "app/Resources/contao" has been deprecated and will no longer work in Contao 5.0. Use the "contao" folder instead.', E_USER_DEPRECATED);
-            $paths[] = $rootDir.'/app/Resources/contao';
+        if (is_dir($path = Path::join($projectDir, 'app/Resources/contao'))) {
+            trigger_deprecation('contao/core-bundle', '4.9', 'Using "app/Resources/contao" has been deprecated and will no longer work in Contao 5.0. Use the "contao" folder instead.');
+            $paths[] = $path;
         }
 
-        if (is_dir($rootDir.'/src/Resources/contao')) {
-            @trigger_error('Using "src/Resources/contao" has been deprecated and will no longer work in Contao 5.0. Use the "contao" folder instead.', E_USER_DEPRECATED);
-            $paths[] = $rootDir.'/src/Resources/contao';
+        if (is_dir($path = Path::join($projectDir, 'src/Resources/contao'))) {
+            trigger_deprecation('contao/core-bundle', '4.9', 'Using "src/Resources/contao" has been deprecated and will no longer work in Contao 5.0. Use the "contao" folder instead.');
+            $paths[] = $path;
         }
 
         return $paths;
-    }
-
-    private function getResourcesPathFromClassName(string $class): ?string
-    {
-        $reflection = new \ReflectionClass($class);
-
-        if (is_dir($dir = \dirname($reflection->getFileName()).'/Resources/contao')) {
-            return $dir;
-        }
-
-        return null;
     }
 }

@@ -6,4 +6,8 @@
 /.env
 
 # PhpUnit
+/.phpunit.result.cache
 /phpunit.xml
+
+# Functional tests
+/var/

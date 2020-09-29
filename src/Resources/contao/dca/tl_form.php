@@ -8,9 +8,20 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\Controller;
+use Contao\CoreBundle\Exception\AccessDeniedException;
+use Contao\DataContainer;
+use Contao\Image;
+use Contao\Input;
+use Contao\StringUtil;
+use Contao\System;
+use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+
 $GLOBALS['TL_DCA']['tl_form'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -60,7 +71,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		(
 			'all' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['MSC']['all'],
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset()" accesskey="e"'
@@ -70,27 +80,23 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		(
 			'edit' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form']['edit'],
 				'href'                => 'table=tl_form_field',
 				'icon'                => 'edit.svg'
 			),
 			'editheader' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form']['editheader'],
 				'href'                => 'act=edit',
 				'icon'                => 'header.svg',
 				'button_callback'     => array('tl_form', 'editHeader')
 			),
 			'copy' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form']['copy'],
 				'href'                => 'act=copy',
 				'icon'                => 'copy.svg',
 				'button_callback'     => array('tl_form', 'copyForm')
 			),
 			'delete' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form']['delete'],
 				'href'                => 'act=delete',
 				'icon'                => 'delete.svg',
 				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"',
@@ -98,7 +104,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_form']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg'
 			)
@@ -115,7 +120,7 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 	// Subpalettes
 	'subpalettes' => array
 	(
-		'sendViaEmail'                => 'recipient,subject,format,skipEmpty',
+		'sendViaEmail'                => 'mailerTransport,recipient,subject,format,skipEmpty',
 		'storeValues'                 => 'targetTable'
 	),
 
@@ -132,7 +137,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'title' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['title'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -141,19 +145,17 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'alias' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['alias'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
-			'eval'                    => array('rgxp'=>'alias', 'doNotCopy'=>true, 'maxlength'=>128, 'tl_class'=>'w50'),
+			'eval'                    => array('rgxp'=>'alias', 'doNotCopy'=>true, 'maxlength'=>255, 'tl_class'=>'w50'),
 			'save_callback' => array
 			(
 				array('tl_form', 'generateAlias')
 			),
-			'sql'                     => "varchar(128) BINARY NOT NULL default ''"
+			'sql'                     => "varchar(255) BINARY NOT NULL default ''"
 		),
 		'jumpTo' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['jumpTo'],
 			'exclude'                 => true,
 			'inputType'               => 'pageTree',
 			'foreignKey'              => 'tl_page.title',
@@ -163,25 +165,29 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'sendViaEmail' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['sendViaEmail'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('submitOnChange'=>true),
 			'sql'                     => "char(1) NOT NULL default ''"
 		),
+		'mailerTransport' => array
+		(
+			'exclude'                 => true,
+			'inputType'               => 'select',
+			'eval'                    => array('tl_class'=>'w50', 'includeBlankOption'=>true),
+			'sql'                     => "varchar(255) NOT NULL default ''"
+		),
 		'recipient' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['recipient'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
-			'eval'                    => array('mandatory'=>true, 'maxlength'=>1022, 'rgxp'=>'emails', 'tl_class'=>'w50'),
+			'eval'                    => array('mandatory'=>true, 'maxlength'=>1022, 'rgxp'=>'emails', 'tl_class'=>'w50 clr'),
 			'sql'                     => "varchar(1022) NOT NULL default ''"
 		),
 		'subject' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['subject'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -190,17 +196,15 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'format' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['format'],
 			'exclude'                 => true,
 			'inputType'               => 'select',
-			'options'                 => array('raw', 'xml', 'csv', 'email'),
+			'options'                 => array('raw', 'xml', 'csv', 'csv_excel', 'email'),
 			'reference'               => &$GLOBALS['TL_LANG']['tl_form'],
 			'eval'                    => array('helpwizard'=>true, 'tl_class'=>'w50'),
 			'sql'                     => "varchar(12) NOT NULL default 'raw'"
 		),
 		'skipEmpty' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['skipEmtpy'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
@@ -209,7 +213,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'storeValues' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['storeValues'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
@@ -218,7 +221,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'targetTable' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['targetTable'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'select',
@@ -228,16 +230,17 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'customTpl' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['customTpl'],
 			'exclude'                 => true,
 			'inputType'               => 'select',
-			'options_callback'        => array('tl_form', 'getFormWrapperTemplates'),
-			'eval'                    => array('tl_class'=>'w50'),
+			'options_callback' => static function ()
+			{
+				return Controller::getTemplateGroup('form_wrapper_', array(), 'form_wrapper');
+			},
+			'eval'                    => array('chosen'=>true, 'tl_class'=>'w50'),
 			'sql'                     => "varchar(64) NOT NULL default ''"
 		),
 		'method' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['method'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'select',
@@ -247,7 +250,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'novalidate' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['novalidate'],
 			'exclude'                 => true,
 			'inputType'               => 'checkbox',
 			'eval'                    => array('tl_class'=>'w50 m12'),
@@ -255,7 +257,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'attributes' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['attributes'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('multiple'=>true, 'size'=>2, 'tl_class'=>'w50'),
@@ -263,7 +264,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'formID' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['formID'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -272,7 +272,6 @@ $GLOBALS['TL_DCA']['tl_form'] = array
 		),
 		'allowTags' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_form']['allowTags'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
@@ -287,22 +286,21 @@ $GLOBALS['TL_DCA']['tl_form'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_form extends Contao\Backend
+class tl_form extends Backend
 {
-
 	/**
 	 * Import the back end user object
 	 */
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('Contao\BackendUser', 'User');
+		$this->import(BackendUser::class, 'User');
 	}
 
 	/**
 	 * Check permissions to edit table tl_form
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
 	public function checkPermission()
 	{
@@ -312,7 +310,7 @@ class tl_form extends Contao\Backend
 		}
 
 		// Set root IDs
-		if (empty($this->User->forms) || !\is_array($this->User->forms))
+		if (empty($this->User->forms) || !is_array($this->User->forms))
 		{
 			$root = array(0);
 		}
@@ -337,11 +335,11 @@ class tl_form extends Contao\Backend
 			$GLOBALS['TL_DCA']['tl_form']['config']['notDeletable'] = true;
 		}
 
-		/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
-		$objSession = Contao\System::getContainer()->get('session');
+		/** @var SessionInterface $objSession */
+		$objSession = System::getContainer()->get('session');
 
 		// Check current action
-		switch (Contao\Input::get('act'))
+		switch (Input::get('act'))
 		{
 			case 'select':
 				// Allow
@@ -350,7 +348,7 @@ class tl_form extends Contao\Backend
 			case 'create':
 				if (!$this->User->hasAccess('create', 'formp'))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to create forms.');
+					throw new AccessDeniedException('Not enough permissions to create forms.');
 				}
 				break;
 
@@ -358,9 +356,9 @@ class tl_form extends Contao\Backend
 			case 'copy':
 			case 'delete':
 			case 'show':
-				if (!\in_array(Contao\Input::get('id'), $root) || (Contao\Input::get('act') == 'delete' && !$this->User->hasAccess('delete', 'formp')))
+				if (!in_array(Input::get('id'), $root) || (Input::get('act') == 'delete' && !$this->User->hasAccess('delete', 'formp')))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to ' . Contao\Input::get('act') . ' form ID ' . Contao\Input::get('id') . '.');
+					throw new AccessDeniedException('Not enough permissions to ' . Input::get('act') . ' form ID ' . Input::get('id') . '.');
 				}
 				break;
 
@@ -369,7 +367,8 @@ class tl_form extends Contao\Backend
 			case 'overrideAll':
 			case 'copyAll':
 				$session = $objSession->all();
-				if (Contao\Input::get('act') == 'deleteAll' && !$this->User->hasAccess('delete', 'formp'))
+
+				if (Input::get('act') == 'deleteAll' && !$this->User->hasAccess('delete', 'formp'))
 				{
 					$session['CURRENT']['IDS'] = array();
 				}
@@ -381,9 +380,9 @@ class tl_form extends Contao\Backend
 				break;
 
 			default:
-				if (\strlen(Contao\Input::get('act')))
+				if (Input::get('act'))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to ' . Contao\Input::get('act') . ' forms.');
+					throw new AccessDeniedException('Not enough permissions to ' . Input::get('act') . ' forms.');
 				}
 				break;
 		}
@@ -397,7 +396,7 @@ class tl_form extends Contao\Backend
 	public function adjustPermissions($insertId)
 	{
 		// The oncreate_callback passes $insertId as second argument
-		if (\func_num_args() == 4)
+		if (func_num_args() == 4)
 		{
 			$insertId = func_get_arg(1);
 		}
@@ -408,7 +407,7 @@ class tl_form extends Contao\Backend
 		}
 
 		// Set root IDs
-		if (empty($this->User->forms) || !\is_array($this->User->forms))
+		if (empty($this->User->forms) || !is_array($this->User->forms))
 		{
 			$root = array(0);
 		}
@@ -418,17 +417,17 @@ class tl_form extends Contao\Backend
 		}
 
 		// The form is enabled already
-		if (\in_array($insertId, $root))
+		if (in_array($insertId, $root))
 		{
 			return;
 		}
 
-		/** @var Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface $objSessionBag */
-		$objSessionBag = Contao\System::getContainer()->get('session')->getBag('contao_backend');
+		/** @var AttributeBagInterface $objSessionBag */
+		$objSessionBag = System::getContainer()->get('session')->getBag('contao_backend');
 
 		$arrNew = $objSessionBag->get('new_records');
 
-		if (\is_array($arrNew['tl_form']) && \in_array($insertId, $arrNew['tl_form']))
+		if (is_array($arrNew['tl_form']) && in_array($insertId, $arrNew['tl_form']))
 		{
 			// Add the permissions on group level
 			if ($this->User->inherit != 'custom')
@@ -437,11 +436,11 @@ class tl_form extends Contao\Backend
 
 				while ($objGroup->next())
 				{
-					$arrFormp = Contao\StringUtil::deserialize($objGroup->formp);
+					$arrFormp = StringUtil::deserialize($objGroup->formp);
 
-					if (\is_array($arrFormp) && \in_array('create', $arrFormp))
+					if (is_array($arrFormp) && in_array('create', $arrFormp))
 					{
-						$arrForms = Contao\StringUtil::deserialize($objGroup->forms, true);
+						$arrForms = StringUtil::deserialize($objGroup->forms, true);
 						$arrForms[] = $insertId;
 
 						$this->Database->prepare("UPDATE tl_user_group SET forms=? WHERE id=?")
@@ -457,11 +456,11 @@ class tl_form extends Contao\Backend
 										   ->limit(1)
 										   ->execute($this->User->id);
 
-				$arrFormp = Contao\StringUtil::deserialize($objUser->formp);
+				$arrFormp = StringUtil::deserialize($objUser->formp);
 
-				if (\is_array($arrFormp) && \in_array('create', $arrFormp))
+				if (is_array($arrFormp) && in_array('create', $arrFormp))
 				{
-					$arrForms = Contao\StringUtil::deserialize($objUser->forms, true);
+					$arrForms = StringUtil::deserialize($objUser->forms, true);
 					$arrForms[] = $insertId;
 
 					$this->Database->prepare("UPDATE tl_user SET forms=? WHERE id=?")
@@ -478,14 +477,14 @@ class tl_form extends Contao\Backend
 	/**
 	 * Auto-generate a form alias if it has not been set yet
 	 *
-	 * @param mixed                $varValue
-	 * @param Contao\DataContainer $dc
+	 * @param mixed         $varValue
+	 * @param DataContainer $dc
 	 *
 	 * @return mixed
 	 *
 	 * @throws Exception
 	 */
-	public function generateAlias($varValue, Contao\DataContainer $dc)
+	public function generateAlias($varValue, DataContainer $dc)
 	{
 		$aliasExists = function (string $alias) use ($dc): bool
 		{
@@ -493,9 +492,9 @@ class tl_form extends Contao\Backend
 		};
 
 		// Generate an alias if there is none
-		if ($varValue == '')
+		if (!$varValue)
 		{
-			$varValue = Contao\System::getContainer()->get('contao.slug')->generate($dc->activeRecord->title, $dc->activeRecord->jumpTo, $aliasExists);
+			$varValue = System::getContainer()->get('contao.slug')->generate($dc->activeRecord->title, Input::post('jumpTo') ?: $dc->activeRecord->jumpTo, $aliasExists);
 		}
 		elseif ($aliasExists($varValue))
 		{
@@ -513,7 +512,7 @@ class tl_form extends Contao\Backend
 	public function getAllTables()
 	{
 		$arrTables = $this->Database->listTables();
-		$arrViews = Contao\System::getContainer()->get('database_connection')->getSchemaManager()->listViews();
+		$arrViews = System::getContainer()->get('database_connection')->getSchemaManager()->listViews();
 
 		if (!empty($arrViews))
 		{
@@ -522,16 +521,6 @@ class tl_form extends Contao\Backend
 		}
 
 		return array_values($arrTables);
-	}
-
-	/**
-	 * Return all form wrapper templates as array
-	 *
-	 * @return array
-	 */
-	public function getFormWrapperTemplates()
-	{
-		return $this->getTemplateGroup('form_wrapper_');
 	}
 
 	/**
@@ -548,7 +537,7 @@ class tl_form extends Contao\Backend
 	 */
 	public function editHeader($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->canEditFieldsOf('tl_form') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->canEditFieldsOf('tl_form') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -565,7 +554,7 @@ class tl_form extends Contao\Backend
 	 */
 	public function copyForm($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->hasAccess('create', 'formp') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->hasAccess('create', 'formp') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -582,6 +571,6 @@ class tl_form extends Contao\Backend
 	 */
 	public function deleteForm($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->hasAccess('delete', 'formp') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->hasAccess('delete', 'formp') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 }

@@ -20,7 +20,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BackendPopup extends Backend
 {
-
 	/**
 	 * File
 	 * @var string
@@ -62,7 +61,7 @@ class BackendPopup extends Backend
 	 */
 	public function run()
 	{
-		if ($this->strFile == '')
+		if (!$this->strFile)
 		{
 			die('No file given');
 		}
@@ -79,10 +78,10 @@ class BackendPopup extends Backend
 			die('Invalid path');
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Check whether the file exists
-		if (!file_exists($rootDir . '/' . $this->strFile))
+		if (!file_exists($projectDir . '/' . $this->strFile))
 		{
 			die('File not found');
 		}
@@ -103,12 +102,9 @@ class BackendPopup extends Backend
 		$objTemplate = new BackendTemplate('be_popup');
 
 		// Add the resource (see #6880)
-		if (($objModel = FilesModel::findByPath($this->strFile)) === null)
+		if (($objModel = FilesModel::findByPath($this->strFile)) === null && Dbafs::shouldBeSynchronized($this->strFile))
 		{
-			if (Dbafs::shouldBeSynchronized($this->strFile))
-			{
-				$objModel = Dbafs::addResource($this->strFile);
-			}
+			$objModel = Dbafs::addResource($this->strFile);
 		}
 
 		if ($objModel !== null)
@@ -117,7 +113,7 @@ class BackendPopup extends Backend
 		}
 
 		// Add the file info
-		if (is_dir($rootDir . '/' . $this->strFile))
+		if (is_dir($projectDir . '/' . $this->strFile))
 		{
 			$objFile = new Folder($this->strFile);
 			$objTemplate->filesize = $this->getReadableSize($objFile->size) . ' (' . number_format($objFile->size, 0, $GLOBALS['TL_LANG']['MSC']['decimalSeparator'], $GLOBALS['TL_LANG']['MSC']['thousandsSeparator']) . ' Byte)';
@@ -130,13 +126,13 @@ class BackendPopup extends Backend
 			if ($objFile->isImage)
 			{
 				$objTemplate->isImage = true;
-				$objTemplate->width = $objFile->viewWidth;
-				$objTemplate->height = $objFile->viewHeight;
+				$objTemplate->width = $objFile->width;
+				$objTemplate->height = $objFile->height;
 				$objTemplate->src = $this->urlEncode($this->strFile);
 				$objTemplate->dataUri = $objFile->dataUri;
 			}
 
-			// Meta data
+			// Metadata
 			if (($objModel = FilesModel::findByPath($this->strFile)) instanceof FilesModel)
 			{
 				$arrMeta = StringUtil::deserialize($objModel->meta);
@@ -150,7 +146,7 @@ class BackendPopup extends Backend
 				}
 			}
 
-			$objTemplate->href = ampersand(Environment::get('request'), true) . '&amp;download=1';
+			$objTemplate->href = StringUtil::ampersand(Environment::get('request')) . '&amp;download=1';
 			$objTemplate->filesize = $this->getReadableSize($objFile->filesize) . ' (' . number_format($objFile->filesize, 0, $GLOBALS['TL_LANG']['MSC']['decimalSeparator'], $GLOBALS['TL_LANG']['MSC']['thousandsSeparator']) . ' Byte)';
 		}
 
@@ -164,7 +160,7 @@ class BackendPopup extends Backend
 		$objTemplate->base = Environment::get('base');
 		$objTemplate->language = $GLOBALS['TL_LANGUAGE'];
 		$objTemplate->title = StringUtil::specialchars($this->strFile);
-		$objTemplate->host = Environment::get('host');
+		$objTemplate->host = Backend::getDecodedHostname();
 		$objTemplate->charset = Config::get('characterSet');
 		$objTemplate->labels = (object) $GLOBALS['TL_LANG']['MSC'];
 		$objTemplate->download = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['fileDownload']);

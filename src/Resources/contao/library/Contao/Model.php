@@ -46,7 +46,6 @@ use Contao\Model\Registry;
  */
 abstract class Model
 {
-
 	/**
 	 * Insert flag
 	 * @var integer
@@ -243,12 +242,7 @@ abstract class Model
 	 */
 	public function __get($strKey)
 	{
-		if (isset($this->arrData[$strKey]))
-		{
-			return $this->arrData[$strKey];
-		}
-
-		return null;
+		return $this->arrData[$strKey] ?? null;
 	}
 
 	/**
@@ -420,7 +414,7 @@ abstract class Model
 	public function save()
 	{
 		// Deprecated call
-		if (\count(\func_get_args()))
+		if (\func_num_args() > 0)
 		{
 			throw new \InvalidArgumentException('The $blnForceInsert argument has been removed (see system/docs/UPGRADE.md)');
 		}
@@ -458,13 +452,8 @@ abstract class Model
 				return $this;
 			}
 
-			$intPk = $this->{static::$strPk};
-
 			// Track primary key changes
-			if (isset($this->arrModified[static::$strPk]))
-			{
-				$intPk = $this->arrModified[static::$strPk];
-			}
+			$intPk = $this->arrModified[static::$strPk] ?? $this->{static::$strPk};
 
 			if ($intPk === null)
 			{
@@ -553,13 +542,8 @@ abstract class Model
 	 */
 	public function delete()
 	{
-		$intPk = $this->{static::$strPk};
-
 		// Track primary key changes
-		if (isset($this->arrModified[static::$strPk]))
-		{
-			$intPk = $this->arrModified[static::$strPk];
-		}
+		$intPk = $this->arrModified[static::$strPk] ?? $this->{static::$strPk};
 
 		// Delete the row
 		$intAffected = Database::getInstance()->prepare("DELETE FROM " . static::$strTable . " WHERE " . Database::quoteIdentifier(static::$strPk) . "=?")
@@ -667,13 +651,8 @@ abstract class Model
 	 */
 	public function refresh()
 	{
-		$intPk = $this->{static::$strPk};
-
 		// Track primary key changes
-		if (isset($this->arrModified[static::$strPk]))
-		{
-			$intPk = $this->arrModified[static::$strPk];
-		}
+		$intPk = $this->arrModified[static::$strPk] ?? $this->{static::$strPk};
 
 		// Reload the database record
 		$res = Database::getInstance()->prepare("SELECT * FROM " . static::$strTable . " WHERE " . Database::quoteIdentifier(static::$strPk) . "=?")
@@ -791,7 +770,6 @@ abstract class Model
 				'value'  => $varValue,
 				'return' => 'Model'
 			),
-
 			$arrOptions
 		);
 
@@ -832,7 +810,6 @@ abstract class Model
 				'value'  => $varId,
 				'return' => 'Model'
 			),
-
 			$arrOptions
 		);
 
@@ -885,7 +862,6 @@ abstract class Model
 					'order'  => Database::getInstance()->findInSet("$t.id", $arrIds),
 					'return' => 'Collection'
 				),
-
 				$arrOptions
 			);
 
@@ -931,7 +907,6 @@ abstract class Model
 				'value'  => $varValue,
 				'return' => 'Model'
 			),
-
 			$arrOptions
 		);
 
@@ -965,7 +940,6 @@ abstract class Model
 				'value'  => $varValue,
 				'return' => $blnModel ? 'Model' : 'Collection'
 			),
-
 			$arrOptions
 		);
 
@@ -987,7 +961,6 @@ abstract class Model
 			(
 				'return' => 'Collection'
 			),
-
 			$arrOptions
 		);
 
@@ -1048,7 +1021,7 @@ abstract class Model
 	 */
 	protected static function find(array $arrOptions)
 	{
-		if (static::$strTable == '')
+		if (!static::$strTable)
 		{
 			return null;
 		}
@@ -1086,6 +1059,7 @@ abstract class Model
 		{
 			$arrOptions['limit'] = 0;
 		}
+
 		if (!isset($arrOptions['offset']))
 		{
 			$arrOptions['offset'] = 0;
@@ -1119,14 +1093,13 @@ abstract class Model
 
 			return static::createModelFromDbResult($objResult);
 		}
-		elseif ($arrOptions['return'] == 'Array')
+
+		if ($arrOptions['return'] == 'Array')
 		{
 			return static::createCollectionFromDbResult($objResult, static::$strTable)->getModels();
 		}
-		else
-		{
-			return static::createCollectionFromDbResult($objResult, static::$strTable);
-		}
+
+		return static::createCollectionFromDbResult($objResult, static::$strTable);
 	}
 
 	/**
@@ -1164,7 +1137,7 @@ abstract class Model
 	 */
 	public static function countBy($strColumn=null, $varValue=null, array $arrOptions=array())
 	{
-		if (static::$strTable == '')
+		if (!static::$strTable)
 		{
 			return 0;
 		}
@@ -1177,7 +1150,6 @@ abstract class Model
 				'column' => $strColumn,
 				'value'  => $varValue
 			),
-
 			$arrOptions
 		);
 
@@ -1216,19 +1188,19 @@ abstract class Model
 
 			return static::$arrClassNames[$strTable];
 		}
-		else
+
+		trigger_deprecation('contao/core-bundle', '4.10', sprintf('Not registering table "%s" in $GLOBALS[\'TL_MODELS\'] has been deprecated and will no longer work in Contao 5.0.', $strTable));
+
+		$arrChunks = explode('_', $strTable);
+
+		if ($arrChunks[0] == 'tl')
 		{
-			$arrChunks = explode('_', $strTable);
-
-			if ($arrChunks[0] == 'tl')
-			{
-				array_shift($arrChunks);
-			}
-
-			static::$arrClassNames[$strTable] = implode('', array_map('ucfirst', $arrChunks)) . 'Model';
-
-			return static::$arrClassNames[$strTable];
+			array_shift($arrChunks);
 		}
+
+		static::$arrClassNames[$strTable] = implode('', array_map('ucfirst', $arrChunks)) . 'Model';
+
+		return static::$arrClassNames[$strTable];
 	}
 
 	/**
@@ -1264,7 +1236,10 @@ abstract class Model
 	 */
 	protected static function createModelFromDbResult(Result $objResult)
 	{
-		return new static($objResult);
+		/** @var static $strClass */
+		$strClass = static::getClassFromTable(static::$strTable);
+
+		return new $strClass($objResult);
 	}
 
 	/**

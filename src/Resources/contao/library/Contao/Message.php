@@ -27,7 +27,6 @@ namespace Contao;
  */
 class Message
 {
-
 	/**
 	 * Add an error message
 	 *
@@ -94,7 +93,7 @@ class Message
 	 */
 	public static function add($strMessage, $strType, $strScope=TL_MODE)
 	{
-		if ($strMessage == '')
+		if (!$strMessage)
 		{
 			return;
 		}
@@ -118,7 +117,7 @@ class Message
 	{
 		$strMessages = static::generateUnwrapped($strScope);
 
-		if ($strMessages != '')
+		if ($strMessages)
 		{
 			$strMessages = '<div class="tl_message">' . $strMessages . '</div>';
 		}

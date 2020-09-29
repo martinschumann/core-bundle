@@ -84,7 +84,7 @@ use Symfony\Component\HttpFoundation\Request;
  * @property string        $slabel            The submit button label
  * @property boolean       $preserveTags      Preserve HTML tags
  * @property boolean       $decodeEntities    Decode HTML entities
- * @property boolean       useRawRequestData  Use the raw request data from the Symfony request
+ * @property boolean       $useRawRequestData Use the raw request data from the Symfony request
  * @property integer       $minlength         The minimum length
  * @property integer       $maxlength         The maximum length
  * @property integer       $minval            The minimum value
@@ -240,7 +240,7 @@ abstract class Widget extends Controller
 				break;
 
 			case 'class':
-				if ($varValue != '' && strpos($this->strClass, $varValue) === false)
+				if ($varValue && strpos($this->strClass, $varValue) === false)
 				{
 					$this->strClass = trim($this->strClass . ' ' . $varValue);
 				}
@@ -266,7 +266,7 @@ abstract class Widget extends Controller
 				{
 					$varValue = $varValue ? 'on' : 'off';
 				}
-				// Do not add a break; statement here
+				// no break
 
 			case 'alt':
 			case 'style':
@@ -298,7 +298,7 @@ abstract class Widget extends Controller
 			case 'disabled':
 			case 'readonly':
 				$this->blnSubmitInput = $varValue ? false : true;
-				// Do not add a break; statement here
+				// no break
 
 			case 'autofocus':
 				if ($varValue)
@@ -316,7 +316,7 @@ abstract class Widget extends Controller
 				{
 					$this->strClass = trim($this->strClass . ' mandatory');
 				}
-				// Do not add a break; statement here
+				// no break
 
 			case 'mandatory':
 			case 'nospace':
@@ -363,15 +363,12 @@ abstract class Widget extends Controller
 		{
 			case 'id':
 				return $this->strId;
-				break;
 
 			case 'name':
 				return $this->strName;
-				break;
 
 			case 'label':
 				return $this->strLabel;
-				break;
 
 			case 'value':
 				// Encrypt the value
@@ -379,52 +376,45 @@ abstract class Widget extends Controller
 				{
 					return Encryption::encrypt($this->varValue);
 				}
-				elseif ($this->varValue === '')
+
+				if ($this->varValue === '')
 				{
 					return $this->getEmptyStringOrNull();
 				}
 
 				return $this->varValue;
-				break;
 
 			case 'class':
 				return $this->strClass;
-				break;
 
 			case 'prefix':
 				return $this->strPrefix;
-				break;
 
 			case 'template':
 				return $this->strTemplate;
-				break;
 
 			case 'wizard':
 				return $this->strWizard;
-				break;
 
 			case 'required':
 				return $this->arrConfiguration[$strKey];
-				break;
 
 			case 'forAttribute':
 				return $this->blnForAttribute;
-				break;
 
 			case 'dataContainer':
 				return $this->objDca;
-				break;
 
 			case 'activeRecord':
 				return $this->objDca->activeRecord;
-				break;
 
 			default:
 				if (isset($this->arrAttributes[$strKey]))
 				{
 					return $this->arrAttributes[$strKey];
 				}
-				elseif (isset($this->arrConfiguration[$strKey]))
+
+				if (isset($this->arrConfiguration[$strKey]))
 				{
 					return $this->arrConfiguration[$strKey];
 				}
@@ -447,51 +437,39 @@ abstract class Widget extends Controller
 		{
 			case 'id':
 				return isset($this->strId);
-				break;
 
 			case 'name':
 				return isset($this->strName);
-				break;
 
 			case 'label':
 				return isset($this->strLabel);
-				break;
 
 			case 'value':
 				return isset($this->varValue);
-				break;
 
 			case 'class':
 				return isset($this->strClass);
-				break;
 
 			case 'template':
 				return isset($this->strTemplate);
-				break;
 
 			case 'wizard':
 				return isset($this->strWizard);
-				break;
 
 			case 'required':
 				return isset($this->arrConfiguration[$strKey]);
-				break;
 
 			case 'forAttribute':
 				return isset($this->blnForAttribute);
-				break;
 
 			case 'dataContainer':
 				return isset($this->objDca);
-				break;
 
 			case 'activeRecord':
 				return isset($this->objDca->activeRecord);
-				break;
 
 			default:
 				return isset($this->arrAttributes[$strKey]) || isset($this->arrConfiguration[$strKey]);
-				break;
 		}
 	}
 
@@ -597,7 +575,7 @@ abstract class Widget extends Controller
 	 */
 	public function parse($arrAttributes=null)
 	{
-		if ($this->strTemplate == '')
+		if (!$this->strTemplate)
 		{
 			return '';
 		}
@@ -606,9 +584,15 @@ abstract class Widget extends Controller
 
 		$this->mandatoryField = $GLOBALS['TL_LANG']['MSC']['mandatory'];
 
-		if ($this->customTpl != '' && TL_MODE == 'FE')
+		if ($this->customTpl)
 		{
-			$this->strTemplate = $this->customTpl;
+			$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+			// Use the custom template unless it is a back end request
+			if (!$request || !System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
+			{
+				$this->strTemplate = $this->customTpl;
+			}
 		}
 
 		$strBuffer = $this->inherit();
@@ -633,17 +617,19 @@ abstract class Widget extends Controller
 	 */
 	public function generateLabel()
 	{
-		if ($this->strLabel == '')
+		if (!$this->strLabel)
 		{
 			return '';
 		}
 
-		return sprintf('<label%s%s>%s%s%s</label>',
-						($this->blnForAttribute ? ' for="ctrl_' . $this->strId . '"' : ''),
-						(($this->strClass != '') ? ' class="' . $this->strClass . '"' : ''),
-						($this->mandatory ? '<span class="invisible">'.$GLOBALS['TL_LANG']['MSC']['mandatory'].' </span>' : ''),
-						$this->strLabel,
-						($this->mandatory ? '<span class="mandatory">*</span>' : ''));
+		return sprintf(
+			'<label%s%s>%s%s%s</label>',
+			($this->blnForAttribute ? ' for="ctrl_' . $this->strId . '"' : ''),
+			($this->strClass ? ' class="' . $this->strClass . '"' : ''),
+			($this->mandatory ? '<span class="invisible">' . $GLOBALS['TL_LANG']['MSC']['mandatory'] . ' </span>' : ''),
+			$this->strLabel,
+			($this->mandatory ? '<span class="mandatory">*</span>' : '')
+		);
 	}
 
 	/**
@@ -716,7 +702,8 @@ abstract class Widget extends Controller
 		{
 			return ' ' . $strKey;
 		}
-		elseif ($varValue != '')
+
+		if ($varValue)
 		{
 			return ' ' . $strKey . '="' . StringUtil::specialchars($varValue) . '"';
 		}
@@ -823,31 +810,29 @@ abstract class Widget extends Controller
 			$varInput = trim($varInput);
 		}
 
-		if ($varInput == '')
+		if ((string) $varInput === '')
 		{
 			if (!$this->mandatory)
 			{
 				return '';
 			}
+
+			if (!$this->strLabel)
+			{
+				$this->addError($GLOBALS['TL_LANG']['ERR']['mdtryNoLabel']);
+			}
 			else
 			{
-				if ($this->strLabel == '')
-				{
-					$this->addError($GLOBALS['TL_LANG']['ERR']['mdtryNoLabel']);
-				}
-				else
-				{
-					$this->addError(sprintf($GLOBALS['TL_LANG']['ERR']['mandatory'], $this->strLabel));
-				}
+				$this->addError(sprintf($GLOBALS['TL_LANG']['ERR']['mandatory'], $this->strLabel));
 			}
 		}
 
-		if ($this->minlength && $varInput != '' && Utf8::strlen($varInput) < $this->minlength)
+		if ($this->minlength && $varInput && Utf8::strlen($varInput) < $this->minlength)
 		{
 			$this->addError(sprintf($GLOBALS['TL_LANG']['ERR']['minlength'], $this->strLabel, $this->minlength));
 		}
 
-		if ($this->maxlength && $varInput != '' && Utf8::strlen($varInput) > $this->maxlength)
+		if ($this->maxlength && $varInput && Utf8::strlen($varInput) > $this->maxlength)
 		{
 			$this->addError(sprintf($GLOBALS['TL_LANG']['ERR']['maxlength'], $this->strLabel, $this->maxlength));
 		}
@@ -862,12 +847,12 @@ abstract class Widget extends Controller
 			$this->addError(sprintf($GLOBALS['TL_LANG']['ERR']['maxval'], $this->strLabel, $this->maxval));
 		}
 
-		if ($this->rgxp != '')
+		if ($this->rgxp)
 		{
 			switch ($this->rgxp)
 			{
-				// Special validation rule for style sheets
 				case strncmp($this->rgxp, 'digit_', 6) === 0:
+					// Special validation rule for style sheets
 					$textual = explode('_', $this->rgxp);
 					array_shift($textual);
 
@@ -875,22 +860,21 @@ abstract class Widget extends Controller
 					{
 						break;
 					}
-					// DO NOT ADD A break; STATEMENT HERE
+					// no break
 
-				// Numeric characters (including full stop [.] and minus [-])
 				case 'digit':
 					// Support decimal commas and convert them automatically (see #3488)
 					if (substr_count($varInput, ',') == 1 && strpos($varInput, '.') === false)
 					{
 						$varInput = str_replace(',', '.', $varInput);
 					}
+
 					if (!Validator::isNumeric($varInput))
 					{
 						$this->addError(sprintf($GLOBALS['TL_LANG']['ERR']['digit'], $this->strLabel));
 					}
 					break;
 
-				// Natural numbers (positive integers)
 				case 'natural':
 					if (!Validator::isNatural($varInput))
 					{
@@ -898,7 +882,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Alphabetic characters (including full stop [.] minus [-] and space [ ])
 				case 'alpha':
 					if (!Validator::isAlphabetic($varInput))
 					{
@@ -906,7 +889,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Alphanumeric characters (including full stop [.] minus [-], underscore [_] and space [ ])
 				case 'alnum':
 					if (!Validator::isAlphanumeric($varInput))
 					{
@@ -914,7 +896,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Do not allow any characters that are usually encoded by class Input ([#<>()\=])
 				case 'extnd':
 					if (!Validator::isExtendedAlphanumeric(html_entity_decode($varInput)))
 					{
@@ -922,7 +903,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a valid date format
 				case 'date':
 					if (!Validator::isDate($varInput))
 					{
@@ -942,7 +922,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a valid time format
 				case 'time':
 					if (!Validator::isTime($varInput))
 					{
@@ -950,7 +929,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a valid date and time format
 				case 'datim':
 					if (!Validator::isDatim($varInput))
 					{
@@ -970,25 +948,24 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a valid friendly name e-mail address
 				case 'friendly':
 					list ($strName, $varInput) = StringUtil::splitFriendlyEmail($varInput);
-					// no break;
+					// no break
 
-				// Check whether the current value is a valid e-mail address
 				case 'email':
 					if (!Validator::isEmail($varInput))
 					{
 						$this->addError(sprintf($GLOBALS['TL_LANG']['ERR']['email'], $this->strLabel));
 					}
+
 					if ($this->rgxp == 'friendly' && !empty($strName))
 					{
 						$varInput = $strName . ' [' . $varInput . ']';
 					}
 					break;
 
-				// Check whether the current value is list of valid e-mail addresses
 				case 'emails':
+					// Check whether the current value is list of valid e-mail addresses
 					$arrEmails = StringUtil::trimsplit(',', $varInput);
 
 					foreach ($arrEmails as $strEmail)
@@ -1003,7 +980,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a valid URL
 				case 'url':
 					if (!Validator::isUrl($varInput))
 					{
@@ -1011,7 +987,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a valid alias
 				case 'alias':
 					if (!Validator::isAlias($varInput))
 					{
@@ -1019,7 +994,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a valid folder URL alias
 				case 'folderalias':
 					if (!Validator::isFolderAlias($varInput))
 					{
@@ -1027,7 +1001,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Phone numbers (numeric characters, space [ ], plus [+], minus [-], parentheses [()] and slash [/])
 				case 'phone':
 					if (!Validator::isPhone(html_entity_decode($varInput)))
 					{
@@ -1035,7 +1008,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a percent value
 				case 'prcnt':
 					if (!Validator::isPercent($varInput))
 					{
@@ -1043,7 +1015,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a locale
 				case 'locale':
 					if (!Validator::isLocale($varInput))
 					{
@@ -1051,7 +1022,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a language code
 				case 'language':
 					if (!Validator::isLanguage($varInput))
 					{
@@ -1059,7 +1029,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a Google+ ID or vanity name
 				case 'google+':
 					if (!Validator::isGooglePlusId($varInput))
 					{
@@ -1067,7 +1036,6 @@ abstract class Widget extends Controller
 					}
 					break;
 
-				// Check whether the current value is a field name
 				case 'fieldname':
 					if (!Validator::isFieldName($varInput))
 					{
@@ -1095,7 +1063,7 @@ abstract class Widget extends Controller
 			}
 		}
 
-		if ($this->isHexColor && $varInput != '' && strncmp($varInput, '$', 1) !== 0)
+		if ($this->isHexColor && $varInput && strncmp($varInput, '$', 1) !== 0)
 		{
 			$varInput = preg_replace('/[^a-f0-9]+/i', '', $varInput);
 		}
@@ -1110,7 +1078,7 @@ abstract class Widget extends Controller
 			$varInput = preg_replace('/\s+/', '_', trim($varInput));
 		}
 
-		if (\is_bool($this->trailingSlash) && $varInput != '')
+		if (\is_bool($this->trailingSlash) && $varInput)
 		{
 			$varInput = preg_replace('/\/+$/', '', $varInput) . ($this->trailingSlash ? '/' : '');
 		}
@@ -1260,12 +1228,12 @@ abstract class Widget extends Controller
 	/**
 	 * Extract the Widget attributes from a Data Container array
 	 *
-	 * @param array              $arrData  The field configuration array
-	 * @param string             $strName  The field name in the form
-	 * @param mixed              $varValue The field value
-	 * @param string             $strField The field name in the database
-	 * @param string             $strTable The table name in the database
-	 * @param DataContainer|null $objDca   An optional DataContainer object
+	 * @param array                     $arrData  The field configuration array
+	 * @param string                    $strName  The field name in the form
+	 * @param mixed                     $varValue The field value
+	 * @param string                    $strField The field name in the database
+	 * @param string                    $strTable The table name in the database
+	 * @param DataContainer|Module|null $objDca   An optional DataContainer or Module object
 	 *
 	 * @return array An attributes array that can be passed to a widget
 	 */
@@ -1277,7 +1245,7 @@ abstract class Widget extends Controller
 		$arrAttributes['name'] = $strName;
 		$arrAttributes['strField'] = $strField;
 		$arrAttributes['strTable'] = $strTable;
-		$arrAttributes['label'] = (($label = \is_array($arrData['label']) ? $arrData['label'][0] : $arrData['label']) != false) ? $label : $strField;
+		$arrAttributes['label'] = (($label = \is_array($arrData['label']) ? $arrData['label'][0] : $arrData['label']) !== null) ? $label : $strField;
 		$arrAttributes['description'] = $arrData['label'][1];
 		$arrAttributes['type'] = $arrData['inputType'];
 		$arrAttributes['dataContainer'] = $objDca;
@@ -1287,15 +1255,15 @@ abstract class Widget extends Controller
 		{
 			if ($arrData['inputType'] == 'checkbox' || $arrData['inputType'] == 'checkboxWizard' || $arrData['inputType'] == 'radio' || $arrData['inputType'] == 'radioTable')
 			{
-				$arrAttributes['onclick'] = trim($arrAttributes['onclick'] . " Backend.autoSubmit('".$strTable."')");
+				$arrAttributes['onclick'] = trim($arrAttributes['onclick'] . " Backend.autoSubmit('" . $strTable . "')");
 			}
 			else
 			{
-				$arrAttributes['onchange'] = trim($arrAttributes['onchange'] . " Backend.autoSubmit('".$strTable."')");
+				$arrAttributes['onchange'] = trim($arrAttributes['onchange'] . " Backend.autoSubmit('" . $strTable . "')");
 			}
 		}
 
-		$arrAttributes['allowHtml'] = ($arrData['eval']['allowHtml'] || \strlen($arrData['eval']['rte']) || $arrData['eval']['preserveTags']) ? true : false;
+		$arrAttributes['allowHtml'] = ($arrData['eval']['allowHtml'] || $arrData['eval']['rte'] || $arrData['eval']['preserveTags']);
 
 		// Decode entities if HTML is allowed
 		if ($arrAttributes['allowHtml'] || $arrData['inputType'] == 'fileTree')
@@ -1304,9 +1272,9 @@ abstract class Widget extends Controller
 		}
 
 		// Add Ajax event
-		if ($arrData['inputType'] == 'checkbox' && \is_array($GLOBALS['TL_DCA'][$strTable]['subpalettes']) && \array_key_exists($strField, $GLOBALS['TL_DCA'][$strTable]['subpalettes']) && $arrData['eval']['submitOnChange'])
+		if ($arrData['inputType'] == 'checkbox' && $arrData['eval']['submitOnChange'] && \is_array($GLOBALS['TL_DCA'][$strTable]['subpalettes']) && \array_key_exists($strField, $GLOBALS['TL_DCA'][$strTable]['subpalettes']))
 		{
-			$arrAttributes['onclick'] = "AjaxRequest.toggleSubpalette(this, 'sub_".$strName."', '".$strField."')";
+			$arrAttributes['onclick'] = "AjaxRequest.toggleSubpalette(this, 'sub_" . $strName . "', '" . $strField . "')";
 		}
 
 		// Options callback
@@ -1349,7 +1317,7 @@ abstract class Widget extends Controller
 		// Add options
 		if (\is_array($arrData['options']))
 		{
-			$blnIsAssociative = ($arrData['eval']['isAssociative'] || array_is_assoc($arrData['options']));
+			$blnIsAssociative = ($arrData['eval']['isAssociative'] || ArrayUtil::isAssoc($arrData['options']));
 			$blnUseReference = isset($arrData['reference']);
 
 			if ($arrData['eval']['includeBlankOption'] && !$arrData['eval']['multiple'])
@@ -1358,32 +1326,56 @@ abstract class Widget extends Controller
 				$arrAttributes['options'][] = array('value'=>'', 'label'=>$strLabel);
 			}
 
+			$isKnownOption = false;
+
 			foreach ($arrData['options'] as $k=>$v)
 			{
 				if (!\is_array($v))
 				{
-					$arrAttributes['options'][] = array('value'=>($blnIsAssociative ? $k : $v), 'label'=>($blnUseReference ? ((($ref = (\is_array($arrData['reference'][$v]) ? $arrData['reference'][$v][0] : $arrData['reference'][$v])) != false) ? $ref : $v) : $v));
+					$value = $blnIsAssociative ? $k : $v;
+
+					if ($varValue && $varValue == $value)
+					{
+						$isKnownOption = true;
+					}
+
+					$arrAttributes['options'][] = array('value'=>$value, 'label'=>($blnUseReference ? ((($ref = (\is_array($arrData['reference'][$v]) ? $arrData['reference'][$v][0] : $arrData['reference'][$v])) != false) ? $ref : $v) : $v));
 					continue;
 				}
 
 				$key = $blnUseReference ? ((($ref = (\is_array($arrData['reference'][$k]) ? $arrData['reference'][$k][0] : $arrData['reference'][$k])) != false) ? $ref : $k) : $k;
-				$blnIsAssoc = array_is_assoc($v);
+				$blnIsAssoc = ArrayUtil::isAssoc($v);
 
 				foreach ($v as $kk=>$vv)
 				{
-					$arrAttributes['options'][$key][] = array('value'=>($blnIsAssoc ? $kk : $vv), 'label'=>($blnUseReference ? ((($ref = (\is_array($arrData['reference'][$vv]) ? $arrData['reference'][$vv][0] : $arrData['reference'][$vv])) != false) ? $ref : $vv) : $vv));
+					$value = $blnIsAssoc ? $kk : $vv;
+
+					if ($varValue && $varValue == $value)
+					{
+						$isKnownOption = true;
+					}
+
+					$arrAttributes['options'][$key][] = array('value'=>$value, 'label'=>($blnUseReference ? ((($ref = (\is_array($arrData['reference'][$vv]) ? $arrData['reference'][$vv][0] : $arrData['reference'][$vv])) != false) ? $ref : $vv) : $vv));
 				}
+			}
+
+			// If the value is not in the options array, the current user most
+			// likely cannot access it. We add the value as unknown option, so
+			// it does not get lost when saving the record (see #920).
+			if ($varValue && !$isKnownOption)
+			{
+				$arrAttributes['options'][] = array('value'=>$varValue, 'label'=>$GLOBALS['TL_LANG']['MSC']['unknownOption']);
 			}
 		}
 
 		if (\is_array($arrAttributes['sql']) && !isset($arrAttributes['sql']['columnDefinition']))
 		{
-			if (isset($arrAttributes['sql']['length']) && !isset($arrAttributes['maxlength']))
+			if (!isset($arrAttributes['maxlength']) && isset($arrAttributes['sql']['length']))
 			{
 				$arrAttributes['maxlength'] = $arrAttributes['sql']['length'];
 			}
 
-			if (isset($arrAttributes['sql']['customSchemaOptions']['unique']) && !isset($arrAttributes['unique']))
+			if (!isset($arrAttributes['unique']) && isset($arrAttributes['sql']['customSchemaOptions']['unique']))
 			{
 				$arrAttributes['unique'] = $arrAttributes['sql']['customSchemaOptions']['unique'];
 			}
@@ -1416,7 +1408,7 @@ abstract class Widget extends Controller
 		// Warn if someone uses the "encrypt" flag (see #8589)
 		if (isset($arrAttributes['encrypt']))
 		{
-			@trigger_error('Using the "encrypt" flag' . (!empty($strTable) && !empty($strField) ? ' on ' . $strTable . '.' . $strField : '') . ' has been deprecated and will no longer work in Contao 5.0. Use the load and save callbacks with a third-party library such as OpenSSL or phpseclib instead.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.0', 'Using the "encrypt" flag' . (!empty($strTable) && !empty($strField) ? ' on ' . $strTable . '.' . $strField : '') . ' has been deprecated and will no longer work in Contao 5.0. Use the load and save callbacks with a third-party library such as OpenSSL or phpseclib instead.');
 		}
 
 		return $arrAttributes;
@@ -1440,7 +1432,7 @@ abstract class Widget extends Controller
 	/**
 	 * Return the empty value based on the SQL string
 	 *
-	 * @param string $sql The SQL string
+	 * @param string|array $sql The SQL string
 	 *
 	 * @return string|integer|null The empty value
 	 */
@@ -1483,7 +1475,7 @@ abstract class Widget extends Controller
 			return null;
 		}
 
-		$type = strtolower(preg_replace('/^([A-Za-z]+)(\(| ).*$/', '$1', $sql));
+		$type = strtolower(preg_replace('/^([A-Za-z]+)[( ].*$/', '$1', $sql));
 
 		if (\in_array($type, array('int', 'integer', 'tinyint', 'smallint', 'mediumint', 'bigint', 'float', 'double', 'dec', 'decimal')))
 		{
@@ -1534,7 +1526,7 @@ abstract class Widget extends Controller
 	 */
 	protected function addSubmit()
 	{
-		@trigger_error('Using Widget::addSubmit() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Widget::addSubmit()" has been deprecated and will no longer work in Contao 5.0.');
 
 		return '';
 	}

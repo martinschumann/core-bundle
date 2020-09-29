@@ -164,12 +164,14 @@ class ContaoContextTest extends TestCase
 
         $container = $this->getContainerWithContaoConfiguration();
         $container->set('contao.resource_finder', $finder);
+        $container->set('request_stack', new RequestStack());
+        $container->setParameter('kernel.project_dir', $this->getFixturesDir());
 
         System::setContainer($container);
 
         $page = new PageModel();
         $page->type = 'root';
-        $page->fallback = true;
+        $page->fallback = '1';
         $page->staticPlugins = '';
 
         return $page->loadDetails();

@@ -22,9 +22,6 @@ class XliffFileLoaderTest extends TestCase
      */
     private $loader;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -128,15 +125,15 @@ TXT;
         );
     }
 
+    /**
+     * @psalm-suppress InvalidArrayOffset
+     */
     public function testOverridesKeysInLanguageArray(): void
     {
         $GLOBALS['TL_LANG']['MSC']['third'] = 'is-a-string';
 
         $loader = new XliffFileLoader($this->getFixturesDir().'/app', true);
-        $loader->load(
-            $this->getFixturesDir().'/vendor/contao/test-bundle/Resources/contao/languages/en/default.xlf',
-            'en'
-        );
+        $loader->load($this->getFixturesDir().'/vendor/contao/test-bundle/Resources/contao/languages/en/default.xlf', 'en');
 
         $this->assertSame('This is the third source', $GLOBALS['TL_LANG']['MSC']['third']['with'][1]);
     }

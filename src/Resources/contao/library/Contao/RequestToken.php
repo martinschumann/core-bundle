@@ -12,7 +12,7 @@ namespace Contao;
 
 use Symfony\Component\Security\Csrf\CsrfToken;
 
-@trigger_error('Using the Contao\RequestToken class has been deprecated and will no longer work in Contao 5.0. Use the Symfony CSRF service via the container instead.', E_USER_DEPRECATED);
+trigger_deprecation('contao/core-bundle', '4.0', 'Using the "Contao\RequestToken" class has been deprecated and will no longer work in Contao 5.0. Use the Symfony CSRF service via the container instead.');
 
 /**
  * Generates and validates request tokens
@@ -36,7 +36,6 @@ use Symfony\Component\Security\Csrf\CsrfToken;
  */
 class RequestToken
 {
-
 	/**
 	 * Read the token from the session or generate a new one
 	 */
@@ -67,7 +66,7 @@ class RequestToken
 	public static function validate($strToken)
 	{
 		// The feature has been disabled
-		if (Config::get('disableRefererCheck') || \defined('BYPASS_TOKEN_CHECK'))
+		if (\defined('BYPASS_TOKEN_CHECK') || Config::get('disableRefererCheck'))
 		{
 			return true;
 		}

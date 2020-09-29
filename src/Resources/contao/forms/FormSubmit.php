@@ -27,7 +27,6 @@ namespace Contao;
  */
 class FormSubmit extends Widget
 {
-
 	/**
 	 * Template
 	 *
@@ -84,7 +83,9 @@ class FormSubmit extends Widget
 	/**
 	 * Do not validate
 	 */
-	public function validate() {}
+	public function validate()
+	{
+	}
 
 	/**
 	 * Parse the template file and return it as string
@@ -95,7 +96,7 @@ class FormSubmit extends Widget
 	 */
 	public function parse($arrAttributes=null)
 	{
-		if ($this->imageSubmit && $this->singleSRC != '')
+		if ($this->imageSubmit && $this->singleSRC)
 		{
 			$objModel = FilesModel::findByUuid($this->singleSRC);
 
@@ -117,22 +118,26 @@ class FormSubmit extends Widget
 	{
 		if ($this->src)
 		{
-			return sprintf('<input type="image" src="%s" id="ctrl_%s" class="submit%s" title="%s" alt="%s"%s%s',
-							$this->src,
-							$this->strId,
-							(($this->strClass != '') ? ' ' . $this->strClass : ''),
-							StringUtil::specialchars($this->slabel),
-							StringUtil::specialchars($this->slabel),
-							$this->getAttributes(),
-							$this->strTagEnding);
+			return sprintf(
+				'<input type="image" src="%s" id="ctrl_%s" class="submit%s" title="%s" alt="%s"%s%s',
+				$this->src,
+				$this->strId,
+				($this->strClass ? ' ' . $this->strClass : ''),
+				StringUtil::specialchars($this->slabel),
+				StringUtil::specialchars($this->slabel),
+				$this->getAttributes(),
+				$this->strTagEnding
+			);
 		}
 
 		// Return the regular button
-		return sprintf('<button type="submit" id="ctrl_%s" class="submit%s"%s>%s</button>',
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						$this->getAttributes(),
-						$this->slabel);
+		return sprintf(
+			'<button type="submit" id="ctrl_%s" class="submit%s"%s>%s</button>',
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			$this->getAttributes(),
+			$this->slabel
+		);
 	}
 }
 

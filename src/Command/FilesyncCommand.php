@@ -21,25 +21,22 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Synchronizes the file system with the database.
+ *
+ * @internal
  */
 class FilesyncCommand extends Command implements FrameworkAwareInterface
 {
     use FrameworkAwareTrait;
 
-    /**
-     * {@inheritdoc}
-     */
+    protected static $defaultName = 'contao:filesync';
+
     protected function configure(): void
     {
         $this
-            ->setName('contao:filesync')
             ->setDescription('Synchronizes the file system with the database.')
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->framework->initialize();

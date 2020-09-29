@@ -45,9 +45,6 @@ class ContaoTableHandler extends AbstractProcessingHandler implements ContainerA
         $this->dbalServiceName = $name;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function handle(array $record): bool
     {
         if (!$this->isHandling($record)) {
@@ -57,7 +54,7 @@ class ContaoTableHandler extends AbstractProcessingHandler implements ContainerA
         $record = $this->processRecord($record);
         $record['formatted'] = $this->getFormatter()->format($record);
 
-        if (!isset($record['extra']['contao']) || !($record['extra']['contao'] instanceof ContaoContext)) {
+        if (!isset($record['extra']['contao']) || !$record['extra']['contao'] instanceof ContaoContext) {
             return false;
         }
 
@@ -72,9 +69,6 @@ class ContaoTableHandler extends AbstractProcessingHandler implements ContainerA
         return false === $this->bubble;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function write(array $record): void
     {
         $this->createStatement();
@@ -96,9 +90,6 @@ class ContaoTableHandler extends AbstractProcessingHandler implements ContainerA
         ]);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function getDefaultFormatter(): LineFormatter
     {
         return new LineFormatter('%message%');
@@ -146,7 +137,7 @@ class ContaoTableHandler extends AbstractProcessingHandler implements ContainerA
             return;
         }
 
-        @trigger_error('Using the addLogEntry hook has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+        trigger_deprecation('contao/core-bundle', '4.0', 'Using the "addLogEntry" hook has been deprecated and will no longer work in Contao 5.0.');
 
         /** @var System $system */
         $system = $framework->getAdapter(System::class);

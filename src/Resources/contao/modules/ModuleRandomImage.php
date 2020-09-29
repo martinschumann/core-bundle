@@ -19,7 +19,6 @@ use Contao\Model\Collection;
  */
 class ModuleRandomImage extends Module
 {
-
 	/**
 	 * Files object
 	 * @var Collection|FilesModel
@@ -150,7 +149,7 @@ class ModuleRandomImage extends Module
 		{
 			$arrImage['caption'] = null;
 		}
-		elseif ($arrImage['caption'] == '')
+		elseif (!$arrImage['caption'])
 		{
 			$arrImage['caption'] = $arrImage['title'];
 		}

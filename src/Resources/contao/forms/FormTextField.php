@@ -24,10 +24,11 @@ namespace Contao;
  * @property boolean $hideInput
  *
  * @author Leo Feyer <https://github.com/leofeyer>
+ *
+ * @todo Rename to FormText in Contao 5.0
  */
 class FormTextField extends Widget
 {
-
 	/**
 	 * Submit user input
 	 *
@@ -46,6 +47,8 @@ class FormTextField extends Widget
 	 * Template
 	 *
 	 * @var string
+	 *
+	 * @todo Rename to form_text in Contao 5.0
 	 */
 	protected $strTemplate = 'form_textfield';
 
@@ -66,36 +69,17 @@ class FormTextField extends Widget
 	{
 		switch ($strKey)
 		{
-			// Treat minlength/minval as min for number type field (#1622)
 			case 'minlength':
-			case 'minval':
-				if ($this->type == 'number')
+				if ($varValue > 0 && $this->rgxp != 'digit')
 				{
-					$this->min = $varValue;
-				}
-				else
-				{
-					$this->arrConfiguration[$strKey] = $varValue;
+					$this->arrAttributes['minlength'] =  $varValue;
 				}
 				break;
 
-			// Treat maxlength/maxval as max for number type field (#1622)
 			case 'maxlength':
-			case 'maxval':
-				if ($varValue > 0)
+				if ($varValue > 0 && $this->rgxp != 'digit')
 				{
-					if ($this->type == 'number')
-					{
-						$this->max = $varValue;
-					}
-					elseif ($strKey == 'maxlength')
-					{
-						$this->arrAttributes[$strKey] = $varValue;
-					}
-					else
-					{
-						$this->arrConfiguration[$strKey] = $varValue;
-					}
+					$this->arrAttributes['maxlength'] =  $varValue;
 				}
 				break;
 
@@ -112,13 +96,32 @@ class FormTextField extends Widget
 				break;
 
 			case 'min':
+			case 'minval':
+				if ($this->rgxp == 'digit')
+				{
+					$this->arrAttributes['min'] = $varValue;
+				}
+				break;
+
 			case 'max':
-				$this->arrAttributes[$strKey] = $varValue;
-				$this->arrConfiguration[$strKey . 'val'] = $varValue;
-				unset($this->arrAttributes[$strKey . 'length']);
+			case 'maxval':
+				if ($this->rgxp == 'digit')
+				{
+					$this->arrAttributes['max'] = $varValue;
+				}
 				break;
 
 			case 'step':
+				if ($varValue > 0 && $this->type == 'number')
+				{
+					$this->arrAttributes[$strKey] = $varValue;
+				}
+				else
+				{
+					unset($this->arrAttributes[$strKey]);
+				}
+				break;
+
 			case 'placeholder':
 				$this->arrAttributes[$strKey] = $varValue;
 				break;
@@ -157,11 +160,8 @@ class FormTextField extends Widget
 				{
 					return Idna::decodeEmail($this->varValue);
 				}
-				else
-				{
-					return $this->varValue;
-				}
-				break;
+
+				return $this->varValue;
 
 			case 'type':
 				if ($this->hideInput)
@@ -178,52 +178,25 @@ class FormTextField extends Widget
 						{
 							$this->addAttribute('step', 'any');
 						}
-						// NO break; here
+						// no break
 
 					case 'natural':
 						return 'number';
-						break;
 
 					case 'phone':
 						return 'tel';
-						break;
 
 					case 'email':
 						return 'email';
-						break;
 
 					case 'url':
 						return 'url';
-						break;
 				}
 
 				return 'text';
-				break;
 
 			default:
 				return parent::__get($strKey);
-				break;
-		}
-	}
-
-	/**
-	 * Re-add some attributes if the field type is a number
-	 */
-	public function addAttributes($arrAttributes)
-	{
-		parent::addAttributes($arrAttributes);
-
-		if ($this->type != 'number')
-		{
-			return;
-		}
-
-		foreach (array('minlength', 'minval', 'maxlength', 'maxval') as $name)
-		{
-			if (isset($arrAttributes[$name]))
-			{
-				$this->$name = $arrAttributes[$name];
-			}
 		}
 	}
 
@@ -248,7 +221,9 @@ class FormTextField extends Widget
 			{
 				$varInput = Idna::encodeUrl($varInput);
 			}
-			catch (\InvalidArgumentException $e) {}
+			catch (\InvalidArgumentException $e)
+			{
+			}
 		}
 		elseif ($this->rgxp == 'email' || $this->rgxp == 'friendly')
 		{
@@ -265,15 +240,17 @@ class FormTextField extends Widget
 	 */
 	public function generate()
 	{
-		return sprintf('<input type="%s" name="%s" id="ctrl_%s" class="text%s%s" value="%s"%s%s',
-						$this->type,
-						$this->strName,
-						$this->strId,
-						($this->hideInput ? ' password' : ''),
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						StringUtil::specialchars($this->value),
-						$this->getAttributes(),
-						$this->strTagEnding);
+		return sprintf(
+			'<input type="%s" name="%s" id="ctrl_%s" class="text%s%s" value="%s"%s%s',
+			$this->type,
+			$this->strName,
+			$this->strId,
+			($this->hideInput ? ' password' : ''),
+			($this->strClass ? ' ' . $this->strClass : ''),
+			StringUtil::specialchars($this->value),
+			$this->getAttributes(),
+			$this->strTagEnding
+		);
 	}
 }
 

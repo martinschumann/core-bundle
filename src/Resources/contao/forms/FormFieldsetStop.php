@@ -17,7 +17,6 @@ namespace Contao;
  */
 class FormFieldsetStop extends Widget
 {
-
 	/**
 	 * Template
 	 *
@@ -41,8 +40,9 @@ class FormFieldsetStop extends Widget
 	 */
 	public function parse($arrAttributes=null)
 	{
-		// Return a wildcard in the back end
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 

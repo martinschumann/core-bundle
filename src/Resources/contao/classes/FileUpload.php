@@ -19,7 +19,6 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 class FileUpload extends Backend
 {
-
 	/**
 	 * Error indicator
 	 * @var boolean
@@ -87,7 +86,7 @@ class FileUpload extends Backend
 	 */
 	public function uploadTo($strTarget)
 	{
-		if ($strTarget == '' || Validator::isInsecurePath($strTarget))
+		if (!$strTarget || Validator::isInsecurePath($strTarget))
 		{
 			throw new \InvalidArgumentException('Invalid target path ' . $strTarget);
 		}
@@ -145,13 +144,12 @@ class FileUpload extends Backend
 				Message::addError(sprintf($GLOBALS['TL_LANG']['ERR']['filesize'], $maxlength_kb_readable));
 				$this->blnHasError = true;
 			}
-
 			else
 			{
 				$strExtension = strtolower(substr($file['name'], strrpos($file['name'], '.') + 1));
 
 				// Image is too big
-				if (\in_array($strExtension, array('gif', 'jpg', 'jpeg', 'png')) && System::getContainer()->getParameter('contao.image.reject_large_uploads'))
+				if (\in_array($strExtension, array('gif', 'jpg', 'jpeg', 'png', 'webp')) && System::getContainer()->getParameter('contao.image.reject_large_uploads'))
 				{
 					$arrImageSize = getimagesize($file['tmp_name']);
 
@@ -237,7 +235,7 @@ class FileUpload extends Backend
 
 		for ($i=0; $i<$intCount; $i++)
 		{
-			if ($_FILES[$this->strName]['name'][$i] == '')
+			if (!$_FILES[$this->strName]['name'][$i])
 			{
 				continue;
 			}
@@ -265,7 +263,7 @@ class FileUpload extends Backend
 	 */
 	protected function getMaximumUploadSize()
 	{
-		@trigger_error('Using FileUpload::getMaximumUploadSize() has been deprecated and will no longer work in Contao 5.0. Use FileUpload::getMaxUploadSize() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.6', 'Using "Contao\FileUpload::getMaximumUploadSize()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\FileUpload::getMaxUploadSize()" instead.');
 
 		return static::getMaxUploadSize();
 	}
@@ -337,10 +335,7 @@ class FileUpload extends Backend
 		// Resized successfully
 		if ($blnResize)
 		{
-			$container = System::getContainer();
-			$rootDir = $container->getParameter('kernel.project_dir');
-			$container->get('contao.image.image_factory')->create($rootDir . '/' . $strImage, array($arrImageSize[0], $arrImageSize[1]), $rootDir . '/' . $strImage);
-
+			$objFile->resizeTo($arrImageSize[0], $arrImageSize[1]);
 			Message::addInfo(sprintf($GLOBALS['TL_LANG']['MSC']['fileResized'], $objFile->basename));
 			$this->log('File "' . $strImage . '" was scaled down to the maximum dimensions', __METHOD__, TL_FILES);
 			$this->blnHasResized = true;

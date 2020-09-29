@@ -28,7 +28,6 @@ use Symfony\Component\Finder\SplFileInfo;
  */
 class TemplateLoader
 {
-
 	/**
 	 * Known files
 	 * @var array
@@ -78,7 +77,12 @@ class TemplateLoader
 	 */
 	public static function getPrefixedFiles($prefix)
 	{
-		return array_values(preg_grep('/^' . rtrim($prefix, '_') . '($|_)/', array_keys(self::$files)));
+		if (substr($prefix, -1) != '_')
+		{
+			$prefix .= '($|_)';
+		}
+
+		return array_values(preg_grep('/^' . $prefix . '/', array_keys(self::$files)));
 	}
 
 	/**
@@ -93,21 +97,18 @@ class TemplateLoader
 	public static function getPath($template, $format, $custom='templates')
 	{
 		$file = $template . '.' . $format;
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Check the theme folder first
-		if (file_exists($rootDir . '/' . $custom . '/' . $file))
+		if (file_exists($projectDir . '/' . $custom . '/' . $file))
 		{
-			return $rootDir . '/' . $custom . '/' . $file;
+			return $projectDir . '/' . $custom . '/' . $file;
 		}
 
 		// Then check the global templates directory (see #5547)
-		if ($custom != 'templates')
+		if ($custom != 'templates' && file_exists($projectDir . '/templates/' . $file))
 		{
-			if (file_exists($rootDir . '/templates/' . $file))
-			{
-				return $rootDir . '/templates/' . $file;
-			}
+			return $projectDir . '/templates/' . $file;
 		}
 
 		return static::getDefaultPath($template, $format);
@@ -127,11 +128,11 @@ class TemplateLoader
 	{
 		$file = $template . '.' . $format;
 		$container = System::getContainer();
-		$rootDir = $container->getParameter('kernel.project_dir');
+		$projectDir = $container->getParameter('kernel.project_dir');
 
 		if (isset(self::$files[$template]))
 		{
-			return $rootDir . '/' . self::$files[$template] . '/' . $file;
+			return $projectDir . '/' . self::$files[$template] . '/' . $file;
 		}
 
 		$strPath = null;
@@ -145,7 +146,9 @@ class TemplateLoader
 				$strPath = $file->getPathname();
 			}
 		}
-		catch (\InvalidArgumentException $e) {}
+		catch (\InvalidArgumentException $e)
+		{
+		}
 
 		if ($strPath !== null)
 		{
@@ -179,8 +182,20 @@ class TemplateLoader
 					self::addFile($file->getBasename('.html5'), rtrim($objFilesystem->makePathRelative($file->getPath(), $container->getParameter('kernel.project_dir')), '/'));
 				}
 			}
-			catch (\InvalidArgumentException $e) {}
+			catch (\InvalidArgumentException $e)
+			{
+			}
 		}
+	}
+
+	/**
+	 * Reset the template list
+	 *
+	 * @internal Do not use this method in your code; it is meant for unit testing only
+	 */
+	public static function reset()
+	{
+		self::$files = array();
 	}
 }
 

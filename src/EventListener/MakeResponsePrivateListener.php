@@ -12,52 +12,101 @@ declare(strict_types=1);
 
 namespace Contao\CoreBundle\EventListener;
 
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
+use Contao\CoreBundle\Routing\ScopeMatcher;
+use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\EventListener\AbstractSessionListener;
 
+/**
+ * @internal
+ */
 class MakeResponsePrivateListener
 {
+    public const DEBUG_HEADER = 'Contao-Private-Response-Reason';
+
+    /**
+     * @var ScopeMatcher
+     */
+    private $scopeMatcher;
+
+    public function __construct(ScopeMatcher $scopeMatcher)
+    {
+        $this->scopeMatcher = $scopeMatcher;
+    }
+
     /**
      * Make sure that the current response becomes a private response if any
      * of the following conditions are true.
      *
-     *   1. The session was started
-     *   2. The response sets a cookie (same reason as 1 but for other cookies than the session cookie)
-     *   3. The response has a "Vary: Cookie" header and the request provides at least one cookie
+     *   1. An Authorization header is present
+     *   2. The session was started
+     *   3. The response sets a cookie (same reason as 2 but for other cookies than the session cookie)
+     *   4. The response has a "Vary: Cookie" header and the request provides at least one cookie
      *
-     * Some of this logic is also already implemented in the HttpCache (1 and 2), but we
+     * Some of this logic is also already implemented in the HttpCache (1, 2 and 3), but we
      * want to make sure it works for any reverse proxy without having to configure too much.
      */
-    public function onKernelResponse(FilterResponseEvent $event): void
+    public function __invoke(ResponseEvent $event): void
     {
-        if (!$event->isMasterRequest()) {
+        if (!$this->scopeMatcher->isContaoMasterRequest($event)) {
             return;
         }
 
         $request = $event->getRequest();
         $response = $event->getResponse();
 
+        // Disable the default Symfony auto cache control
+        $response->headers->set(AbstractSessionListener::NO_AUTO_CACHE_CONTROL_HEADER, '1');
+
         // If the response is not cacheable for a reverse proxy, we don't have to do anything anyway
         if (!$response->isCacheable()) {
             return;
         }
 
-        // 1) The session was started
-        if (null !== ($session = $request->getSession()) && $session->isStarted()) {
-            $response->setPrivate();
+        // 1) An Authorization header is present
+        if ($request->headers->has('Authorization')) {
+            $this->makePrivate($response, 'authorization');
 
             return;
         }
 
-        // 2) The response sets a cookie (same reason as 1 but for other cookies than the session cookie)
-        if (0 !== \count($response->headers->getCookies())) {
-            $response->setPrivate();
+        // 2) The session was started
+        if ($request->hasSession() && $request->getSession()->isStarted()) {
+            $this->makePrivate($response, 'session-cookie');
 
             return;
         }
 
-        // 3) The response has a "Vary: Cookie" header and the request provides at least one cookie
+        // 3) The response sets a cookie (same reason as 2 but for other cookies than the session cookie)
+        $cookies = $response->headers->getCookies();
+
+        if (0 !== \count($cookies)) {
+            $this->makePrivate(
+                $response,
+                sprintf('response-cookies (%s)', implode(', ', array_map(
+                    static function (Cookie $cookie) {
+                        return $cookie->getName();
+                    },
+                    $cookies
+                )))
+            );
+
+            return;
+        }
+
+        // 4) The response has a "Vary: Cookie" header and the request provides at least one cookie
         if ($request->cookies->count() && \in_array('cookie', array_map('strtolower', $response->getVary()), true)) {
-            $response->setPrivate();
+            $this->makePrivate(
+                $response,
+                sprintf('request-cookies (%s)', implode(', ', array_keys($request->cookies->all())))
+            );
         }
+    }
+
+    private function makePrivate(Response $response, string $reason): void
+    {
+        $response->setPrivate();
+        $response->headers->set(self::DEBUG_HEADER, $reason);
     }
 }

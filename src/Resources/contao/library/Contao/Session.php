@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
 use Symfony\Component\HttpFoundation\Session\Session as SymfonySession;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
-@trigger_error('Using the Contao\Session class has been deprecated and will no longer work in Contao 5.0. Use the session service instead.', E_USER_DEPRECATED);
+trigger_deprecation('contao/core-bundle', '4.0', 'Using the "Contao\Session" class has been deprecated and will no longer work in Contao 5.0. Use the session service instead.');
 
 /**
  * Handles reading and updating the session data
@@ -35,7 +35,6 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
  */
 class Session
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var Session
@@ -58,14 +57,14 @@ class Session
 	 * Session keys that are not stored in the parameter bag
 	 * @var array
 	 */
-	private $mappedKeys = array('referer', 'popupReferer', 'CURRENT_ID');
+	private static $mappedKeys = array('referer', 'popupReferer', 'CURRENT_ID');
 
 	/**
 	 * Get the session data
 	 */
 	protected function __construct()
 	{
-		if (PHP_SAPI == 'cli')
+		if (\PHP_SAPI == 'cli')
 		{
 			$this->session = new SymfonySession(new MockArraySessionStorage());
 		}
@@ -80,7 +79,9 @@ class Session
 	/**
 	 * Prevent cloning of the object (Singleton)
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Return the object instance (Singleton)
@@ -107,7 +108,7 @@ class Session
 	public function get($strKey)
 	{
 		// Map the referer (see #281)
-		if (\in_array($strKey, $this->mappedKeys))
+		if (\in_array($strKey, self::$mappedKeys))
 		{
 			return $this->session->get($strKey);
 		}
@@ -124,7 +125,7 @@ class Session
 	public function set($strKey, $varValue)
 	{
 		// Map the referer (see #281)
-		if (\in_array($strKey, $this->mappedKeys))
+		if (\in_array($strKey, self::$mappedKeys))
 		{
 			$this->session->set($strKey, $varValue);
 		}
@@ -142,7 +143,7 @@ class Session
 	public function remove($strKey)
 	{
 		// Map the referer (see #281)
-		if (\in_array($strKey, $this->mappedKeys))
+		if (\in_array($strKey, self::$mappedKeys))
 		{
 			$this->session->remove($strKey);
 		}
@@ -162,7 +163,7 @@ class Session
 		$data = $this->sessionBag->all();
 
 		// Map the referer (see #281)
-		foreach ($this->mappedKeys as $strKey)
+		foreach (self::$mappedKeys as $strKey)
 		{
 			unset($data[$strKey]);
 
@@ -190,7 +191,7 @@ class Session
 		}
 
 		// Map the referer (see #281)
-		foreach ($this->mappedKeys as $strKey)
+		foreach (self::$mappedKeys as $strKey)
 		{
 			if (isset($arrData[$strKey]))
 			{
@@ -224,7 +225,7 @@ class Session
 		foreach ($varData as $k=>$v)
 		{
 			// Map the referer (see #281)
-			if (\in_array($k, $this->mappedKeys))
+			if (\in_array($k, self::$mappedKeys))
 			{
 				$this->session->set($k, $v);
 			}

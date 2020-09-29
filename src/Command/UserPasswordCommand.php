@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Contao\CoreBundle\Command;
 
+use Contao\BackendUser;
 use Contao\Config;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Doctrine\DBAL\Connection;
@@ -26,12 +27,17 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface;
 
 /**
  * Changes the password of a Contao back end user.
+ *
+ * @internal
  */
 class UserPasswordCommand extends Command
 {
+    protected static $defaultName = 'contao:user:password';
+
     /**
      * @var ContaoFramework
      */
@@ -42,35 +48,30 @@ class UserPasswordCommand extends Command
      */
     private $connection;
 
-    public function __construct(ContaoFramework $framework, Connection $connection)
+    /**
+     * @var EncoderFactoryInterface
+     */
+    private $encoderFactory;
+
+    public function __construct(ContaoFramework $framework, Connection $connection, EncoderFactoryInterface $encoderFactory)
     {
         $this->framework = $framework;
         $this->connection = $connection;
+        $this->encoderFactory = $encoderFactory;
 
         parent::__construct();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
-            ->setName('contao:user:password')
             ->addArgument('username', InputArgument::REQUIRED, 'The username of the back end user')
-            ->addOption(
-                'password',
-                'p',
-                InputOption::VALUE_REQUIRED,
-                'The new password (using this option is not recommended for security reasons)'
-            )
+            ->addOption('password', 'p', InputOption::VALUE_REQUIRED, 'The new password (using this option is not recommended for security reasons)')
+            ->addOption('require-change', 'r', InputOption::VALUE_NONE, 'Require the user to change the password on their next login.')
             ->setDescription('Changes the password of a Contao back end user.')
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function interact(InputInterface $input, OutputInterface $output): void
     {
         if (null === $input->getArgument('username')) {
@@ -91,20 +92,33 @@ class UserPasswordCommand extends Command
         $input->setOption('password', $password);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (null === $input->getArgument('username') || null === $input->getOption('password')) {
             return 1;
         }
 
-        $hash = $this->validateAndHashPassword($input->getOption('password'));
+        $this->framework->initialize();
+
+        /** @var Config $config */
+        $config = $this->framework->getAdapter(Config::class);
+        $minLength = $config->get('minPasswordLength') ?: 8;
+
+        if (Utf8::strlen($input->getOption('password')) < $minLength) {
+            throw new InvalidArgumentException(sprintf('The password must be at least %s characters long.', $minLength));
+        }
+
+        $encoder = $this->encoderFactory->getEncoder(BackendUser::class);
+        $hash = $encoder->encodePassword($input->getOption('password'), null);
 
         $affected = $this->connection->update(
             'tl_user',
-            ['password' => $hash],
+            [
+                'password' => $hash,
+                'locked' => 0,
+                'loginAttempts' => 0,
+                'pwChange' => $input->getOption('require-change') ? '1' : '',
+            ],
             ['username' => $input->getArgument('username')]
         );
 
@@ -131,25 +145,5 @@ class UserPasswordCommand extends Command
         $helper = $this->getHelper('question');
 
         return $helper->ask($input, $output, $question);
-    }
-
-    /**
-     * @throws InvalidArgumentException
-     */
-    private function validateAndHashPassword(string $password): string
-    {
-        $this->framework->initialize();
-
-        /** @var Config $config */
-        $config = $this->framework->getAdapter(Config::class);
-        $passwordLength = $config->get('minPasswordLength') ?: 8;
-
-        if (Utf8::strlen($password) < $passwordLength) {
-            throw new InvalidArgumentException(
-                sprintf('The password must be at least %s characters long.', $passwordLength)
-            );
-        }
-
-        return password_hash($password, PASSWORD_DEFAULT);
     }
 }

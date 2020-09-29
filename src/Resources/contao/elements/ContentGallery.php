@@ -20,7 +20,6 @@ use Contao\Model\Collection;
  */
 class ContentGallery extends ContentElement
 {
-
 	/**
 	 * Files object
 	 * @var Collection|FilesModel
@@ -158,11 +157,17 @@ class ContentGallery extends ContentElement
 		{
 			default:
 			case 'name_asc':
-				uksort($images, 'basename_natcasecmp');
+				uksort($images, static function ($a, $b): int
+				{
+					return strnatcasecmp(basename($a), basename($b));
+				});
 				break;
 
 			case 'name_desc':
-				uksort($images, 'basename_natcasercmp');
+				uksort($images, static function ($a, $b): int
+				{
+					return -strnatcasecmp(basename($a), basename($b));
+				});
 				break;
 
 			case 'date_asc':
@@ -175,40 +180,11 @@ class ContentGallery extends ContentElement
 
 			// Deprecated since Contao 4.0, to be removed in Contao 5.0
 			case 'meta':
-				@trigger_error('The "meta" key in ContentGallery::compile() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
-				// no break;
+				trigger_deprecation('contao/core-bundle', '4.0', 'The "meta" key in "Contao\ContentGallery::compile()" has been deprecated and will no longer work in Contao 5.0.');
+				// no break
 
 			case 'custom':
-				if ($this->orderSRC != '')
-				{
-					$tmp = StringUtil::deserialize($this->orderSRC);
-
-					if (!empty($tmp) && \is_array($tmp))
-					{
-						// Remove all values
-						$arrOrder = array_map(function () {}, array_flip($tmp));
-
-						// Move the matching elements to their position in $arrOrder
-						foreach ($images as $k=>$v)
-						{
-							if (\array_key_exists($v['uuid'], $arrOrder))
-							{
-								$arrOrder[$v['uuid']] = $v;
-								unset($images[$k]);
-							}
-						}
-
-						// Append the left-over images at the end
-						if (!empty($images))
-						{
-							$arrOrder = array_merge($arrOrder, array_values($images));
-						}
-
-						// Remove empty (unreplaced) entries
-						$images = array_values(array_filter($arrOrder));
-						unset($arrOrder);
-					}
-				}
+				$images = ArrayUtil::sortByOrderField($images, $this->orderSRC);
 				break;
 
 			case 'random':
@@ -291,10 +267,10 @@ class ContentGallery extends ContentElement
 				$key = 'row_' . $rowcount . $class_tr . $class_eo;
 
 				// Empty cell
-				if (!\is_array($images[($i+$j)]) || ($j+$i) >= $limit)
+				if (($j+$i) >= $limit || !\is_array($images[($i+$j)]))
 				{
 					$objCell->colWidth = $colwidth . '%';
-					$objCell->class = 'col_'.$j . $class_td;
+					$objCell->class = 'col_' . $j . $class_td;
 				}
 				else
 				{
@@ -307,7 +283,7 @@ class ContentGallery extends ContentElement
 
 					// Add column width and class
 					$objCell->colWidth = $colwidth . '%';
-					$objCell->class = 'col_'.$j . $class_td;
+					$objCell->class = 'col_' . $j . $class_td;
 				}
 
 				$body[$key][$j] = $objCell;
@@ -316,15 +292,15 @@ class ContentGallery extends ContentElement
 			++$rowcount;
 		}
 
-		$strTemplate = 'gallery_default';
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
 
-		// Use a custom template
-		if (TL_MODE == 'FE' && $this->galleryTpl != '')
+		// Always use the default template in the back end
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
-			$strTemplate = $this->galleryTpl;
+			$this->galleryTpl = '';
 		}
 
-		$objTemplate = new FrontendTemplate($strTemplate);
+		$objTemplate = new FrontendTemplate($this->galleryTpl ?: 'gallery_default');
 		$objTemplate->setData($this->arrData);
 		$objTemplate->body = $body;
 		$objTemplate->headline = $this->headline; // see #1603

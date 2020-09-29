@@ -13,41 +13,38 @@ declare(strict_types=1);
 namespace Contao\CoreBundle\EventListener;
 
 use Contao\CoreBundle\Routing\ScopeMatcher;
+use Contao\User;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
-use Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolverInterface;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\Security\Core\Security;
 
+/**
+ * @internal
+ */
 class StoreRefererListener
 {
     /**
-     * @var TokenStorageInterface
+     * @var Security
      */
-    private $tokenStorage;
-
-    /**
-     * @var AuthenticationTrustResolverInterface
-     */
-    private $authenticationTrustResolver;
+    private $security;
 
     /**
      * @var ScopeMatcher
      */
     private $scopeMatcher;
 
-    public function __construct(TokenStorageInterface $tokenStorage, AuthenticationTrustResolverInterface $authenticationTrustResolver, ScopeMatcher $scopeMatcher)
+    public function __construct(Security $security, ScopeMatcher $scopeMatcher)
     {
-        $this->tokenStorage = $tokenStorage;
-        $this->authenticationTrustResolver = $authenticationTrustResolver;
+        $this->security = $security;
         $this->scopeMatcher = $scopeMatcher;
     }
 
     /**
      * Stores the referer in the session.
      */
-    public function onKernelResponse(FilterResponseEvent $event): void
+    public function __invoke(ResponseEvent $event): void
     {
-        if (!$this->scopeMatcher->isContaoMasterRequest($event)) {
+        if (!$this->scopeMatcher->isBackendMasterRequest($event)) {
             return;
         }
 
@@ -63,32 +60,21 @@ class StoreRefererListener
             return;
         }
 
-        $token = $this->tokenStorage->getToken();
+        $user = $this->security->getUser();
 
-        if (null === $token || $this->authenticationTrustResolver->isAnonymous($token)) {
+        if (!$user instanceof User) {
             return;
         }
 
-        if ($this->scopeMatcher->isBackendRequest($request)) {
-            $this->storeBackendReferer($request);
-        } else {
-            $this->storeFrontendReferer($request);
-        }
-    }
-
-    /**
-     * @throws \RuntimeException
-     */
-    private function storeBackendReferer(Request $request): void
-    {
         if (!$this->canModifyBackendSession($request)) {
             return;
         }
 
-        if (!$request->hasSession() || null === ($session = $request->getSession())) {
+        if (!$request->hasSession()) {
             throw new \RuntimeException('The request did not contain a session.');
         }
 
+        $session = $request->getSession();
         $key = $request->query->has('popup') ? 'popupReferer' : 'referer';
         $refererId = $request->attributes->get('_contao_referer_id');
         $referers = $this->prepareBackendReferer($refererId, $session->get($key));
@@ -114,8 +100,7 @@ class StoreRefererListener
             && !$request->query->has('state')
             && 'feRedirect' !== $request->query->get('do')
             && 'contao_backend' === $request->attributes->get('_route')
-            && !$request->isXmlHttpRequest()
-        ;
+            && !$request->isXmlHttpRequest();
     }
 
     /**
@@ -137,42 +122,6 @@ class StoreRefererListener
         }
 
         return $referers;
-    }
-
-    /**
-     * @throws \RuntimeException
-     */
-    private function storeFrontendReferer(Request $request): void
-    {
-        if (!$request->hasSession() || null === ($session = $request->getSession())) {
-            throw new \RuntimeException('The request did not contain a session.');
-        }
-
-        $refererOld = $session->get('referer');
-
-        if (!$this->canModifyFrontendSession($request, $refererOld)) {
-            return;
-        }
-
-        $refererNew = [
-            'last' => (string) $refererOld['current'],
-            'current' => $this->getRelativeRequestUri($request),
-        ];
-
-        $session->set('referer', $refererNew);
-    }
-
-    private function canModifyFrontendSession(Request $request, array $referer = null): bool
-    {
-        return (null !== $referer)
-            && !$request->query->has('pdf')
-            && !$request->query->has('file')
-            && !$request->query->has('id')
-            && isset($referer['current'])
-            && 'contao_frontend' === $request->attributes->get('_route')
-            && $this->getRelativeRequestUri($request) !== $referer['current']
-            && !$request->isXmlHttpRequest()
-        ;
     }
 
     /**

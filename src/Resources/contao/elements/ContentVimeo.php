@@ -17,7 +17,6 @@ namespace Contao;
  */
 class ContentVimeo extends ContentElement
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -31,18 +30,20 @@ class ContentVimeo extends ContentElement
 	 */
 	public function generate()
 	{
-		if ($this->vimeo == '')
+		if (!$this->vimeo)
 		{
 			return '';
 		}
 
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$return = '<p><a href="https://vimeo.com/' . $this->vimeo . '" target="_blank" rel="noreferrer noopener">vimeo.com/' . $this->vimeo . '</a></p>';
 
-			if ($this->headline != '')
+			if ($this->headline)
 			{
-				$return = '<'. $this->hl .'>'. $this->headline .'</'. $this->hl .'>'. $return;
+				$return = '<' . $this->hl . '>' . $this->headline . '</' . $this->hl . '>' . $return;
 			}
 
 			return $return;

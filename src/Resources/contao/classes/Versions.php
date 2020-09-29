@@ -11,6 +11,8 @@
 namespace Contao;
 
 use Contao\CoreBundle\Exception\ResponseException;
+use Doctrine\DBAL\Types\BinaryType;
+use Doctrine\DBAL\Types\BlobType;
 
 /**
  * Provide methods to handle versioning.
@@ -19,7 +21,6 @@ use Contao\CoreBundle\Exception\ResponseException;
  */
 class Versions extends Controller
 {
-
 	/**
 	 * Table
 	 * @var string
@@ -65,7 +66,8 @@ class Versions extends Controller
 
 		$this->loadDataContainer($strTable);
 
-		if (!isset($GLOBALS['TL_DCA'][$strTable])) {
+		if (!isset($GLOBALS['TL_DCA'][$strTable]))
+		{
 			throw new \InvalidArgumentException(sprintf('"%s" is not a valid table', StringUtil::specialchars($strTable)));
 		}
 
@@ -141,13 +143,15 @@ class Versions extends Controller
 			return;
 		}
 
-		$this->create();
+		$this->create(true);
 	}
 
 	/**
 	 * Create a new version of a record
+	 *
+	 * @param boolean $blnHideUser
 	 */
-	public function create()
+	public function create($blnHideUser=false)
 	{
 		if (!$GLOBALS['TL_DCA'][$this->strTable]['config']['enableVersioning'])
 		{
@@ -168,53 +172,34 @@ class Versions extends Controller
 			return;
 		}
 
-		// Store the content if it is an editable file
-		if ($this->strTable == 'tl_files')
-		{
-			$objModel = FilesModel::findByPk($this->intPid);
+		$data = $objRecord->row();
 
-			if ($objModel !== null && \in_array($objModel->extension, StringUtil::trimsplit(',', strtolower(Config::get('editableFiles')))))
+		// Remove fields that are excluded from versioning
+		foreach (array_keys($data) as $k)
+		{
+			if (isset($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['versionize']) && $GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['versionize'] === false)
 			{
-				$objFile = new File($objModel->path);
-
-				if ($objFile->extension == 'svgz')
-				{
-					$objRecord->content = gzdecode($objFile->getContent());
-				}
-				else
-				{
-					$objRecord->content = $objFile->getContent();
-				}
+				unset($data[$k]);
 			}
-		}
-
-		$intVersion = 1;
-
-		$objVersion = $this->Database->prepare("SELECT MAX(version) AS version FROM tl_version WHERE pid=? AND fromTable=?")
-									 ->execute($this->intPid, $this->strTable);
-
-		if ($objVersion->version !== null)
-		{
-			$intVersion = $objVersion->version + 1;
 		}
 
 		$strDescription = '';
 
-		if (!empty($objRecord->title))
+		if (!empty($data['title']))
 		{
-			$strDescription = $objRecord->title;
+			$strDescription = $data['title'];
 		}
-		elseif (!empty($objRecord->name))
+		elseif (!empty($data['name']))
 		{
-			$strDescription = $objRecord->name;
+			$strDescription = $data['name'];
 		}
-		elseif (!empty($objRecord->firstname))
+		elseif (!empty($data['firstname']))
 		{
-			$strDescription = $objRecord->firstname . ' ' . $objRecord->lastname;
+			$strDescription = $data['firstname'] . ' ' . $data['lastname'];
 		}
-		elseif (!empty($objRecord->headline))
+		elseif (!empty($data['headline']))
 		{
-			$chunks = StringUtil::deserialize($objRecord->headline);
+			$chunks = StringUtil::deserialize($data['headline']);
 
 			if (\is_array($chunks) && isset($chunks['value']))
 			{
@@ -222,23 +207,28 @@ class Versions extends Controller
 			}
 			else
 			{
-				$strDescription = $objRecord->headline;
+				$strDescription = $data['headline'];
 			}
 		}
-		elseif (!empty($objRecord->selector))
+		elseif (!empty($data['selector']))
 		{
-			$strDescription = $objRecord->selector;
+			$strDescription = $data['selector'];
 		}
-		elseif (!empty($objRecord->subject))
+		elseif (!empty($data['subject']))
 		{
-			$strDescription = $objRecord->subject;
+			$strDescription = $data['subject'];
 		}
 
-		$this->Database->prepare("UPDATE tl_version SET active='' WHERE pid=? AND fromTable=?")
-					   ->execute($this->intPid, $this->strTable);
+		$intId = $this->Database->prepare("INSERT INTO tl_version (pid, tstamp, version, fromTable, username, userid, description, editUrl, active, data) VALUES (?, ?, IFNULL((SELECT MAX(version) FROM (SELECT version FROM tl_version WHERE pid=? AND fromTable=?) v), 0) + 1, ?, ?, ?, ?, ?, 1, ?)")
+								->execute($this->intPid, time(), $this->intPid, $this->strTable, $this->strTable, $blnHideUser ? null : $this->getUsername(), $blnHideUser ? 0 : $this->getUserId(), $strDescription, $this->getEditUrl(), serialize($data))
+								->insertId;
 
-		$this->Database->prepare("INSERT INTO tl_version (pid, tstamp, version, fromTable, username, userid, description, editUrl, active, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)")
-					   ->execute($this->intPid, time(), $intVersion, $this->strTable, $this->getUsername(), $this->getUserId(), $strDescription, $this->getEditUrl(), serialize($objRecord->row()));
+		$this->Database->prepare("UPDATE tl_version SET active='' WHERE pid=? AND fromTable=? AND id!=?")
+					   ->execute($this->intPid, $this->strTable, $intId);
+
+		$intVersion = $this->Database->prepare("SELECT version FROM tl_version WHERE id=?")
+									 ->execute($intId)
+									 ->version;
 
 		// Trigger the oncreate_version_callback
 		if (\is_array($GLOBALS['TL_DCA'][$this->strTable]['config']['oncreate_version_callback']))
@@ -248,16 +238,16 @@ class Versions extends Controller
 				if (\is_array($callback))
 				{
 					$this->import($callback[0]);
-					$this->{$callback[0]}->{$callback[1]}($this->strTable, $this->intPid, $intVersion, $objRecord->row());
+					$this->{$callback[0]}->{$callback[1]}($this->strTable, $this->intPid, $intVersion, $data);
 				}
 				elseif (\is_callable($callback))
 				{
-					$callback($this->strTable, $this->intPid, $intVersion, $objRecord->row());
+					$callback($this->strTable, $this->intPid, $intVersion, $data);
 				}
 			}
 		}
 
-		$this->log('Version '.$intVersion.' of record "'.$this->strTable.'.id='.$this->intPid.'" has been created'.$this->getParentEntries($this->strTable, $this->intPid), __METHOD__, TL_GENERAL);
+		$this->log('Version ' . $intVersion . ' of record "' . $this->strTable . '.id=' . $this->intPid . '" has been created' . $this->getParentEntries($this->strTable, $this->intPid), __METHOD__, TL_GENERAL);
 	}
 
 	/**
@@ -288,28 +278,6 @@ class Versions extends Controller
 			return;
 		}
 
-		// Restore the content if it is an editable file
-		if ($this->strTable == 'tl_files')
-		{
-			$objModel = FilesModel::findByPk($this->intPid);
-
-			if ($objModel !== null && \in_array($objModel->extension, StringUtil::trimsplit(',', strtolower(Config::get('editableFiles')))))
-			{
-				$objFile = new File($objModel->path);
-
-				if ($objFile->extension == 'svgz')
-				{
-					$objFile->write(gzencode($data['content']));
-				}
-				else
-				{
-					$objFile->write($data['content']);
-				}
-
-				$objFile->close();
-			}
-		}
-
 		// Get the currently available fields
 		$arrFields = array_flip($this->Database->getFieldNames($this->strTable));
 
@@ -320,6 +288,28 @@ class Versions extends Controller
 		foreach (array_diff_key($arrFields, $data) as $k=>$v)
 		{
 			$data[$k] = Widget::getEmptyValueByFieldType($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['sql']);
+		}
+
+		foreach ($data as $k=>$v)
+		{
+			// Remove fields that are excluded from versioning
+			if (isset($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['versionize']) && $GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['versionize'] === false)
+			{
+				unset($data[$k]);
+				continue;
+			}
+
+			// Reset unique fields if the restored value already exists (see #698)
+			if (isset($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['unique']) && $GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['unique'] === true)
+			{
+				$objResult = $this->Database->prepare("SELECT COUNT(*) AS cnt FROM " . $this->strTable . " WHERE " . Database::quoteIdentifier($k) . "=? AND id!=?")
+											->execute($v, $this->intPid);
+
+				if ($objResult->cnt > 0)
+				{
+					$data[$k] = Widget::getEmptyValueByFieldType($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['sql']);
+				}
+			}
 		}
 
 		$this->Database->prepare("UPDATE " . $this->strTable . " %s WHERE id=?")
@@ -352,7 +342,7 @@ class Versions extends Controller
 		// Trigger the deprecated onrestore_callback
 		if (\is_array($GLOBALS['TL_DCA'][$this->strTable]['config']['onrestore_callback']))
 		{
-			@trigger_error('Using the onrestore_callback has been deprecated and will no longer work in Contao 5.0. Use the onrestore_version_callback instead.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.0', 'Using the "onrestore_callback" has been deprecated and will no longer work in Contao 5.0. Use the "onrestore_version_callback" instead.');
 
 			foreach ($GLOBALS['TL_DCA'][$this->strTable]['config']['onrestore_callback'] as $callback)
 			{
@@ -368,7 +358,7 @@ class Versions extends Controller
 			}
 		}
 
-		$this->log('Version '.$intVersion.' of record "'.$this->strTable.'.id='.$this->intPid.'" has been restored'.$this->getParentEntries($this->strTable, $this->intPid), __METHOD__, TL_GENERAL);
+		$this->log('Version ' . $intVersion . ' of record "' . $this->strTable . '.id=' . $this->intPid . '" has been restored' . $this->getParentEntries($this->strTable, $this->intPid), __METHOD__, TL_GENERAL);
 	}
 
 	/**
@@ -408,7 +398,7 @@ class Versions extends Controller
 				}
 
 				$arrVersions[$objVersions->version] = $objVersions->row();
-				$arrVersions[$objVersions->version]['info'] = $GLOBALS['TL_LANG']['MSC']['version'].' '.$objVersions->version.' ('.Date::parse(Config::get('datimFormat'), $objVersions->tstamp).') '.$objVersions->username;
+				$arrVersions[$objVersions->version]['info'] = $GLOBALS['TL_LANG']['MSC']['version'] . ' ' . $objVersions->version . ' (' . Date::parse(Config::get('datimFormat'), $objVersions->tstamp) . ') ' . $objVersions->username;
 			}
 
 			// To
@@ -457,7 +447,8 @@ class Versions extends Controller
 
 				// Get the order fields
 				$objDcaExtractor = DcaExtractor::getInstance($this->strTable);
-				$arrOrder = $objDcaExtractor->getOrderFields();
+				$arrFields = $objDcaExtractor->getFields();
+				$arrOrderFields = $objDcaExtractor->getOrderFields();
 
 				// Find the changed fields and highlight the changes
 				foreach ($to as $k=>$v)
@@ -469,7 +460,14 @@ class Versions extends Controller
 							continue;
 						}
 
-						$blnIsBinary = ($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['inputType'] == 'fileTree' || \in_array($k, $arrOrder));
+						if (\is_array($arrFields[$k]))
+						{
+							$blnIsBinary = $arrFields[$k]['type'] === BinaryType::class || $arrFields[$k]['type'] === BlobType::class;
+						}
+						else
+						{
+							$blnIsBinary = strncmp($arrFields[$k], 'binary(', 7) === 0 || strncmp($arrFields[$k], 'blob ', 5) === 0;
+						}
 
 						// Decrypt the values
 						if ($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['encrypt'])
@@ -478,7 +476,7 @@ class Versions extends Controller
 							$from[$k] = Encryption::decrypt($from[$k]);
 						}
 
-						if ($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['multiple'])
+						if ($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['multiple'] || \in_array($k, $arrOrderFields))
 						{
 							if (isset($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['csv']))
 							{
@@ -488,6 +486,7 @@ class Versions extends Controller
 								{
 									$to[$k] = preg_replace('/' . preg_quote($delimiter, ' ?/') . '/', $delimiter . ' ', $to[$k]);
 								}
+
 								if (isset($from[$k]))
 								{
 									$from[$k] = preg_replace('/' . preg_quote($delimiter, ' ?/') . '/', $delimiter . ' ', $from[$k]);
@@ -496,11 +495,12 @@ class Versions extends Controller
 							else
 							{
 								// Convert serialized arrays into strings
-								if (\is_array(($tmp = StringUtil::deserialize($to[$k]))) && !\is_array($to[$k]))
+								if (!\is_array($to[$k]) && \is_array(($tmp = StringUtil::deserialize($to[$k]))))
 								{
 									$to[$k] = $this->implodeRecursive($tmp, $blnIsBinary);
 								}
-								if (\is_array(($tmp = StringUtil::deserialize($from[$k]))) && !\is_array($from[$k]))
+
+								if (!\is_array($from[$k]) && \is_array(($tmp = StringUtil::deserialize($from[$k]))))
 								{
 									$from[$k] = $this->implodeRecursive($tmp, $blnIsBinary);
 								}
@@ -516,9 +516,10 @@ class Versions extends Controller
 							{
 								$to[$k] = StringUtil::binToUuid($to[$k]);
 							}
+
 							if (Validator::isBinaryUuid($from[$k]))
 							{
-								$to[$k] = StringUtil::binToUuid($from[$k]);
+								$from[$k] = StringUtil::binToUuid($from[$k]);
 							}
 						}
 
@@ -533,7 +534,7 @@ class Versions extends Controller
 							$to[$k] = Date::parse(Config::get('timeFormat'), $to[$k] ?: '');
 							$from[$k] = Date::parse(Config::get('timeFormat'), $from[$k] ?: '');
 						}
-						elseif ($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['rgxp'] == 'datim' || $k == 'tstamp')
+						elseif ($k == 'tstamp' || $GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['eval']['rgxp'] == 'datim')
 						{
 							$to[$k] = Date::parse(Config::get('datimFormat'), $to[$k] ?: '');
 							$from[$k] = Date::parse(Config::get('datimFormat'), $from[$k] ?: '');
@@ -551,22 +552,34 @@ class Versions extends Controller
 						{
 							$to[$k] = explode("\n", $to[$k]);
 						}
+
 						if (!\is_array($from[$k]))
 						{
 							$from[$k] = explode("\n", $from[$k]);
 						}
 
+						$field = $k;
+
+						if (isset($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['label']))
+						{
+							$field = \is_array($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['label']) ? $GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['label'][0] : $GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['label'];
+						}
+						elseif (isset($GLOBALS['TL_LANG']['MSC'][$k]))
+						{
+							$field = \is_array($GLOBALS['TL_LANG']['MSC'][$k]) ? $GLOBALS['TL_LANG']['MSC'][$k][0] : $GLOBALS['TL_LANG']['MSC'][$k];
+						}
+
 						$objDiff = new \Diff($from[$k], $to[$k]);
-						$strBuffer .= $objDiff->render(new DiffRenderer(array('field'=>($GLOBALS['TL_DCA'][$this->strTable]['fields'][$k]['label'][0] ?: (isset($GLOBALS['TL_LANG']['MSC'][$k]) ? (\is_array($GLOBALS['TL_LANG']['MSC'][$k]) ? $GLOBALS['TL_LANG']['MSC'][$k][0] : $GLOBALS['TL_LANG']['MSC'][$k]) : $k)))));
+						$strBuffer .= $objDiff->render(new DiffRenderer(array('field'=>$field)));
 					}
 				}
 			}
 		}
 
 		// Identical versions
-		if ($strBuffer == '')
+		if (!$strBuffer)
 		{
-			$strBuffer = '<p>'.$GLOBALS['TL_LANG']['MSC']['identicalVersions'].'</p>';
+			$strBuffer = '<p>' . $GLOBALS['TL_LANG']['MSC']['identicalVersions'] . '</p>';
 		}
 
 		if ($blnReturnBuffer)
@@ -585,7 +598,6 @@ class Versions extends Controller
 		$objTemplate->language = $GLOBALS['TL_LANGUAGE'];
 		$objTemplate->title = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['showDifferences']);
 		$objTemplate->charset = Config::get('characterSet');
-		$objTemplate->action = ampersand(Environment::get('request'));
 
 		throw new ResponseException($objTemplate->getResponse());
 	}
@@ -598,7 +610,7 @@ class Versions extends Controller
 	public function renderDropdown()
 	{
 		$objVersion = $this->Database->prepare("SELECT tstamp, version, username, active FROM tl_version WHERE fromTable=? AND pid=? ORDER BY version DESC")
-								     ->execute($this->strTable, $this->intPid);
+									 ->execute($this->strTable, $this->intPid);
 
 		if ($objVersion->numRows < 2)
 		{
@@ -610,20 +622,20 @@ class Versions extends Controller
 		while ($objVersion->next())
 		{
 			$versions .= '
-  <option value="'.$objVersion->version.'"'.($objVersion->active ? ' selected="selected"' : '').'>'.$GLOBALS['TL_LANG']['MSC']['version'].' '.$objVersion->version.' ('.Date::parse(Config::get('datimFormat'), $objVersion->tstamp).') '.$objVersion->username.'</option>';
+  <option value="' . $objVersion->version . '"' . ($objVersion->active ? ' selected="selected"' : '') . '>' . $GLOBALS['TL_LANG']['MSC']['version'] . ' ' . $objVersion->version . ' (' . Date::parse(Config::get('datimFormat'), $objVersion->tstamp) . ') ' . $objVersion->username . '</option>';
 		}
 
 		return '
 <div class="tl_version_panel">
 
-<form action="'.ampersand(Environment::get('request'), true).'" id="tl_version" class="tl_form" method="post" aria-label="'.StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['versioning']).'">
+<form id="tl_version" class="tl_form" method="post" aria-label="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['versioning']) . '">
 <div class="tl_formbody">
 <input type="hidden" name="FORM_SUBMIT" value="tl_version">
-<input type="hidden" name="REQUEST_TOKEN" value="'.REQUEST_TOKEN.'">
-<select name="version" class="tl_select">'.$versions.'
+<input type="hidden" name="REQUEST_TOKEN" value="' . REQUEST_TOKEN . '">
+<select name="version" class="tl_select">' . $versions . '
 </select>
-<button type="submit" name="showVersion" id="showVersion" class="tl_submit">'.$GLOBALS['TL_LANG']['MSC']['restore'].'</button>
-<a href="'.Backend::addToUrl('versions=1&amp;popup=1').'" title="'.StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['showDifferences']).'" onclick="Backend.openModalIframe({\'title\':\''.StringUtil::specialchars(str_replace("'", "\\'", sprintf($GLOBALS['TL_LANG']['MSC']['recordOfTable'], $this->intPid, $this->strTable))).'\',\'url\':this.href});return false">'.Image::getHtml('diff.svg').'</a>
+<button type="submit" name="showVersion" id="showVersion" class="tl_submit">' . $GLOBALS['TL_LANG']['MSC']['restore'] . '</button>
+<a href="' . Backend::addToUrl('versions=1&amp;popup=1') . '" title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['showDifferences']) . '" onclick="Backend.openModalIframe({\'title\':\'' . StringUtil::specialchars(str_replace("'", "\\'", sprintf($GLOBALS['TL_LANG']['MSC']['recordOfTable'], $this->intPid, $this->strTable))) . '\',\'url\':this.href});return false">' . Image::getHtml('diff.svg') . '</a>
 </div>
 </form>
 
@@ -644,7 +656,7 @@ class Versions extends Controller
 		$objDatabase = Database::getInstance();
 
 		// Get the total number of versions
-		$objTotal = $objDatabase->prepare("SELECT COUNT(*) AS count FROM tl_version WHERE version>1 AND editUrl IS NOT NULL" . (!$objUser->isAdmin ? " AND userid=?" : ""))
+		$objTotal = $objDatabase->prepare("SELECT COUNT(*) AS count FROM tl_version WHERE editUrl IS NOT NULL" . (!$objUser->isAdmin ? " AND userid=?" : ""))
 								->execute($objUser->id);
 
 		$intLast   = ceil($objTotal->count / 30);
@@ -683,9 +695,15 @@ class Versions extends Controller
 			$arrRow['description'] = StringUtil::substr($arrRow['description'], 32);
 			$arrRow['shortTable'] = StringUtil::substr($arrRow['fromTable'], 18); // see #5769
 
-			if ($arrRow['editUrl'] != '')
+			if (isset($arrRow['editUrl']))
 			{
-				$arrRow['editUrl'] = preg_replace(array('/&(amp;)?popup=1/', '/&(amp;)?rt=[^&]+/'), array('', '&amp;rt=' . REQUEST_TOKEN), ampersand($arrRow['editUrl']));
+				// Adjust the edit URL of files in case they have been renamed (see #671)
+				if ($arrRow['fromTable'] == 'tl_files' && ($filesModel = FilesModel::findByPk($arrRow['pid'])))
+				{
+					$arrRow['editUrl'] = preg_replace('/id=[^&]+/', 'id=' . $filesModel->path, $arrRow['editUrl']);
+				}
+
+				$arrRow['editUrl'] = preg_replace(array('/&(amp;)?popup=1/', '/&(amp;)?rt=[^&]+/'), array('', '&amp;rt=' . REQUEST_TOKEN), StringUtil::ampersand($arrRow['editUrl']));
 			}
 
 			$arrVersions[] = $arrRow;
@@ -745,7 +763,8 @@ class Versions extends Controller
 			$strUrl = preg_replace
 			(
 				array('/&(amp;)?id=[^&]+/', '/(&(amp;)?)t(id=[^&]+)/', '/(&(amp;)?)state=[^&]*/'),
-				array('', '$1$3', '$1act=edit'), $strUrl
+				array('', '$1$3', '$1act=edit'),
+				$strUrl
 			);
 		}
 
@@ -808,28 +827,27 @@ class Versions extends Controller
 	{
 		if (!\is_array($var))
 		{
-			return $binary ? StringUtil::binToUuid($var) : $var;
+			return $binary && Validator::isBinaryUuid($var) ? StringUtil::binToUuid($var) : $var;
 		}
-		elseif (!\is_array(current($var)))
+
+		if (!\is_array(current($var)))
 		{
 			if ($binary)
 			{
-				$var = array_map(function ($v) { return $v ? StringUtil::binToUuid($v) : ''; }, $var);
+				$var = array_map(static function ($v) { return Validator::isBinaryUuid($v) ? StringUtil::binToUuid($v) : $v; }, $var);
 			}
 
 			return implode(', ', $var);
 		}
-		else
+
+		$buffer = '';
+
+		foreach ($var as $k=>$v)
 		{
-			$buffer = '';
-
-			foreach ($var as $k=>$v)
-			{
-				$buffer .= $k . ": " . $this->implodeRecursive($v) . "\n";
-			}
-
-			return trim($buffer);
+			$buffer .= $k . ": " . $this->implodeRecursive($v) . "\n";
 		}
+
+		return trim($buffer);
 	}
 }
 

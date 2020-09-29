@@ -17,7 +17,6 @@ namespace Contao;
  */
 class ContentSliderStop extends ContentElement
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -29,10 +28,11 @@ class ContentSliderStop extends ContentElement
 	 */
 	protected function compile()
 	{
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$this->strTemplate = 'be_wildcard';
-
 			$this->Template = new BackendTemplate($this->strTemplate);
 		}
 

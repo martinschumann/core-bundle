@@ -33,13 +33,13 @@
         <source>Invalid source or target directory &quot;%s&quot;!</source>
         <target>Neveljaven izvorni ali ciljni direktorij &quot;%s&quot;!</target>
       </trans-unit>
-      <trans-unit id="tl_templates.new_tpl.0">
-        <source>New template</source>
-        <target>Nova predloga</target>
+      <trans-unit id="tl_templates.overridesAnotherTpl">
+        <source>This template overrides &quot;%s&quot;.</source>
+        <target>Ta predloga prepiše &quot;%s&quot;.</target>
       </trans-unit>
-      <trans-unit id="tl_templates.new_tpl.1">
-        <source>Create a new template</source>
-        <target>Ustvari novo predlogo</target>
+      <trans-unit id="tl_templates.pleaseSelect">
+        <source>Please select a template from the list above and click &quot;Show differences&quot;.</source>
+        <target>Izberite predlogo iz seznama zgorj in kliknite &quot;Prikaži razlike&quot;.</target>
       </trans-unit>
       <trans-unit id="tl_templates.new.0">
         <source>New folder</source>
@@ -49,29 +49,24 @@
         <source>Create a new folder</source>
         <target>Ustvari novo predlogo</target>
       </trans-unit>
+      <trans-unit id="tl_templates.new_tpl.0">
+        <source>New template</source>
+        <target>Nova predloga</target>
+      </trans-unit>
+      <trans-unit id="tl_templates.new_tpl.1">
+        <source>Create a new template</source>
+        <target>Ustvari novo predlogo</target>
+      </trans-unit>
       <trans-unit id="tl_templates.pasteinto.0">
-        <source>Paste into</source>
-        <target>Prilepi v</target>
+        <source>Paste into the root folder</source>
       </trans-unit>
       <trans-unit id="tl_templates.pasteinto.1">
-        <source>Paste into this folder</source>
-        <target>Prilepi v mapo</target>
+        <source>Paste into folder &quot;%s&quot;</source>
+        <target>Prilepi v mapo &quot;%s&quot;</target>
       </trans-unit>
-      <trans-unit id="tl_templates.compare.0">
-        <source>Compare template</source>
-        <target>Primerjaj predlogo</target>
-      </trans-unit>
-      <trans-unit id="tl_templates.compare.1">
+      <trans-unit id="tl_templates.compare">
         <source>Compare &quot;%s&quot; with another template</source>
         <target>Primerjaj &quot;%s&quot; z drugo predlogo</target>
-      </trans-unit>
-      <trans-unit id="tl_templates.overridesAnotherTpl">
-        <source>This template overrides &quot;%s&quot;.</source>
-        <target>Ta predloga prepiše &quot;%s&quot;.</target>
-      </trans-unit>
-      <trans-unit id="tl_templates.pleaseSelect">
-        <source>Please select a template from the list above and click &quot;Show differences&quot;.</source>
-        <target>Izberite predlogo iz seznama zgorj in kliknite &quot;Prikaži razlike&quot;.</target>
       </trans-unit>
     </body>
   </file>

@@ -19,7 +19,6 @@ namespace Contao;
  */
 class MetaWizard extends Widget
 {
-
 	/**
 	 * Submit user input
 	 * @var boolean
@@ -40,28 +39,26 @@ class MetaWizard extends Widget
 	 */
 	public function __set($strKey, $varValue)
 	{
-		switch ($strKey)
+		if ($strKey == 'metaFields')
 		{
-			case 'metaFields':
-				if (!array_is_assoc($varValue))
+			if (!ArrayUtil::isAssoc($varValue))
+			{
+				$varValue = array_combine($varValue, array_fill(0, \count($varValue), ''));
+			}
+
+			foreach ($varValue as $strArrKey => $varArrValue)
+			{
+				if (!\is_array($varArrValue))
 				{
-					$varValue = array_combine($varValue, array_fill(0, \count($varValue), ''));
+					$varValue[$strArrKey] = array('attributes' => $varArrValue);
 				}
+			}
 
-				foreach($varValue as $strArrKey=>$varArrValue)
-				{
-					if (!\is_array($varArrValue))
-					{
-						$varValue[$strArrKey] = array('attributes'=>$varArrValue);
-					}
-				}
-
-				$this->arrConfiguration['metaFields'] = $varValue;
-				break;
-
-			default:
-				parent::__set($strKey, $varValue);
-				break;
+			$this->arrConfiguration['metaFields'] = $varValue;
+		}
+		else
+		{
+			parent::__set($strKey, $varValue);
 		}
 	}
 
@@ -87,7 +84,7 @@ class MetaWizard extends Widget
 			}
 			else
 			{
-				if ($v != '')
+				if ($v)
 				{
 					// Take the fields from the DCA (see #4327)
 					$varInput[$v] = array_combine(array_keys($this->metaFields), array_fill(0, \count($this->metaFields), ''));
@@ -142,19 +139,17 @@ class MetaWizard extends Widget
 			foreach ($this->varValue as $lang=>$meta)
 			{
 				$return .= '
-    <li class="' . (($count % 2 == 0) ? 'even' : 'odd') . '" data-language="' . $lang . '">';
-
-				$return .= '<span class="lang">' . ($languages[$lang] ?? $lang) . ' ' . Image::getHtml('delete.svg', '', 'class="tl_metawizard_img" title="' . $GLOBALS['TL_LANG']['MSC']['delete'] . '" onclick="Backend.metaDelete(this)"') . '</span>';
+    <li class="' . (($count % 2 == 0) ? 'even' : 'odd') . '" data-language="' . $lang . '"><span class="lang">' . ($languages[$lang] ?? $lang) . ' ' . Image::getHtml('delete.svg', '', 'class="tl_metawizard_img" title="' . $GLOBALS['TL_LANG']['MSC']['delete'] . '" onclick="Backend.metaDelete(this)"') . '</span>';
 
 				// Take the fields from the DCA (see #4327)
 				foreach ($this->metaFields as $field=>$fieldConfig)
 				{
-					$return .= '<label for="ctrl_' . $field . '_' . $count . '">' . $GLOBALS['TL_LANG']['MSC']['aw_' . $field] . '</label> <input type="text" name="' . $this->strId . '[' . $lang . '][' . $field . ']" id="ctrl_' . $field . '_' . $count . '" class="tl_text" value="' . StringUtil::specialchars($meta[$field]) . '"' . (!empty($fieldConfig['attributes']) ? ' ' . $fieldConfig['attributes'] : '') . '>';
+					$return .= '<label for="ctrl_' . $this->strId . '_' . $field . '_' . $count . '">' . $GLOBALS['TL_LANG']['MSC']['aw_' . $field] . '</label> <input type="text" name="' . $this->strId . '[' . $lang . '][' . $field . ']" id="ctrl_' . $this->strId . '_' . $field . '_' . $count . '" class="tl_text" value="' . StringUtil::specialchars($meta[$field]) . '"' . (!empty($fieldConfig['attributes']) ? ' ' . $fieldConfig['attributes'] : '') . '>';
 
 					// DCA picker
 					if (isset($fieldConfig['dcaPicker']) && (\is_array($fieldConfig['dcaPicker']) || $fieldConfig['dcaPicker'] === true))
 					{
-						$return .= Backend::getDcaPickerWizard($fieldConfig['dcaPicker'], $this->strTable, $this->strField, $field . '_' . $count);
+						$return .= Backend::getDcaPickerWizard($fieldConfig['dcaPicker'], $this->strTable, $this->strField, $this->strId . '_' . $field . '_' . $count);
 					}
 
 					$return .= '<br>';
@@ -163,7 +158,6 @@ class MetaWizard extends Widget
 				$return .= '
     </li>';
 
-				unset($languages[$lang]);
 				++$count;
 			}
 
@@ -176,12 +170,12 @@ class MetaWizard extends Widget
 		// Add the remaining languages
 		foreach ($languages as $k=>$v)
 		{
-			$options[] = '<option value="' . $k . '">' . $v . '</option>';
+			$options[] = '<option value="' . $k . '"' . (isset($this->varValue[$k]) ? ' disabled' : '') . '>' . $v . '</option>';
 		}
 
 		$return .= '
   <div class="tl_metawizard_new">
-    <select name="' . $this->strId . '[language]" class="tl_select tl_chosen" onchange="Backend.toggleAddLanguageButton(this)">' . implode('', $options) . '</select> <input type="button" class="tl_submit" disabled value="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['aw_new']) . '" onclick="Backend.metaWizard(this,\'ctrl_' . $this->strId . '\')">
+    <select name="' . $this->strId . '[language]" class="tl_select" onchange="Backend.toggleAddLanguageButton(this)">' . implode('', $options) . '</select> <input type="button" class="tl_submit" disabled value="' . StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['aw_new']) . '" onclick="Backend.metaWizard(this, \'ctrl_' . $this->strId . '\')">
   </div>';
 
 		return $return;

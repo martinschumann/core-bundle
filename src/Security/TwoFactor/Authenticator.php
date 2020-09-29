@@ -26,11 +26,11 @@ class Authenticator
     /**
      * Validates the code which was entered by the user.
      */
-    public function validateCode(User $user, string $code): bool
+    public function validateCode(User $user, string $code, ?int $timestamp = null): bool
     {
         $totp = TOTP::create($this->getUpperUnpaddedSecretForUser($user));
 
-        return $totp->verify($code);
+        return $totp->verify($code, $timestamp, 1);
     }
 
     /**
@@ -38,14 +38,14 @@ class Authenticator
      */
     public function getProvisionUri(User $user, Request $request): string
     {
-        $issuer = rawurlencode($request->getSchemeAndHttpHost());
+        $issuer = rawurlencode($request->getHttpHost());
 
         return sprintf(
-                'otpauth://totp/%s:%s?secret=%s&issuer=%s',
-                $issuer,
-                rawurlencode($user->getUsername()).'@'.$issuer,
-                $this->getUpperUnpaddedSecretForUser($user),
-                $issuer
+            'otpauth://totp/%s:%s?secret=%s&issuer=%s',
+            $issuer,
+            rawurlencode($user->getUsername()).'@'.$issuer,
+            $this->getUpperUnpaddedSecretForUser($user),
+            $issuer
         );
     }
 

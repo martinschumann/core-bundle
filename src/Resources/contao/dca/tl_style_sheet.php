@@ -8,9 +8,20 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\CoreBundle\Exception\AccessDeniedException;
+use Contao\Image;
+use Contao\Input;
+use Contao\Message;
+use Contao\StringUtil;
+use Contao\StyleSheets;
+use Contao\System;
+use Patchwork\Utf8;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+
 $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -57,14 +68,12 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		(
 			'import' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['import'],
 				'href'                => 'key=import',
 				'class'               => 'header_css_import',
 				'attributes'          => 'onclick="Backend.getScrollOffset()"'
 			),
 			'all' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['MSC']['all'],
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset()" accesskey="e"'
@@ -74,46 +83,39 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		(
 			'edit' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['edit'],
 				'href'                => 'table=tl_style',
 				'icon'                => 'edit.svg'
 			),
 			'editheader' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['editheader'],
 				'href'                => 'table=tl_style_sheet&amp;act=edit',
 				'icon'                => 'header.svg',
 				'button_callback'     => array('tl_style_sheet', 'editHeader')
 			),
 			'copy' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['copy'],
 				'href'                => 'act=paste&amp;mode=copy',
 				'icon'                => 'copy.svg'
 			),
 			'cut' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['cut'],
 				'href'                => 'act=paste&amp;mode=cut',
 				'icon'                => 'cut.svg',
 				'attributes'          => 'onclick="Backend.getScrollOffset()"'
 			),
 			'delete' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['delete'],
 				'href'                => 'act=delete',
 				'icon'                => 'delete.svg',
 				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"'
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg'
 			),
 			'export' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_style_sheet']['export'],
 				'href'                => 'key=export',
 				'icon'                => 'theme_export.svg'
 			)
@@ -145,7 +147,6 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		),
 		'name' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_style_sheet']['name'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'search'                  => true,
@@ -159,7 +160,6 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		),
 		'embedImages' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_style_sheet']['embedImages'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'eval'                    => array('rgxp'=>'natural', 'tl_class'=>'w50'),
@@ -167,7 +167,6 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		),
 		'cc' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_style_sheet']['cc'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'search'                  => true,
@@ -180,7 +179,6 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		),
 		'media' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_style_sheet']['media'],
 			'inputType'               => 'checkbox',
 			'exclude'                 => true,
 			'filter'                  => true,
@@ -190,7 +188,6 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		),
 		'mediaQuery' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_style_sheet']['mediaQuery'],
 			'inputType'               => 'textarea',
 			'exclude'                 => true,
 			'search'                  => true,
@@ -199,7 +196,6 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
 		),
 		'vars' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_style_sheet']['vars'],
 			'inputType'               => 'keyValueWizard',
 			'exclude'                 => true,
 			'sql'                     => "text NULL"
@@ -212,25 +208,26 @@ $GLOBALS['TL_DCA']['tl_style_sheet'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_style_sheet extends Contao\Backend
+class tl_style_sheet extends Backend
 {
-
 	/**
 	 * Import the back end user object
 	 */
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('Contao\BackendUser', 'User');
+		$this->import(BackendUser::class, 'User');
 	}
 
 	/**
 	 * Check permissions to edit the table
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
 	public function checkPermission()
 	{
+		Message::addInfo($GLOBALS['TL_LANG']['MSC']['internalCssEditor']);
+
 		if ($this->User->isAdmin)
 		{
 			return;
@@ -238,7 +235,7 @@ class tl_style_sheet extends Contao\Backend
 
 		if (!$this->User->hasAccess('css', 'themes'))
 		{
-			throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to access the style sheets module.');
+			throw new AccessDeniedException('Not enough permissions to access the style sheets module.');
 		}
 	}
 
@@ -247,17 +244,17 @@ class tl_style_sheet extends Contao\Backend
 	 */
 	public function updateStyleSheet()
 	{
-		/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
-		$objSession = Contao\System::getContainer()->get('session');
+		/** @var SessionInterface $objSession */
+		$objSession = System::getContainer()->get('session');
 
 		$session = $objSession->get('style_sheet_updater');
 
-		if (empty($session) || !\is_array($session))
+		if (empty($session) || !is_array($session))
 		{
 			return;
 		}
 
-		$this->import('Contao\StyleSheets', 'StyleSheets');
+		$this->import(StyleSheets::class, 'StyleSheets');
 
 		foreach ($session as $id)
 		{
@@ -278,19 +275,19 @@ class tl_style_sheet extends Contao\Backend
 	public function scheduleUpdate($id)
 	{
 		// The onsubmit_callback passes a DataContainer object
-		if (\is_object($id))
+		if (is_object($id))
 		{
 			$id = $id->id;
 		}
 
 		// Return if there is no ID
-		if (!$id || Contao\Input::get('act') == 'copy')
+		if (!$id || Input::get('act') == 'copy')
 		{
 			return;
 		}
 
-		/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
-		$objSession = Contao\System::getContainer()->get('session');
+		/** @var SessionInterface $objSession */
+		$objSession = System::getContainer()->get('session');
 
 		// Store the ID in the session
 		$session = $objSession->get('style_sheet_updater');
@@ -308,25 +305,24 @@ class tl_style_sheet extends Contao\Backend
 	public function listStyleSheet($row)
 	{
 		$cc = '';
-		$media = Contao\StringUtil::deserialize($row['media']);
+		$media = StringUtil::deserialize($row['media']);
 
-		if ($row['cc'] != '')
+		if ($row['cc'])
 		{
-			$cc = ' &lt;!--['. $row['cc'] .']&gt;';
+			$cc = ' &lt;!--[' . $row['cc'] . ']&gt;';
 		}
 
-		if ($row['mediaQuery'] != '')
+		if ($row['mediaQuery'])
 		{
-			return '<div class="tl_content_left">'. $row['name'] .' <span style="color:#999;padding-left:3px">@media '. $row['mediaQuery'] . $cc .'</span>' . "</div>\n";
+			return '<div class="tl_content_left">' . $row['name'] . ' <span style="color:#999;padding-left:3px">@media ' . $row['mediaQuery'] . $cc . '</span>' . "</div>\n";
 		}
-		elseif (!empty($media) && \is_array($media))
+
+		if (!empty($media) && is_array($media))
 		{
-			return '<div class="tl_content_left">'. $row['name'] .' <span style="color:#999;padding-left:3px">@media '. implode(', ', $media) . $cc .'</span>' . "</div>\n";
+			return '<div class="tl_content_left">' . $row['name'] . ' <span style="color:#999;padding-left:3px">@media ' . implode(', ', $media) . $cc . '</span>' . "</div>\n";
 		}
-		else
-		{
-			return '<div class="tl_content_left">'. $row['name'] . $cc ."</div>\n";
-		}
+
+		return '<div class="tl_content_left">' . $row['name'] . $cc . "</div>\n";
 	}
 
 	/**
@@ -338,7 +334,7 @@ class tl_style_sheet extends Contao\Backend
 	 */
 	public function romanizeName($varValue)
 	{
-		return Patchwork\Utf8::toAscii($varValue);
+		return Utf8::toAscii($varValue);
 	}
 
 	/**
@@ -350,7 +346,7 @@ class tl_style_sheet extends Contao\Backend
 	 */
 	public function sanitizeCc($varValue)
 	{
-		if ($varValue != '')
+		if ($varValue)
 		{
 			$varValue = str_replace(array('<!--[', ']>'), '', $varValue);
 		}
@@ -372,6 +368,6 @@ class tl_style_sheet extends Contao\Backend
 	 */
 	public function editHeader($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->canEditFieldsOf('tl_style_sheet') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->canEditFieldsOf('tl_style_sheet') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 }

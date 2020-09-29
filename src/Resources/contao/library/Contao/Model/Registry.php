@@ -22,7 +22,6 @@ use Contao\Model;
  */
 class Registry implements \Countable
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var static
@@ -50,12 +49,16 @@ class Registry implements \Countable
 	/**
 	 * Prevent direct instantiation (Singleton)
 	 */
-	protected function __construct() {}
+	protected function __construct()
+	{
+	}
 
 	/**
 	 * Prevent cloning of the object (Singleton)
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Return the current object instance (Singleton)
@@ -70,6 +73,18 @@ class Registry implements \Countable
 		}
 
 		return static::$objInstance;
+	}
+
+	/**
+	 * Reset the registry
+	 *
+	 * @internal Do not use this method in your code; it should only be called during kernel.reset
+	 */
+	public function reset()
+	{
+		$this->arrRegistry = array();
+		$this->arrAliases = array();
+		$this->arrIdentities = array();
 	}
 
 	/**
@@ -100,12 +115,7 @@ class Registry implements \Countable
 		// Search by PK (most common case)
 		if ($strAlias === null || $strAlias == $strPk)
 		{
-			if (isset($this->arrRegistry[$strTable][$varKey]))
-			{
-				return $this->arrRegistry[$strTable][$varKey];
-			}
-
-			return null;
+			return $this->arrRegistry[$strTable][$varKey] ?? null;
 		}
 
 		// Try to find the model by one of its aliases
@@ -145,7 +155,7 @@ class Registry implements \Countable
 	 */
 	public function register(Model $objModel)
 	{
-		$intObjectId = spl_object_hash($objModel);
+		$intObjectId = spl_object_id($objModel);
 
 		// The model has been registered already
 		if (isset($this->arrIdentities[$intObjectId]))
@@ -155,12 +165,12 @@ class Registry implements \Countable
 
 		$strTable = $objModel->getTable();
 
-		if (!\is_array($this->arrAliases[$strTable]))
+		if (!isset($this->arrAliases[$strTable]))
 		{
 			$this->arrAliases[$strTable] = array();
 		}
 
-		if (!\is_array($this->arrRegistry[$strTable]))
+		if (!isset($this->arrRegistry[$strTable]))
 		{
 			$this->arrRegistry[$strTable] = array();
 		}
@@ -193,7 +203,7 @@ class Registry implements \Countable
 	 */
 	public function unregister(Model $objModel)
 	{
-		$intObjectId = spl_object_hash($objModel);
+		$intObjectId = spl_object_id($objModel);
 
 		// The model is not registered
 		if (!isset($this->arrIdentities[$intObjectId]))
@@ -205,8 +215,7 @@ class Registry implements \Countable
 		$strPk    = $objModel->getPk();
 		$intPk    = $objModel->$strPk;
 
-		unset($this->arrIdentities[$intObjectId]);
-		unset($this->arrRegistry[$strTable][$intPk]);
+		unset($this->arrIdentities[$intObjectId], $this->arrRegistry[$strTable][$intPk]);
 
 		// Allow the model to modify the registry
 		$objModel->onUnregister($this);
@@ -221,7 +230,7 @@ class Registry implements \Countable
 	 */
 	public function isRegistered(Model $objModel)
 	{
-		$intObjectId = spl_object_hash($objModel);
+		$intObjectId = spl_object_id($objModel);
 
 		return isset($this->arrIdentities[$intObjectId]);
 	}

@@ -10,7 +10,7 @@
 
 namespace Contao;
 
-@trigger_error('Using the Contao\Encryption class has been deprecated and will no longer work in Contao 5.0. Use the PHP password_* functions and a third-party library such as OpenSSL or phpseclib instead.', E_USER_DEPRECATED);
+trigger_deprecation('contao/core-bundle', '3.5', 'Using the "Contao\Encryption" class has been deprecated and will no longer work in Contao 5.0. Use the PHP password_* functions and a third-party library such as OpenSSL or phpseclib instead.');
 
 /**
  * Encrypts and decrypts data
@@ -30,7 +30,6 @@ namespace Contao;
  */
 class Encryption
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var Encryption
@@ -63,7 +62,8 @@ class Encryption
 
 			return $varValue;
 		}
-		elseif ($varValue == '')
+
+		if (!$varValue)
 		{
 			return '';
 		}
@@ -82,7 +82,7 @@ class Encryption
 		$iv = mcrypt_create_iv(mcrypt_enc_get_iv_size(static::$resTd));
 		mcrypt_generic_init(static::$resTd, md5($strKey), $iv);
 		$strEncrypted = mcrypt_generic(static::$resTd, $varValue);
-		$strEncrypted = base64_encode($iv.$strEncrypted);
+		$strEncrypted = base64_encode($iv . $strEncrypted);
 		mcrypt_generic_deinit(static::$resTd);
 
 		return $strEncrypted;
@@ -108,7 +108,8 @@ class Encryption
 
 			return $varValue;
 		}
-		elseif ($varValue == '')
+
+		if (!$varValue)
 		{
 			return '';
 		}
@@ -124,7 +125,7 @@ class Encryption
 		$iv = substr($varValue, 0, $ivsize);
 		$varValue = substr($varValue, $ivsize);
 
-		if ($varValue == '')
+		if (!$varValue)
 		{
 			return '';
 		}
@@ -168,7 +169,9 @@ class Encryption
 	 */
 	public static function hash($strPassword)
 	{
-		return password_hash($strPassword, PASSWORD_DEFAULT);
+		$encoder = System::getContainer()->get('security.encoder_factory')->getEncoder(User::class);
+
+		return $encoder->encodePassword($strPassword, null);
 	}
 
 	/**
@@ -184,15 +187,18 @@ class Encryption
 		{
 			return true;
 		}
-		elseif (strncmp($strHash, '$2a$', 4) === 0)
+
+		if (strncmp($strHash, '$2a$', 4) === 0)
 		{
 			return true;
 		}
-		elseif (strncmp($strHash, '$6$', 3) === 0)
+
+		if (strncmp($strHash, '$6$', 3) === 0)
 		{
 			return true;
 		}
-		elseif (strncmp($strHash, '$5$', 3) === 0)
+
+		if (strncmp($strHash, '$5$', 3) === 0)
 		{
 			return true;
 		}
@@ -212,7 +218,9 @@ class Encryption
 	 */
 	public static function verify($strPassword, $strHash)
 	{
-		return password_verify($strPassword, $strHash);
+		$encoder = System::getContainer()->get('security.encoder_factory')->getEncoder(User::class);
+
+		return $encoder->isPasswordValid($strHash, $strPassword, null);
 	}
 
 	/**
@@ -226,7 +234,9 @@ class Encryption
 	/**
 	 * Prevent cloning of the object (Singleton)
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Return the object instance (Singleton)

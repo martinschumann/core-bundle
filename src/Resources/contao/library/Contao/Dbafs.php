@@ -27,7 +27,6 @@ use Contao\Model\Collection;
  */
 class Dbafs
 {
-
 	/**
 	 * Synchronize the database
 	 * @var array
@@ -47,8 +46,10 @@ class Dbafs
 	 */
 	public static function addResource($strResource, $blnUpdateFolders=true)
 	{
+		self::validateUtf8Path($strResource);
+
 		$strUploadPath = Config::get('uploadPath') . '/';
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Remove trailing slashes (see #5707)
 		if (substr($strResource, -1) == '/')
@@ -60,7 +61,7 @@ class Dbafs
 		$strResource = str_replace(array('\\', '//'), '/', $strResource);
 
 		// The resource does not exist or lies outside the upload directory
-		if ($strResource == '' || strncmp($strResource, $strUploadPath, \strlen($strUploadPath)) !== 0 || !file_exists($rootDir . '/' . $strResource))
+		if (!$strResource || !file_exists($projectDir . '/' . $strResource) || strncmp($strResource, $strUploadPath, \strlen($strUploadPath)) !== 0)
 		{
 			throw new \InvalidArgumentException("Invalid resource $strResource");
 		}
@@ -117,16 +118,17 @@ class Dbafs
 		$arrPaths = array_values($arrPaths);
 
 		// If the resource is a folder, also add its contents
-		if (is_dir($rootDir . '/' . $strResource))
+		if (is_dir($projectDir . '/' . $strResource))
 		{
 			/** @var \SplFileInfo[] $objFiles */
 			$objFiles = new \RecursiveIteratorIterator(
 				new SyncExclude(
 					new \RecursiveDirectoryIterator(
-						$rootDir . '/' . $strResource,
+						$projectDir . '/' . $strResource,
 						\FilesystemIterator::UNIX_PATHS|\FilesystemIterator::FOLLOW_SYMLINKS|\FilesystemIterator::SKIP_DOTS
 					)
-				), \RecursiveIteratorIterator::SELF_FIRST
+				),
+				\RecursiveIteratorIterator::SELF_FIRST
 			);
 
 			// Add the relative path
@@ -167,7 +169,7 @@ class Dbafs
 			}
 
 			// Create the file or folder
-			if (is_file($rootDir . '/' . $strPath))
+			if (is_file($projectDir . '/' . $strPath))
 			{
 				$objFile = new File($strPath);
 
@@ -211,7 +213,7 @@ class Dbafs
 		// Update the folder hashes from bottom up after all file hashes are set
 		foreach (array_reverse($arrPaths) as $strPath)
 		{
-			if (is_dir($rootDir . '/' . $strPath))
+			if (is_dir($projectDir . '/' . $strPath))
 			{
 				$objModel = FilesModel::findByPath($strPath);
 				$objModel->hash = static::getFolderHash($strPath);
@@ -238,6 +240,9 @@ class Dbafs
 	 */
 	public static function moveResource($strSource, $strDestination)
 	{
+		self::validateUtf8Path($strSource);
+		self::validateUtf8Path($strDestination);
+
 		$objFile = FilesModel::findByPath($strSource);
 
 		// If there is no entry, directly add the destination
@@ -290,6 +295,7 @@ class Dbafs
 		{
 			static::updateFolderHashes($strPath);
 		}
+
 		if (($strPath = \dirname($strDestination)) != Config::get('uploadPath'))
 		{
 			static::updateFolderHashes($strPath);
@@ -308,6 +314,9 @@ class Dbafs
 	 */
 	public static function copyResource($strSource, $strDestination)
 	{
+		self::validateUtf8Path($strSource);
+		self::validateUtf8Path($strDestination);
+
 		$objDatabase = Database::getInstance();
 		$objFile = FilesModel::findByPath($strSource);
 
@@ -372,6 +381,7 @@ class Dbafs
 		{
 			static::updateFolderHashes($strPath);
 		}
+
 		if (($strPath = \dirname($strDestination)) != Config::get('uploadPath'))
 		{
 			static::updateFolderHashes($strPath);
@@ -384,11 +394,11 @@ class Dbafs
 	 * Removes a file or folder
 	 *
 	 * @param string $strResource The path to the file or folder
-	 *
-	 * @return null Explicitly return null
 	 */
 	public static function deleteResource($strResource)
 	{
+		self::validateUtf8Path($strResource);
+
 		$objModel = FilesModel::findByPath($strResource);
 
 		// Remove the resource
@@ -428,15 +438,17 @@ class Dbafs
 			$varResource = array($varResource);
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		foreach ($varResource as $strResource)
 		{
+			self::validateUtf8Path($strResource);
+
 			$arrChunks = explode('/', $strResource);
 			$strPath   = array_shift($arrChunks);
 
 			// Do not check files
-			if (is_file($rootDir . '/' . $strResource))
+			if (is_file($projectDir . '/' . $strResource))
 			{
 				array_pop($arrChunks);
 			}
@@ -495,22 +507,24 @@ class Dbafs
 
 		$objDatabase = Database::getInstance();
 
-		// Lock the files table
+		// Begin atomic database access
 		$objDatabase->lockTables(array('tl_files'=>'WRITE'));
+		$objDatabase->beginTransaction();
 
 		// Reset the "found" flag
 		$objDatabase->query("UPDATE tl_files SET found=''");
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		/** @var \SplFileInfo[] $objFiles */
 		$objFiles = new \RecursiveIteratorIterator(
 			new SyncExclude(
 				new \RecursiveDirectoryIterator(
-					$rootDir . '/' . Config::get('uploadPath'),
+					$projectDir . '/' . Config::get('uploadPath'),
 					\FilesystemIterator::UNIX_PATHS|\FilesystemIterator::FOLLOW_SYMLINKS|\FilesystemIterator::SKIP_DOTS
 				)
-			), \RecursiveIteratorIterator::SELF_FIRST
+			),
+			\RecursiveIteratorIterator::SELF_FIRST
 		);
 
 		$strLog = 'system/tmp/' . md5(uniqid(mt_rand(), true));
@@ -528,6 +542,12 @@ class Dbafs
 		{
 			$strRelpath = StringUtil::stripRootDir($objFile->getPathname());
 
+			if (preg_match('//u', $strRelpath) !== 1)
+			{
+				$objLog->append("[Malformed UTF-8 filename] $strRelpath");
+				continue;
+			}
+
 			// Get all subfiles in a single query
 			if ($objFile->isDir())
 			{
@@ -542,16 +562,8 @@ class Dbafs
 				}
 			}
 
-			// Get the model
-			if (isset($arrModels[$strRelpath]))
-			{
-				/** @var Model $objModel */
-				$objModel = $arrModels[$strRelpath];
-			}
-			else
-			{
-				$objModel = FilesModel::findByPath($strRelpath);
-			}
+			/** @var Model $objModel */
+			$objModel = $arrModels[$strRelpath] ?? FilesModel::findByPath($strRelpath);
 
 			if ($objModel === null)
 			{
@@ -579,7 +591,7 @@ class Dbafs
 				}
 
 				// Create the file or folder
-				if (is_file($rootDir . '/' . $strRelpath))
+				if (is_file($projectDir . '/' . $strRelpath))
 				{
 					$objFile = new File($strRelpath);
 
@@ -613,26 +625,23 @@ class Dbafs
 					$arrFoldersToHash[] = $strRelpath;
 				}
 			}
+			elseif ($objFile->isDir())
+			{
+				$arrFoldersToCompare[] = $objModel;
+			}
 			else
 			{
-				if ($objFile->isDir())
-				{
-					$arrFoldersToCompare[] = $objModel;
-				}
-				else
-				{
-					// Check whether the MD5 hash has changed
-					$strHash = (new File($strRelpath))->hash;
-					$strType = ($objModel->hash != $strHash) ? 'Changed' : 'Unchanged';
+				// Check whether the MD5 hash has changed
+				$strHash = (new File($strRelpath))->hash;
+				$strType = ($objModel->hash != $strHash) ? 'Changed' : 'Unchanged';
 
-					// Add a log entry
-					$objLog->append("[$strType] $strRelpath");
+				// Add a log entry
+				$objLog->append("[$strType] $strRelpath");
 
-					// Update the record
-					$objModel->found = 1;
-					$objModel->hash  = $strHash;
-					$objModel->save();
-				}
+				// Update the record
+				$objModel->found = 1;
+				$objModel->hash  = $strHash;
+				$objModel->save();
 			}
 		}
 
@@ -756,7 +765,8 @@ class Dbafs
 		// Reset the found flag
 		$objDatabase->query("UPDATE tl_files SET found=1 WHERE found=2");
 
-		// Unlock the tables
+		// Finalize database access
+		$objDatabase->commitTransaction();
 		$objDatabase->unlockTables();
 
 		// Return the path to the log file
@@ -772,12 +782,14 @@ class Dbafs
 	 */
 	public static function getFolderHash($strPath)
 	{
+		self::validateUtf8Path($strPath);
+
 		$strPath = str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), $strPath);
 		$arrHash = array();
 
 		$objChildren = Database::getInstance()
 			->prepare("SELECT hash, name FROM tl_files WHERE path LIKE ? AND path NOT LIKE ? ORDER BY name")
-			->execute($strPath.'/%', $strPath.'/%/%')
+			->execute($strPath . '/%', $strPath . '/%/%')
 		;
 
 		if ($objChildren !== null)
@@ -822,10 +834,12 @@ class Dbafs
 			return true;
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		self::validateUtf8Path($strPath);
+
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Look for an existing parent folder (see #410)
-		while ($strPath != '.' && !is_dir($rootDir . '/' . $strPath))
+		while ($strPath != '.' && !is_dir($projectDir . '/' . $strPath))
 		{
 			$strPath = \dirname($strPath);
 		}
@@ -844,6 +858,14 @@ class Dbafs
 		}
 
 		return (new Folder($strPath))->isUnsynchronized();
+	}
+
+	private static function validateUtf8Path($strPath)
+	{
+		if (preg_match('//u', $strPath) !== 1)
+		{
+			throw new \InvalidArgumentException(sprintf('Path "%s" contains malformed UTF-8 characters.', $strPath));
+		}
 	}
 }
 

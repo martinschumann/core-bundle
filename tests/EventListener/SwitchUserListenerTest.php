@@ -33,7 +33,7 @@ class SwitchUserListenerTest extends TestCase
         $event = $this->mockSwitchUserEvent('user2');
 
         $listener = new SwitchUserListener($tokenStorage, $logger);
-        $listener->onSwitchUser($event);
+        $listener($event);
     }
 
     public function testFailsIfTheTokenStorageDoesNotContainAToken(): void
@@ -51,7 +51,7 @@ class SwitchUserListenerTest extends TestCase
         $this->expectException('RuntimeException');
         $this->expectExceptionMessage('The token storage did not contain a token.');
 
-        $listener->onSwitchUser($event);
+        $listener($event);
     }
 
     /**
@@ -67,7 +67,7 @@ class SwitchUserListenerTest extends TestCase
 
         $context = [
             'contao' => new ContaoContext(
-                'Contao\CoreBundle\EventListener\SwitchUserListener::onSwitchUser',
+                'Contao\CoreBundle\EventListener\SwitchUserListener::__invoke',
                 ContaoContext::ACCESS,
                 'user1'
             ),
@@ -93,8 +93,8 @@ class SwitchUserListenerTest extends TestCase
             $token = $this->createMock(TokenInterface::class);
             $token
                 ->expects($this->once())
-                ->method('getUser')
-                ->willReturn($this->mockBackendUser($username))
+                ->method('getUsername')
+                ->willReturn($username)
             ;
 
             $tokenStorage
@@ -105,24 +105,6 @@ class SwitchUserListenerTest extends TestCase
         }
 
         return $tokenStorage;
-    }
-
-    /**
-     * @return BackendUser&MockObject
-     */
-    private function mockBackendUser(string $username = null): BackendUser
-    {
-        $user = $this->createPartialMock(BackendUser::class, ['getUsername']);
-
-        if (null !== $username) {
-            $user
-                ->expects($this->once())
-                ->method('getUsername')
-                ->willReturn($username)
-            ;
-        }
-
-        return $user;
     }
 
     private function mockSwitchUserEvent(string $username = null): SwitchUserEvent

@@ -31,7 +31,6 @@ use ScssPhp\ScssPhp\Formatter\Expanded;
  */
 class Combiner extends System
 {
-
 	/**
 	 * The .css file extension
 	 * @var string
@@ -198,10 +197,17 @@ class Combiner extends System
 	/**
 	 * Generates the files and returns the URLs.
 	 *
+	 * @param string $strUrl An optional URL to prepend
+	 *
 	 * @return array The file URLs
 	 */
-	public function getFileUrls()
+	public function getFileUrls($strUrl=null)
 	{
+		if ($strUrl === null)
+		{
+			$strUrl = System::getContainer()->get('contao.assets.assets_context')->getStaticUrl();
+		}
+
 		$return = array();
 		$strTarget = substr($this->strMode, 1);
 
@@ -219,7 +225,7 @@ class Combiner extends System
 					$objFile->close();
 				}
 
-				$return[] = $strPath . '|' . $arrFile['version'];
+				$return[] = $strUrl . $strPath . '|' . $arrFile['version'];
 			}
 			else
 			{
@@ -232,12 +238,12 @@ class Combiner extends System
 				}
 
 				// Add the media query (see #7070)
-				if ($this->strMode == self::CSS && $arrFile['media'] != '' && $arrFile['media'] != 'all' && !$this->hasMediaTag($arrFile['name']))
+				if ($this->strMode == self::CSS && $arrFile['media'] && $arrFile['media'] != 'all' && !$this->hasMediaTag($arrFile['name']))
 				{
 					$name .= '|' . $arrFile['media'];
 				}
 
-				$return[] = $name . '|' . $arrFile['version'];
+				$return[] = $strUrl . $name . '|' . $arrFile['version'];
 			}
 		}
 
@@ -255,7 +261,7 @@ class Combiner extends System
 	{
 		if (Config::get('debugMode'))
 		{
-			return $this->getDebugMarkup();
+			return $this->getDebugMarkup($strUrl);
 		}
 
 		return $this->getCombinedFileUrl($strUrl);
@@ -264,11 +270,13 @@ class Combiner extends System
 	/**
 	 * Generates the debug markup.
 	 *
+	 * @param string $strUrl An optional URL to prepend
+	 *
 	 * @return string The debug markup
 	 */
-	protected function getDebugMarkup()
+	protected function getDebugMarkup($strUrl)
 	{
-		$return = $this->getFileUrls();
+		$return = $this->getFileUrls($strUrl);
 
 		foreach ($return as $k=>$v)
 		{
@@ -379,7 +387,7 @@ class Combiner extends System
 		$content = $this->fixPaths($content, $arrFile);
 
 		// Add the media type if there is no @media command in the code
-		if ($arrFile['media'] != '' && $arrFile['media'] != 'all' && strpos($content, '@media') === false)
+		if ($arrFile['media'] && $arrFile['media'] != 'all' && strpos($content, '@media') === false)
 		{
 			$content = '@media ' . $arrFile['media'] . "{\n" . $content . "\n}";
 		}
@@ -403,25 +411,28 @@ class Combiner extends System
 			$objCompiler->setImportPaths($this->strRootDir . '/' . \dirname($arrFile['name']));
 			$objCompiler->setFormatter((Config::get('debugMode') ? Expanded::class : Compressed::class));
 
+			if (Config::get('debugMode'))
+			{
+				$objCompiler->setSourceMap(Compiler::SOURCE_MAP_INLINE);
+			}
+
 			return $this->fixPaths($objCompiler->compile($content), $arrFile);
 		}
-		else
-		{
-			$strPath = \dirname($arrFile['name']);
 
-			$arrOptions = array
-			(
-				'strictMath' => true,
-				'compress' => !Config::get('debugMode'),
-				'import_dirs' => array($this->strRootDir . '/' . $strPath => $strPath)
-			);
+		$strPath = \dirname($arrFile['name']);
 
-			$objParser = new \Less_Parser();
-			$objParser->SetOptions($arrOptions);
-			$objParser->parse($content);
+		$arrOptions = array
+		(
+			'strictMath' => true,
+			'compress' => !Config::get('debugMode'),
+			'import_dirs' => array($this->strRootDir . '/' . $strPath => $strPath)
+		);
 
-			return $this->fixPaths($objParser->getCss(), $arrFile);
-		}
+		$objParser = new \Less_Parser();
+		$objParser->SetOptions($arrOptions);
+		$objParser->parse($content);
+
+		return $this->fixPaths($objParser->getCss(), $arrFile);
 	}
 
 	/**
@@ -437,7 +448,7 @@ class Combiner extends System
 		$strName = $arrFile['name'];
 
 		// Strip the web/ prefix
-		if (strpos($strName, $this->strWebDir .'/') === 0)
+		if (strpos($strName, $this->strWebDir . '/') === 0)
 		{
 			$strName = substr($strName, \strlen($this->strWebDir) + 1);
 		}
@@ -447,7 +458,7 @@ class Combiner extends System
 
 		return preg_replace_callback(
 			'/url\(("[^"\n]+"|\'[^\'\n]+\'|[^"\'\s()]+)\)/',
-			function ($matches) use ($strDirname, $strGlue)
+			static function ($matches) use ($strDirname, $strGlue)
 			{
 				$strData = $matches[1];
 
@@ -518,7 +529,7 @@ class Combiner extends System
 	protected function hasMediaTag($strFile)
 	{
 		$return = false;
-		$fh = fopen($this->strRootDir . '/' . $strFile, 'rb');
+		$fh = fopen($this->strRootDir . '/' . $strFile, 'r');
 
 		while (($line = fgets($fh)) !== false)
 		{

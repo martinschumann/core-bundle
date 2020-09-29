@@ -197,18 +197,22 @@ var Theme = {
 		var tmenu = $('tmenu');
 		if (!tmenu) return;
 
-		var ul = tmenu.getElement('.level_2'),
-			h2 = tmenu.getElement('h2');
-		if (!ul || !h2) return;
+		var li = tmenu.getElement('.submenu'),
+			span = li.getFirst('span');
+		if (!li || !span) return;
 
-		h2.addEvent('click', function(e) {
-			ul.fade('in');
+		span.addEvent('click', function(e) {
+			if (li.hasClass('active')) {
+				li.removeClass('active');
+			} else {
+				li.addClass('active');
+			}
 			e.stopPropagation();
 		});
 
 		$(document.body).addEvent('click', function() {
-			if (ul.getStyle('opacity')) {
-				ul.fade('out');
+			if (li.hasClass('active')) {
+				li.removeClass('active');
 			}
 		});
 	},

@@ -8,9 +8,18 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\CoreBundle\Exception\AccessDeniedException;
+use Contao\DataContainer;
+use Contao\Image;
+use Contao\Input;
+use Contao\StringUtil;
+use Contao\System;
+use Contao\Versions;
+
 $GLOBALS['TL_DCA']['tl_member_group'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -20,7 +29,8 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		(
 			'keys' => array
 			(
-				'id' => 'primary'
+				'id' => 'primary',
+				'disable,start,stop' => 'index'
 			)
 		)
 	),
@@ -45,7 +55,6 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		(
 			'all' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['MSC']['all'],
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset()" accesskey="e"'
@@ -55,33 +64,28 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		(
 			'edit' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_member_group']['edit'],
 				'href'                => 'act=edit',
 				'icon'                => 'edit.svg'
 			),
 			'copy' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_member_group']['copy'],
 				'href'                => 'act=copy',
 				'icon'                => 'copy.svg'
 			),
 			'delete' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_member_group']['delete'],
 				'href'                => 'act=delete',
 				'icon'                => 'delete.svg',
 				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"'
 			),
 			'toggle' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_member_group']['toggle'],
 				'icon'                => 'visible.svg',
 				'attributes'          => 'onclick="Backend.getScrollOffset();return AjaxRequest.toggleVisibility(this,%s)"',
 				'button_callback'     => array('tl_member_group', 'toggleIcon')
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_member_group']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg'
 			)
@@ -92,7 +96,7 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 	'palettes' => array
 	(
 		'__selector__'                => array('redirect'),
-		'default'                     => '{title_legend},name;{redirect_legend:hide},redirect;{disable_legend},disable,start,stop',
+		'default'                     => '{title_legend},name;{redirect_legend:hide},redirect;{account_legend},disable,start,stop',
 	),
 
 	// Subpalettes
@@ -114,7 +118,6 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		),
 		'name' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_member_group']['name'],
 			'exclude'                 => true,
 			'search'                  => true,
 			'inputType'               => 'text',
@@ -123,7 +126,6 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		),
 		'redirect' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_member_group']['redirect'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
@@ -132,7 +134,6 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		),
 		'jumpTo' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_member_group']['jumpTo'],
 			'exclude'                 => true,
 			'inputType'               => 'pageTree',
 			'foreignKey'              => 'tl_page.title',
@@ -142,7 +143,6 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		),
 		'disable' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_member_group']['disable'],
 			'exclude'                 => true,
 			'filter'                  => true,
 			'inputType'               => 'checkbox',
@@ -150,7 +150,6 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		),
 		'start' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_member_group']['start'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'datim', 'datepicker'=>true, 'tl_class'=>'w50 wizard'),
@@ -158,7 +157,6 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
 		),
 		'stop' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_member_group']['stop'],
 			'exclude'                 => true,
 			'inputType'               => 'text',
 			'eval'                    => array('rgxp'=>'datim', 'datepicker'=>true, 'tl_class'=>'w50 wizard'),
@@ -172,16 +170,15 @@ $GLOBALS['TL_DCA']['tl_member_group'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_member_group extends Contao\Backend
+class tl_member_group extends Backend
 {
-
 	/**
 	 * Import the back end user object
 	 */
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('Contao\BackendUser', 'User');
+		$this->import(BackendUser::class, 'User');
 	}
 
 	/**
@@ -195,16 +192,14 @@ class tl_member_group extends Contao\Backend
 	public function addIcon($row, $label)
 	{
 		$image = 'mgroup';
-		$time = Contao\Date::floorToMinute();
+		$disabled = ($row['start'] !== '' && $row['start'] > time()) || ($row['stop'] !== '' && $row['stop'] <= time());
 
-		$disabled = ($row['start'] !== '' && $row['start'] > $time) || ($row['stop'] !== '' && $row['stop'] < $time);
-
-		if ($row['disable'] || $disabled)
+		if ($disabled || $row['disable'])
 		{
 			$image .= '_';
 		}
 
-		return sprintf('<div class="list_icon" style="background-image:url(\'%ssystem/themes/%s/icons/%s.svg\')" data-icon="%s.svg" data-icon-disabled="%s.svg">%s</div>', Contao\System::getContainer()->get('contao.assets.assets_context')->getStaticUrl(), Contao\Backend::getTheme(), $image, $disabled ? $image : rtrim($image, '_'), rtrim($image, '_') . '_', $label);
+		return sprintf('<div class="list_icon" style="background-image:url(\'%ssystem/themes/%s/icons/%s.svg\')" data-icon="%s.svg" data-icon-disabled="%s.svg">%s</div>', System::getContainer()->get('contao.assets.assets_context')->getStaticUrl(), Backend::getTheme(), $image, $disabled ? $image : rtrim($image, '_'), rtrim($image, '_') . '_', $label);
 	}
 
 	/**
@@ -221,9 +216,9 @@ class tl_member_group extends Contao\Backend
 	 */
 	public function toggleIcon($row, $href, $label, $title, $icon, $attributes)
 	{
-		if (\strlen(Contao\Input::get('tid')))
+		if (Input::get('tid'))
 		{
-			$this->toggleVisibility(Contao\Input::get('tid'), (Contao\Input::get('state') == 1), (@func_get_arg(12) ?: null));
+			$this->toggleVisibility(Input::get('tid'), (Input::get('state') == 1), (@func_get_arg(12) ?: null));
 			$this->redirect($this->getReferer());
 		}
 
@@ -233,30 +228,30 @@ class tl_member_group extends Contao\Backend
 			return '';
 		}
 
-		$href .= '&amp;tid='.$row['id'].'&amp;state='.$row['disable'];
+		$href .= '&amp;tid=' . $row['id'] . '&amp;state=' . $row['disable'];
 
 		if ($row['disable'])
 		{
 			$icon = 'invisible.svg';
 		}
 
-		return '<a href="'.$this->addToUrl($href).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label, 'data-state="' . ($row['disable'] ? 0 : 1) . '"').'</a> ';
+		return '<a href="' . $this->addToUrl($href) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label, 'data-state="' . ($row['disable'] ? 0 : 1) . '"') . '</a> ';
 	}
 
 	/**
 	 * Disable/enable a user group
 	 *
-	 * @param integer              $intId
-	 * @param boolean              $blnVisible
-	 * @param Contao\DataContainer $dc
+	 * @param integer       $intId
+	 * @param boolean       $blnVisible
+	 * @param DataContainer $dc
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
-	public function toggleVisibility($intId, $blnVisible, Contao\DataContainer $dc=null)
+	public function toggleVisibility($intId, $blnVisible, DataContainer $dc=null)
 	{
 		// Set the ID and action
-		Contao\Input::setGet('id', $intId);
-		Contao\Input::setGet('act', 'toggle');
+		Input::setGet('id', $intId);
+		Input::setGet('act', 'toggle');
 
 		if ($dc)
 		{
@@ -264,16 +259,16 @@ class tl_member_group extends Contao\Backend
 		}
 
 		// Trigger the onload_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_member_group']['config']['onload_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_member_group']['config']['onload_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_member_group']['config']['onload_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$this->{$callback[0]}->{$callback[1]}($dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$callback($dc);
 				}
@@ -283,39 +278,41 @@ class tl_member_group extends Contao\Backend
 		// Check the field access
 		if (!$this->User->hasAccess('tl_member_group::disable', 'alexf'))
 		{
-			throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to activate/deactivate member group ID ' . $intId . '.');
+			throw new AccessDeniedException('Not enough permissions to activate/deactivate member group ID ' . $intId . '.');
+		}
+
+		$objRow = $this->Database->prepare("SELECT * FROM tl_member_group WHERE id=?")
+								 ->limit(1)
+								 ->execute($intId);
+
+		if ($objRow->numRows < 1)
+		{
+			throw new AccessDeniedException('Invalid member group ID ' . $intId . '.');
 		}
 
 		// Set the current record
 		if ($dc)
 		{
-			$objRow = $this->Database->prepare("SELECT * FROM tl_member_group WHERE id=?")
-									 ->limit(1)
-									 ->execute($intId);
-
-			if ($objRow->numRows)
-			{
-				$dc->activeRecord = $objRow;
-			}
+			$dc->activeRecord = $objRow;
 		}
 
-		$objVersions = new Contao\Versions('tl_member_group', $intId);
+		$objVersions = new Versions('tl_member_group', $intId);
 		$objVersions->initialize();
 
 		// Reverse the logic (member groups have disable=1)
 		$blnVisible = !$blnVisible;
 
 		// Trigger the save_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_member_group']['fields']['disable']['save_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_member_group']['fields']['disable']['save_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_member_group']['fields']['disable']['save_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$blnVisible = $this->{$callback[0]}->{$callback[1]}($blnVisible, $dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$blnVisible = $callback($blnVisible, $dc);
 				}
@@ -335,16 +332,16 @@ class tl_member_group extends Contao\Backend
 		}
 
 		// Trigger the onsubmit_callback
-		if (\is_array($GLOBALS['TL_DCA']['tl_member_group']['config']['onsubmit_callback']))
+		if (is_array($GLOBALS['TL_DCA']['tl_member_group']['config']['onsubmit_callback']))
 		{
 			foreach ($GLOBALS['TL_DCA']['tl_member_group']['config']['onsubmit_callback'] as $callback)
 			{
-				if (\is_array($callback))
+				if (is_array($callback))
 				{
 					$this->import($callback[0]);
 					$this->{$callback[0]}->{$callback[1]}($dc);
 				}
-				elseif (\is_callable($callback))
+				elseif (is_callable($callback))
 				{
 					$callback($dc);
 				}
@@ -352,5 +349,10 @@ class tl_member_group extends Contao\Backend
 		}
 
 		$objVersions->create();
+
+		if ($dc)
+		{
+			$dc->invalidateCacheTags();
+		}
 	}
 }

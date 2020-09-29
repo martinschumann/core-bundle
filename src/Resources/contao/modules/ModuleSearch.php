@@ -20,7 +20,6 @@ use Patchwork\Utf8;
  */
 class ModuleSearch extends Module
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -34,7 +33,9 @@ class ModuleSearch extends Module
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 			$objTemplate->wildcard = '### ' . Utf8::strtoupper($GLOBALS['TL_LANG']['FMD']['search'][0]) . ' ###';
@@ -73,7 +74,6 @@ class ModuleSearch extends Module
 
 		$blnFuzzy = $this->fuzzy;
 		$strQueryType = Input::get('query_type') ?: $this->queryType;
-
 		$strKeywords = trim(Input::get('keywords'));
 
 		$this->Template->uniqueId = $this->id;
@@ -84,7 +84,6 @@ class ModuleSearch extends Module
 		$this->Template->search = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['searchLabel']);
 		$this->Template->matchAll = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['matchAll']);
 		$this->Template->matchAny = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['matchAny']);
-		$this->Template->action = ampersand(Environment::get('indexFreeRequest'));
 		$this->Template->advanced = ($this->searchType == 'advanced');
 
 		// Redirect page
@@ -98,7 +97,7 @@ class ModuleSearch extends Module
 		$this->Template->results = '';
 
 		// Execute the search if there are keywords
-		if ($strKeywords != '' && $strKeywords != '*' && !$this->jumpTo)
+		if ((string) $strKeywords !== '' && $strKeywords != '*' && !$this->jumpTo)
 		{
 			// Search pages
 			if (!empty($this->pages) && \is_array($this->pages))
@@ -145,11 +144,10 @@ class ModuleSearch extends Module
 				return;
 			}
 
-			$strCachePath = StringUtil::stripRootDir(System::getContainer()->getParameter('kernel.cache_dir'));
-
 			$arrResult = null;
 			$strChecksum = md5($strKeywords . $strQueryType . $varRootId . $blnFuzzy);
 			$query_starttime = microtime(true);
+			$strCachePath = StringUtil::stripRootDir(System::getContainer()->getParameter('kernel.cache_dir'));
 			$strCacheFile = $strCachePath . '/contao/search/' . $strChecksum . '.json';
 
 			// Load the cached result
@@ -172,7 +170,7 @@ class ModuleSearch extends Module
 			{
 				try
 				{
-					$objSearch = Search::searchFor($strKeywords, ($strQueryType == 'or'), $arrPages, 0, 0, $blnFuzzy);
+					$objSearch = Search::searchFor($strKeywords, ($strQueryType == 'or'), $arrPages, 0, 0, $blnFuzzy, $this->minKeywordLength);
 					$arrResult = $objSearch->fetchAllAssoc();
 				}
 				catch (\Exception $e)
@@ -220,6 +218,11 @@ class ModuleSearch extends Module
 			$this->Template->page = null;
 			$this->Template->keywords = $strKeywords;
 
+			if ($this->minKeywordLength > 0)
+			{
+				$this->Template->keywordHint = sprintf($GLOBALS['TL_LANG']['MSC']['sKeywordHint'], $this->minKeywordLength);
+			}
+
 			// No results
 			if ($count < 1)
 			{
@@ -258,10 +261,25 @@ class ModuleSearch extends Module
 				$this->Template->page = $page;
 			}
 
+			$contextLength = 48;
+			$totalLength = 360;
+
+			$lengths = StringUtil::deserialize($this->contextLength, true);
+
+			if ($lengths[0] > 0)
+			{
+				$contextLength = $lengths[0];
+			}
+
+			if ($lengths[1] > 0)
+			{
+				$totalLength = $lengths[1];
+			}
+
 			// Get the results
 			for ($i=($from-1); $i<$to && $i<$count; $i++)
 			{
-				$objTemplate = new FrontendTemplate($this->searchTpl);
+				$objTemplate = new FrontendTemplate($this->searchTpl ?: 'search_default');
 				$objTemplate->setData($arrResult[$i]);
 				$objTemplate->href = $arrResult[$i]['url'];
 				$objTemplate->link = $arrResult[$i]['title'];
@@ -269,6 +287,7 @@ class ModuleSearch extends Module
 				$objTemplate->title = StringUtil::specialchars(StringUtil::stripInsertTags($arrResult[$i]['title']));
 				$objTemplate->class = (($i == ($from - 1)) ? 'first ' : '') . (($i == ($to - 1) || $i == ($count - 1)) ? 'last ' : '') . (($i % 2 == 0) ? 'even' : 'odd');
 				$objTemplate->relevance = sprintf($GLOBALS['TL_LANG']['MSC']['relevance'], number_format($arrResult[$i]['relevance'] / $arrResult[0]['relevance'] * 100, 2) . '%');
+				$objTemplate->unit = $GLOBALS['TL_LANG']['UNITS'][1];
 
 				$arrContext = array();
 				$strText = StringUtil::stripInsertTags($arrResult[$i]['text']);
@@ -278,18 +297,24 @@ class ModuleSearch extends Module
 				foreach ($arrMatches as $strWord)
 				{
 					$arrChunks = array();
-					preg_match_all('/(^|\b.{0,'.$this->contextLength.'}(?:\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}))' . preg_quote($strWord, '/') . '((?:\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}).{0,'.$this->contextLength.'}\b|$)/ui', $strText, $arrChunks);
+					preg_match_all('/(^|\b.{0,' . $contextLength . '}(?:\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}))' . preg_quote($strWord, '/') . '((?:\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}).{0,' . $contextLength . '}\b|$)/ui', $strText, $arrChunks);
 
 					foreach ($arrChunks[0] as $strContext)
 					{
 						$arrContext[] = ' ' . $strContext . ' ';
+					}
+
+					// Skip other terms if the total length is already reached
+					if (array_sum(array_map('mb_strlen', $arrContext)) >= $totalLength)
+					{
+						break;
 					}
 				}
 
 				// Shorten the context and highlight all keywords
 				if (!empty($arrContext))
 				{
-					$objTemplate->context = trim(StringUtil::substrHtml(implode('…', $arrContext), $this->totalLength));
+					$objTemplate->context = trim(StringUtil::substrHtml(implode('…', $arrContext), $totalLength));
 					$objTemplate->context = preg_replace('/(?<=^|\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan})(' . implode('|', array_map('preg_quote', $arrMatches)) . ')(?=\PL|\p{Hiragana}|\p{Katakana}|\p{Han}|\p{Myanmar}|\p{Khmer}|\p{Lao}|\p{Thai}|\p{Tibetan}|$)/ui', '<mark class="highlight">$1</mark>', $objTemplate->context);
 
 					$objTemplate->hasContext = true;

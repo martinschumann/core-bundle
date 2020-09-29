@@ -28,7 +28,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class FrontendTemplate extends Template
 {
-
 	/**
 	 * Unsued $_GET check
 	 * @var boolean
@@ -60,7 +59,7 @@ class FrontendTemplate extends Template
 	/**
 	 * Send the response to the client
 	 *
-	 * @param bool $blnCheckRequest If true, check for unsued $_GET parameters
+	 * @param bool $blnCheckRequest If true, check for unused $_GET parameters
 	 *
 	 * @deprecated Deprecated since Contao 4.0, to be removed in Contao 5.0.
 	 *             Use FrontendTemplate::getResponse() instead.
@@ -75,15 +74,23 @@ class FrontendTemplate extends Template
 	/**
 	 * Return a response object
 	 *
-	 * @param bool $blnCheckRequest If true, check for unsued $_GET parameters
+	 * @param bool $blnCheckRequest      If true, check for unused $_GET parameters
+	 * @param bool $blnForceCacheHeaders
 	 *
 	 * @return Response The response object
 	 */
-	public function getResponse($blnCheckRequest=false)
+	public function getResponse($blnCheckRequest=false, $blnForceCacheHeaders=false)
 	{
 		$this->blnCheckRequest = $blnCheckRequest;
 
-		return $this->setCacheHeaders(parent::getResponse());
+		$response = parent::getResponse();
+
+		if ($blnForceCacheHeaders || 0 === strncmp('fe_', $this->strTemplate, 3))
+		{
+			return $this->setCacheHeaders($response);
+		}
+
+		return $response;
 	}
 
 	/**
@@ -99,7 +106,7 @@ class FrontendTemplate extends Template
 		$arrKeywords = StringUtil::trimsplit(',', $GLOBALS['TL_KEYWORDS']);
 
 		// Add the meta keywords
-		if (\strlen($arrKeywords[0]))
+		if (isset($arrKeywords[0]))
 		{
 			$this->keywords = str_replace(array("\n", "\r", '"'), array(' ', '', ''), implode(', ', array_unique($arrKeywords)));
 		}
@@ -134,7 +141,7 @@ class FrontendTemplate extends Template
 		// Check whether all $_GET parameters have been used (see #4277)
 		if ($this->blnCheckRequest && Input::hasUnusedGet())
 		{
-			throw new \UnusedArgumentsException('Unused arguments: '.implode(', ', Input::getUnusedGet()));
+			throw new \UnusedArgumentsException('Unused arguments: ' . implode(', ', Input::getUnusedGet()));
 		}
 
 		/** @var PageModel $objPage */
@@ -145,6 +152,9 @@ class FrontendTemplate extends Template
 		{
 			$this->strBuffer = $this->minifyHtml($this->strBuffer);
 		}
+
+		// Replace literal insert tags (see #670)
+		$this->strBuffer = str_replace(array('[{]', '[}]'), array('{{', '}}'), $this->strBuffer);
 
 		parent::compile();
 	}
@@ -167,8 +177,6 @@ class FrontendTemplate extends Template
 
 		if ($template === null)
 		{
-			$template = 'block_section';
-
 			foreach ($this->positions as $position)
 			{
 				if (isset($position[$key]['template']))
@@ -176,6 +184,11 @@ class FrontendTemplate extends Template
 					$template = $position[$key]['template'];
 				}
 			}
+		}
+
+		if ($template === null)
+		{
+			$template = 'block_section';
 		}
 
 		include $this->getTemplate($template);
@@ -206,6 +219,11 @@ class FrontendTemplate extends Template
 		{
 			if (!empty($this->sections[$id]))
 			{
+				if (!isset($section['template']))
+				{
+					$section['template'] = 'block_section';
+				}
+
 				$section['content'] = $this->sections[$id];
 				$matches[$id] = $section;
 			}
@@ -259,7 +277,7 @@ class FrontendTemplate extends Template
 	 */
 	protected function addToCache()
 	{
-		@trigger_error('Using FrontendTemplate::addToCache() has been deprecated and will no longer work in Contao 5.0. Use proper response caching headers instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.3', 'Using "Contao\FrontendTemplate::addToCache()" has been deprecated and will no longer work in Contao 5.0. Use proper response caching headers instead.');
 	}
 
 	/**
@@ -270,7 +288,7 @@ class FrontendTemplate extends Template
 	 */
 	protected function addToSearchIndex()
 	{
-		@trigger_error('Using FrontendTemplate::addToSearchIndex() has been deprecated and will no longer work in Contao 5.0. Use the kernel.terminate event instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\FrontendTemplate::addToSearchIndex()" has been deprecated and will no longer work in Contao 5.0. Use the "kernel.terminate" event instead.');
 	}
 
 	/**
@@ -285,7 +303,7 @@ class FrontendTemplate extends Template
 	 */
 	public function getCustomSection($strKey)
 	{
-		@trigger_error('Using FrontendTemplate::getCustomSection() has been deprecated and will no longer work in Contao 5.0. Use FrontendTemplate::section() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\FrontendTemplate::getCustomSection()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\FrontendTemplate::section()" instead.');
 
 		return '<div id="' . $strKey . '">' . $this->sections[$strKey] . '</div>' . "\n";
 	}
@@ -302,9 +320,9 @@ class FrontendTemplate extends Template
 	 */
 	public function getCustomSections($strKey=null)
 	{
-		@trigger_error('Using FrontendTemplate::getCustomSections() has been deprecated and will no longer work in Contao 5.0. Use FrontendTemplate::sections() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\FrontendTemplate::getCustomSections()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\FrontendTemplate::sections()" instead.');
 
-		if ($strKey != '' && !isset($this->positions[$strKey]))
+		if ($strKey && !isset($this->positions[$strKey]))
 		{
 			return '';
 		}
@@ -328,7 +346,7 @@ class FrontendTemplate extends Template
 			}
 		}
 
-		if ($sections == '')
+		if (!$sections)
 		{
 			return '';
 		}
@@ -380,7 +398,8 @@ class FrontendTemplate extends Template
 			// response from cache, even if the request contains a cookie – in
 			// case the admin has configured to do so. A typical use case would
 			// be serving public pages from cache to logged in members.
-			if (!$objPage->alwaysLoadFromCache) {
+			if (!$objPage->alwaysLoadFromCache)
+			{
 				$response->setVary(array('Cookie'));
 			}
 

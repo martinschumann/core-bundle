@@ -20,7 +20,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BackendHelp extends Backend
 {
-
 	/**
 	 * Initialize the controller
 	 *
@@ -86,13 +85,15 @@ class BackendHelp extends Backend
 				$options = array_keys($arrData['reference']);
 			}
 
-			// Unset the predefined image sizes
-			unset($options['image_sizes']);
-
 			foreach ($options as $key=>$option)
 			{
 				if (\is_array($option))
 				{
+					if (empty($option) || !isset($arrData['reference'][$key]))
+					{
+						continue;
+					}
+
 					if (\is_array($arrData['reference'][$key]))
 					{
 						$rows[] = array('headspan', $arrData['reference'][$key][0]);
@@ -107,20 +108,17 @@ class BackendHelp extends Backend
 						$rows[] = $arrData['reference'][$opt];
 					}
 				}
+				elseif (isset($arrData['reference'][$key]))
+				{
+					$rows[] = $arrData['reference'][$key];
+				}
+				elseif (\is_array($arrData['reference'][$option]))
+				{
+					$rows[] = $arrData['reference'][$option];
+				}
 				else
 				{
-					if (isset($arrData['reference'][$key]))
-					{
-						$rows[] = $arrData['reference'][$key];
-					}
-					elseif (\is_array($arrData['reference'][$option]))
-					{
-						$rows[] = $arrData['reference'][$option];
-					}
-					else
-					{
-						$rows[] = array('headspan', $arrData['reference'][$option]);
-					}
+					$rows[] = array('headspan', $arrData['reference'][$option]);
 				}
 			}
 
@@ -147,7 +145,7 @@ class BackendHelp extends Backend
 		$objTemplate->base = Environment::get('base');
 		$objTemplate->language = $GLOBALS['TL_LANGUAGE'];
 		$objTemplate->title = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['helpWizardTitle']);
-		$objTemplate->host = Environment::get('host');
+		$objTemplate->host = Backend::getDecodedHostname();
 		$objTemplate->charset = Config::get('characterSet');
 		$objTemplate->headline = $arrData['label'][0] ?: $field;
 		$objTemplate->helpWizard = $GLOBALS['TL_LANG']['MSC']['helpWizard'];

@@ -18,28 +18,54 @@ use Contao\CoreBundle\Util\PackageUtil;
 use Contao\LayoutModel;
 use Contao\Model\Registry;
 use Contao\PageModel;
+use Contao\StringUtil;
+use Contao\System;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\DataCollector\DataCollector;
+use Webmozart\PathUtil\Path;
 
+/**
+ * @internal
+ */
 class ContaoDataCollector extends DataCollector implements FrameworkAwareInterface
 {
     use FrameworkAwareTrait;
 
     /**
-     * {@inheritdoc}
+     * @var bool
      */
+    private $legacyRouting;
+
+    /**
+     * @var string
+     */
+    private $projectDir;
+
+    /**
+     * @var bool
+     */
+    private $prependLocale;
+
+    /**
+     * @var string
+     */
+    private $urlSuffix;
+
+    public function __construct(bool $legacyRouting, string $projectDir, bool $prependLocale, string $urlSuffix)
+    {
+        $this->legacyRouting = $legacyRouting;
+        $this->projectDir = $projectDir;
+        $this->prependLocale = $prependLocale;
+        $this->urlSuffix = $urlSuffix;
+    }
+
     public function collect(Request $request, Response $response, \Exception $exception = null): void
     {
-        try {
-            $version = PackageUtil::getVersion('contao/core-bundle');
-        } catch (\OutOfBoundsException $e) {
-            $version = PackageUtil::getVersion('contao/contao');
-        }
-
-        $this->data = ['contao_version' => $version];
+        $this->data = ['contao_version' => PackageUtil::getContaoVersion()];
 
         $this->addSummaryData();
+        $this->addLegacyRoutingData();
 
         if (isset($GLOBALS['TL_DEBUG'])) {
             $this->data = array_merge($this->data, $GLOBALS['TL_DEBUG']);
@@ -60,7 +86,7 @@ class ContaoDataCollector extends DataCollector implements FrameworkAwareInterfa
     }
 
     /**
-     * @return string[]
+     * @return array<string|bool>
      */
     public function getClassesSet(): array
     {
@@ -72,7 +98,7 @@ class ContaoDataCollector extends DataCollector implements FrameworkAwareInterfa
     }
 
     /**
-     * @return string[]
+     * @return array<string|bool>
      */
     public function getClassesAliased(): array
     {
@@ -84,7 +110,7 @@ class ContaoDataCollector extends DataCollector implements FrameworkAwareInterfa
     }
 
     /**
-     * @return string[]
+     * @return array<string|bool>
      */
     public function getClassesComposerized(): array
     {
@@ -95,16 +121,17 @@ class ContaoDataCollector extends DataCollector implements FrameworkAwareInterfa
         return $data;
     }
 
+    public function getLegacyRouting(): array
+    {
+        return $this->getData('legacy_routing');
+    }
+
     /**
-     * @return mixed[]
+     * @return array<mixed>
      */
     public function getAdditionalData(): array
     {
         $data = $this->data;
-
-        if (!\is_array($data)) {
-            return [];
-        }
 
         unset(
             $data['summary'],
@@ -112,23 +139,18 @@ class ContaoDataCollector extends DataCollector implements FrameworkAwareInterfa
             $data['classes_set'],
             $data['classes_aliased'],
             $data['classes_composerized'],
-            $data['database_queries']
+            $data['database_queries'],
+            $data['legacy_routing']
         );
 
         return $data;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getName(): string
     {
         return 'contao';
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function reset(): void
     {
         $this->data = [];
@@ -164,6 +186,48 @@ class ContaoDataCollector extends DataCollector implements FrameworkAwareInterfa
             'preview' => \defined('BE_USER_LOGGED_IN') && true === BE_USER_LOGGED_IN,
             'layout' => $this->getLayoutName(),
             'template' => $this->getTemplateName(),
+            'legacy_routing' => $this->legacyRouting,
+        ];
+    }
+
+    private function addLegacyRoutingData(): void
+    {
+        $hooks = [];
+
+        foreach (['getPageIdFromUrl', 'getRootPageFromUrl'] as $name) {
+            if (empty($GLOBALS['TL_HOOKS'][$name]) || !\is_array($GLOBALS['TL_HOOKS'][$name])) {
+                continue;
+            }
+
+            /** @var System $systemAdapter */
+            $systemAdapter = $this->framework->getAdapter(System::class);
+
+            foreach ($GLOBALS['TL_HOOKS'][$name] as $callback) {
+                $class = $systemAdapter->importStatic($callback[0]);
+                $file = (new \ReflectionClass($class))->getFileName();
+                $vendorDir = $this->projectDir.'/vendor/';
+
+                $hook = [
+                    'name' => $name,
+                    'class' => \get_class($class),
+                    'method' => $callback[1],
+                    'package' => '',
+                ];
+
+                if (Path::isBasePath($vendorDir, $file)) {
+                    [$vendor, $package] = explode('/', Path::makeRelative($file, $vendorDir), 3);
+                    $hook['package'] = $vendor.'/'.$package;
+                }
+
+                $hooks[] = $hook;
+            }
+        }
+
+        $this->data['legacy_routing'] = [
+            'enabled' => $this->legacyRouting,
+            'prepend_locale' => $this->prependLocale,
+            'url_suffix' => $this->urlSuffix,
+            'hooks' => $hooks,
         ];
     }
 
@@ -175,7 +239,7 @@ class ContaoDataCollector extends DataCollector implements FrameworkAwareInterfa
             return '';
         }
 
-        return sprintf('%s (ID %s)', $layout->name, $layout->id);
+        return sprintf('%s (ID %s)', StringUtil::decodeEntities($layout->name), $layout->id);
     }
 
     private function getTemplateName(): string

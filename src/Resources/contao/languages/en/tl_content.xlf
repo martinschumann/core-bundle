@@ -33,10 +33,10 @@
         <source>Show the file in the browser instead of opening the download dialog.</source>
       </trans-unit>
       <trans-unit id="tl_content.overwriteMeta.0">
-        <source>Overwrite meta data</source>
+        <source>Overwrite metadata</source>
       </trans-unit>
       <trans-unit id="tl_content.overwriteMeta.1">
-        <source>Overwrite the meta data from the file manager.</source>
+        <source>Overwrite the metadata from the file manager.</source>
       </trans-unit>
       <trans-unit id="tl_content.singleSRC.0">
         <source>Source file</source>
@@ -285,22 +285,22 @@
         <source>Please choose the sort order.</source>
       </trans-unit>
       <trans-unit id="tl_content.metaIgnore.0">
-        <source>Ignore files without meta data</source>
+        <source>Ignore files without metadata</source>
       </trans-unit>
       <trans-unit id="tl_content.metaIgnore.1">
-        <source>Do not show files without meta data matching the page language.</source>
+        <source>Do not show files without metadata matching the page language.</source>
       </trans-unit>
       <trans-unit id="tl_content.galleryTpl.0">
         <source>Gallery template</source>
       </trans-unit>
       <trans-unit id="tl_content.galleryTpl.1">
-        <source>Here you can select the gallery template.</source>
+        <source>Here you can select a gallery template.</source>
       </trans-unit>
       <trans-unit id="tl_content.customTpl.0">
-        <source>Custom element template</source>
+        <source>Content element template</source>
       </trans-unit>
       <trans-unit id="tl_content.customTpl.1">
-        <source>Here you can overwrite the default element template.</source>
+        <source>Here you can select the content element template.</source>
       </trans-unit>
       <trans-unit id="tl_content.playerSRC.0">
         <source>Video/audio files</source>
@@ -468,13 +468,13 @@
         <source>Show from</source>
       </trans-unit>
       <trans-unit id="tl_content.start.1">
-        <source>Do not show the element on the website before this day.</source>
+        <source>If you want to prevent the element from showing on the website before a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
       </trans-unit>
       <trans-unit id="tl_content.stop.0">
         <source>Show until</source>
       </trans-unit>
       <trans-unit id="tl_content.stop.1">
-        <source>Do not show the element on the website on and after this day.</source>
+        <source>If you want to prevent the element from showing on the website after a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
       </trans-unit>
       <trans-unit id="tl_content.type_legend">
         <source>Element type</source>
@@ -639,46 +639,31 @@
         <source>Hide the author</source>
       </trans-unit>
       <trans-unit id="tl_content.new.0">
-        <source>New element</source>
+        <source>New</source>
       </trans-unit>
       <trans-unit id="tl_content.new.1">
         <source>Add a new content element</source>
       </trans-unit>
-      <trans-unit id="tl_content.show.0">
-        <source>Element details</source>
-      </trans-unit>
-      <trans-unit id="tl_content.show.1">
+      <trans-unit id="tl_content.show">
         <source>Show the details of content element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.cut.0">
-        <source>Move element</source>
-      </trans-unit>
-      <trans-unit id="tl_content.cut.1">
+      <trans-unit id="tl_content.cut">
         <source>Move content element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.copy.0">
-        <source>Duplicate element</source>
-      </trans-unit>
-      <trans-unit id="tl_content.copy.1">
+      <trans-unit id="tl_content.copy">
         <source>Duplicate content element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.delete.0">
-        <source>Delete element</source>
-      </trans-unit>
-      <trans-unit id="tl_content.delete.1">
+      <trans-unit id="tl_content.delete">
         <source>Delete content element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.edit.0">
-        <source>Edit element</source>
-      </trans-unit>
-      <trans-unit id="tl_content.edit.1">
+      <trans-unit id="tl_content.edit">
         <source>Edit content element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.editheader.0">
-        <source>Edit article</source>
-      </trans-unit>
-      <trans-unit id="tl_content.editheader.1">
+      <trans-unit id="tl_content.editheader">
         <source>Edit the article settings</source>
+      </trans-unit>
+      <trans-unit id="tl_content.toggle">
+        <source>Hide/unhide content element ID %s</source>
       </trans-unit>
       <trans-unit id="tl_content.pasteafter.0">
         <source>Paste at the top</source>
@@ -687,27 +672,15 @@
         <source>Paste after content element ID %s</source>
       </trans-unit>
       <trans-unit id="tl_content.pastenew.0">
-        <source>Add new at the top</source>
+        <source>Create a new content element at the top</source>
       </trans-unit>
       <trans-unit id="tl_content.pastenew.1">
-        <source>Add new after content element ID %s</source>
+        <source>Create a new content element after content element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.toggle.0">
-        <source>Toggle visibility</source>
-      </trans-unit>
-      <trans-unit id="tl_content.toggle.1">
-        <source>Toggle the visibility of element ID %s</source>
-      </trans-unit>
-      <trans-unit id="tl_content.editalias.0">
-        <source>Edit source element</source>
-      </trans-unit>
-      <trans-unit id="tl_content.editalias.1">
+      <trans-unit id="tl_content.editalias">
         <source>Edit the source element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.editarticle.0">
-        <source>Edit article</source>
-      </trans-unit>
-      <trans-unit id="tl_content.editarticle.1">
+      <trans-unit id="tl_content.editarticle">
         <source>Edit article ID %s</source>
       </trans-unit>
       <trans-unit id="tl_content.list.1">

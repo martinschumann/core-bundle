@@ -23,9 +23,13 @@ use Symfony\Component\VarDumper\Dumper\CliDumper;
 
 /**
  * Dumps debug information about a Contao DCA.
+ *
+ * @internal
  */
 class DebugDcaCommand extends Command
 {
+    protected static $defaultName = 'debug:dca';
+
     /**
      * @var ContaoFramework
      */
@@ -38,25 +42,19 @@ class DebugDcaCommand extends Command
         parent::__construct();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function configure(): void
     {
         $this
-            ->setName('debug:dca')
             ->addArgument('table', InputArgument::REQUIRED, 'The table name')
             ->setDescription('Dumps the DCA configuration for a table.')
         ;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $table = $input->getArgument('table');
 
+        $this->framework->initialize();
         $dcaLoader = $this->framework->createInstance(DcaLoader::class, [$table]);
         $dcaLoader->load();
 

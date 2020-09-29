@@ -31,7 +31,6 @@ namespace Contao;
  */
 class Files
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var Files
@@ -55,7 +54,9 @@ class Files
 	/**
 	 * Prevent cloning of the object (Singleton)
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Instantiate the object (Factory)
@@ -107,7 +108,7 @@ class Files
 			return true;
 		}
 
-		return rmdir($this->strRootDir. '/' . $strDirectory);
+		return rmdir($this->strRootDir . '/' . $strDirectory);
 	}
 
 	/**
@@ -119,7 +120,7 @@ class Files
 	public function rrdir($strFolder, $blnPreserveRoot=false)
 	{
 		$this->validate($strFolder);
-		$arrFiles = scan($this->strRootDir . '/' . $strFolder, true);
+		$arrFiles = Folder::scan($this->strRootDir . '/' . $strFolder, true);
 
 		foreach ($arrFiles as $strFile)
 		{
@@ -241,7 +242,7 @@ class Files
 		$this->validate($strSource, $strDestination);
 
 		$this->mkdir($strDestination);
-		$arrFiles = scan($this->strRootDir . '/' . $strSource, true);
+		$arrFiles = Folder::scan($this->strRootDir . '/' . $strSource, true);
 
 		foreach ($arrFiles as $strFile)
 		{
@@ -323,11 +324,12 @@ class Files
 	{
 		foreach (\func_get_args() as $strPath)
 		{
-			if ($strPath == '') // see #5795
+			if (!$strPath)
 			{
-				throw new \RuntimeException('No file or folder name given');
+				throw new \RuntimeException('No file or folder name given'); // see #5795
 			}
-			elseif (Validator::isInsecurePath($strPath))
+
+			if (Validator::isInsecurePath($strPath))
 			{
 				throw new \RuntimeException('Invalid file or folder name ' . $strPath);
 			}

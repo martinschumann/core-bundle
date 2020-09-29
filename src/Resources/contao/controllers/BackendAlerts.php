@@ -20,7 +20,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BackendAlerts extends Backend
 {
-
 	/**
 	 * Initialize the controller
 	 *
@@ -55,7 +54,7 @@ class BackendAlerts extends Backend
 		$objTemplate->base = Environment::get('base');
 		$objTemplate->language = $GLOBALS['TL_LANGUAGE'];
 		$objTemplate->title = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['systemMessages']);
-		$objTemplate->host = Environment::get('host');
+		$objTemplate->host = Backend::getDecodedHostname();
 		$objTemplate->charset = Config::get('characterSet');
 		$objTemplate->messages = Message::generateUnwrapped() . Backend::getSystemMessages();
 		$objTemplate->noMessages = $GLOBALS['TL_LANG']['MSC']['noSystemMessages'];

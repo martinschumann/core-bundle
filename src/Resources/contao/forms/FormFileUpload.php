@@ -21,10 +21,11 @@ namespace Contao;
  * @property boolean $doNotOverwrite
  *
  * @author Leo Feyer <https://github.com/leofeyer>
+ *
+ * @todo Rename to FormUpload in Contao 5.0
  */
 class FormFileUpload extends Widget implements \uploadable
 {
-
 	/**
 	 * Template
 	 *
@@ -73,6 +74,14 @@ class FormFileUpload extends Widget implements \uploadable
 				}
 				break;
 
+			case 'extensions':
+				if ($varValue)
+				{
+					$this->arrAttributes['accept'] = '.' . implode(',.', StringUtil::trimsplit(',', strtolower($varValue)));
+				}
+				parent::__set($strKey, $varValue);
+				break;
+
 			default:
 				parent::__set($strKey, $varValue);
 				break;
@@ -89,7 +98,7 @@ class FormFileUpload extends Widget implements \uploadable
 		{
 			if ($this->mandatory)
 			{
-				if ($this->strLabel == '')
+				if (!$this->strLabel)
 				{
 					$this->addError($GLOBALS['TL_LANG']['ERR']['mdtryNoLabel']);
 				}
@@ -222,19 +231,19 @@ class FormFileUpload extends Widget implements \uploadable
 				}
 
 				$strUploadFolder = $objUploadFolder->path;
-				$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+				$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 				// Store the file if the upload folder exists
-				if ($strUploadFolder != '' && is_dir($rootDir . '/' . $strUploadFolder))
+				if ($strUploadFolder && is_dir($projectDir . '/' . $strUploadFolder))
 				{
 					$this->import(Files::class, 'Files');
 
 					// Do not overwrite existing files
-					if ($this->doNotOverwrite && file_exists($rootDir . '/' . $strUploadFolder . '/' . $file['name']))
+					if ($this->doNotOverwrite && file_exists($projectDir . '/' . $strUploadFolder . '/' . $file['name']))
 					{
 						$offset = 1;
 
-						$arrAll = scan($rootDir . '/' . $strUploadFolder);
+						$arrAll = Folder::scan($projectDir . '/' . $strUploadFolder);
 						$arrFiles = preg_grep('/^' . preg_quote($objFile->filename, '/') . '.*\.' . preg_quote($objFile->extension, '/') . '/', $arrAll);
 
 						foreach ($arrFiles as $strFile)
@@ -279,7 +288,7 @@ class FormFileUpload extends Widget implements \uploadable
 					(
 						'name'     => $file['name'],
 						'type'     => $file['type'],
-						'tmp_name' => $rootDir . '/' . $strFile,
+						'tmp_name' => $projectDir . '/' . $strFile,
 						'error'    => $file['error'],
 						'size'     => $file['size'],
 						'uploaded' => true,
@@ -302,12 +311,14 @@ class FormFileUpload extends Widget implements \uploadable
 	 */
 	public function generate()
 	{
-		return sprintf('<input type="file" name="%s" id="ctrl_%s" class="upload%s"%s%s',
-						$this->strName,
-						$this->strId,
-						(($this->strClass != '') ? ' ' . $this->strClass : ''),
-						$this->getAttributes(),
-						$this->strTagEnding);
+		return sprintf(
+			'<input type="file" name="%s" id="ctrl_%s" class="upload%s"%s%s',
+			$this->strName,
+			$this->strId,
+			($this->strClass ? ' ' . $this->strClass : ''),
+			$this->getAttributes(),
+			$this->strTagEnding
+		);
 	}
 
 	/**

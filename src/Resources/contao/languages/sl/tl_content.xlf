@@ -33,12 +33,21 @@
         <source>Add an image to the content element.</source>
         <target>Če izberete to možnost bo vsebini dodana slika.</target>
       </trans-unit>
+      <trans-unit id="tl_content.inline.0">
+        <source>Show in browser</source>
+        <target>Prikaži v brskalniku</target>
+      </trans-unit>
+      <trans-unit id="tl_content.inline.1">
+        <source>Show the file in the browser instead of opening the download dialog.</source>
+        <target>Odpri datoteko v brskalniku in ne prikaži okna za prenos datoteke.</target>
+      </trans-unit>
       <trans-unit id="tl_content.overwriteMeta.0">
         <source>Overwrite meta data</source>
         <target>Prepiši meta podatke</target>
       </trans-unit>
       <trans-unit id="tl_content.overwriteMeta.1">
         <source>Overwrite the meta data from the file manager.</source>
+        <target>Prepiši meta podatke iz upravljalca datotek.</target>
       </trans-unit>
       <trans-unit id="tl_content.singleSRC.0">
         <source>Source file</source>
@@ -58,6 +67,7 @@
       </trans-unit>
       <trans-unit id="tl_content.imageTitle.0">
         <source>Image title</source>
+        <target>Naziv slike</target>
       </trans-unit>
       <trans-unit id="tl_content.imageTitle.1">
         <source>Here you can enter the image title (&lt;em&gt;title&lt;/em&gt; attribute).</source>
@@ -378,16 +388,16 @@
         <target>Predloga galerije</target>
       </trans-unit>
       <trans-unit id="tl_content.galleryTpl.1">
-        <source>Here you can select the gallery template.</source>
-        <target>Tu lahko izberete predlogo galerije.</target>
+        <source>Here you can select a gallery template.</source>
+        <target>Tu lahko določite predlogo za galerijo.</target>
       </trans-unit>
       <trans-unit id="tl_content.customTpl.0">
-        <source>Custom element template</source>
-        <target>Predloga elementa po meri</target>
+        <source>Content element template</source>
+        <target>Predloga elementa vsebine</target>
       </trans-unit>
       <trans-unit id="tl_content.customTpl.1">
-        <source>Here you can overwrite the default element template.</source>
-        <target>Tukaj lahko prepišete privzeto predlogo elementa.</target>
+        <source>Here you can select the content element template.</source>
+        <target>Tu lahko določite predlogo za element vsebine.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerSRC.0">
         <source>Video/audio files</source>
@@ -403,6 +413,7 @@
       </trans-unit>
       <trans-unit id="tl_content.youtube.1">
         <source>Please enter the YouTube video ID (e.g. &lt;em&gt;j0sYj4wxyk0&lt;/em&gt;).</source>
+        <target>Vnesite YouTube video ID (npr. &lt;em&gt;1j0sYj4wxyk01&lt;/em&gt;).</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo.0">
         <source>Vimeo ID</source>
@@ -410,6 +421,7 @@
       </trans-unit>
       <trans-unit id="tl_content.vimeo.1">
         <source>Please enter the Vimeo video ID (e.g. &lt;em&gt;275028611&lt;/em&gt;).</source>
+        <target>Vnesite Vimeo video ID (npr. &lt;em&gt;12750286111&lt;/em&gt;).</target>
       </trans-unit>
       <trans-unit id="tl_content.posterSRC.0">
         <source>Preview image</source>
@@ -447,6 +459,7 @@
       </trans-unit>
       <trans-unit id="tl_content.playerStart.1">
         <source>Start playing the video at the given number of seconds. Set to 0 to disable.</source>
+        <target>Predvajati začni na določeni sekundi. Vnesite 0 za predvajanje od začetka.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerStop.0">
         <source>Stop at</source>
@@ -454,6 +467,7 @@
       </trans-unit>
       <trans-unit id="tl_content.playerStop.1">
         <source>Stop playing the video at the given number of seconds. Set to 0 to disable.</source>
+        <target>Ustavi predvajanje posnetka po določenem času - sekunde. Nastavite 0 za predvajanje do konca.</target>
       </trans-unit>
       <trans-unit id="tl_content.playerCaption.0">
         <source>Caption</source>
@@ -467,6 +481,12 @@
       </trans-unit>
       <trans-unit id="tl_content.playerAspect.1">
         <source>Here you can select the aspect ratio of the video to make it responsive.</source>
+      </trans-unit>
+      <trans-unit id="tl_content.splashImage.0">
+        <source>Use a splash image</source>
+      </trans-unit>
+      <trans-unit id="tl_content.splashImage.1">
+        <source>Only load the video after the user has clicked on the splash image.</source>
       </trans-unit>
       <trans-unit id="tl_content.playerColor.0">
         <source>Controls color</source>
@@ -591,16 +611,14 @@
         <target>Objavi od</target>
       </trans-unit>
       <trans-unit id="tl_content.start.1">
-        <source>Do not show the element on the website before this day.</source>
-        <target>Označuje začetek ovoja harmonike, ki vsebuje elemente vsebine.</target>
+        <source>If you want to prevent the element from showing on the website before a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
       </trans-unit>
       <trans-unit id="tl_content.stop.0">
         <source>Show until</source>
         <target>Objavi do</target>
       </trans-unit>
       <trans-unit id="tl_content.stop.1">
-        <source>Do not show the element on the website on and after this day.</source>
-        <target>Označuje konec ovoja harmonike, ki vsebuje elemente vsebine.</target>
+        <source>If you want to prevent the element from showing on the website after a certain date/time, you can enter it here. Otherwise leave the field blank.</source>
       </trans-unit>
       <trans-unit id="tl_content.type_legend">
         <source>Element type</source>
@@ -613,6 +631,10 @@
       <trans-unit id="tl_content.image_legend">
         <source>Image settings</source>
         <target>Nastavitve slike</target>
+      </trans-unit>
+      <trans-unit id="tl_content.download_legend">
+        <source>Download settings</source>
+        <target>Nastavitve prenosa</target>
       </trans-unit>
       <trans-unit id="tl_content.slider_legend">
         <source>Slider settings</source>
@@ -657,6 +679,9 @@
       <trans-unit id="tl_content.protected_legend">
         <source>Access protection</source>
         <target>Zaščita pred dostopom</target>
+      </trans-unit>
+      <trans-unit id="tl_content.splash_legend">
+        <source>Splash image</source>
       </trans-unit>
       <trans-unit id="tl_content.expert_legend">
         <source>Expert settings</source>
@@ -727,6 +752,7 @@
       </trans-unit>
       <trans-unit id="tl_content.player_loop">
         <source>Play in a loop</source>
+        <target>Ponavljaj predvajanje</target>
       </trans-unit>
       <trans-unit id="tl_content.player_muted">
         <source>Mute the audio output</source>
@@ -776,6 +802,7 @@
       </trans-unit>
       <trans-unit id="tl_content.youtube_nocookie">
         <source>Use the youtube-nocookie.com domain</source>
+        <target>Uporabi domeno youtube-nocookie.com</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_autoplay">
         <source>Autoplay</source>
@@ -783,71 +810,53 @@
       </trans-unit>
       <trans-unit id="tl_content.vimeo_loop">
         <source>Play in a loop</source>
+        <target>Ponavljaj predvajanje</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_portrait">
         <source>Hide the profile image</source>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_title">
         <source>Hide the title</source>
+        <target>Ne prikaži naziva</target>
       </trans-unit>
       <trans-unit id="tl_content.vimeo_byline">
         <source>Hide the author</source>
+        <target>Ne prikaži avtorja</target>
       </trans-unit>
       <trans-unit id="tl_content.new.0">
-        <source>New element</source>
-        <target>Nov element</target>
+        <source>New</source>
+        <target>Nov</target>
       </trans-unit>
       <trans-unit id="tl_content.new.1">
         <source>Add a new content element</source>
         <target>Dodaj nov element z vsebino</target>
       </trans-unit>
-      <trans-unit id="tl_content.show.0">
-        <source>Element details</source>
-        <target>Podrobnosti elementa</target>
-      </trans-unit>
-      <trans-unit id="tl_content.show.1">
+      <trans-unit id="tl_content.show">
         <source>Show the details of content element ID %s</source>
         <target>Prikaži podrobnosti elementa z vsebino (ID: %s)</target>
       </trans-unit>
-      <trans-unit id="tl_content.cut.0">
-        <source>Move element</source>
-        <target>Premakni element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.cut.1">
+      <trans-unit id="tl_content.cut">
         <source>Move content element ID %s</source>
         <target>Premakni element z vsebino (ID: %s)</target>
       </trans-unit>
-      <trans-unit id="tl_content.copy.0">
-        <source>Duplicate element</source>
-        <target>Kopiraj element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.copy.1">
+      <trans-unit id="tl_content.copy">
         <source>Duplicate content element ID %s</source>
         <target>Kopiraj element z vsebino (ID: %s)</target>
       </trans-unit>
-      <trans-unit id="tl_content.delete.0">
-        <source>Delete element</source>
-        <target>Izbriši element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.delete.1">
+      <trans-unit id="tl_content.delete">
         <source>Delete content element ID %s</source>
         <target>Izbriši element z vsebino (ID: %s)</target>
       </trans-unit>
-      <trans-unit id="tl_content.edit.0">
-        <source>Edit element</source>
-        <target>Uredi element</target>
-      </trans-unit>
-      <trans-unit id="tl_content.edit.1">
+      <trans-unit id="tl_content.edit">
         <source>Edit content element ID %s</source>
         <target>Uredi element z vsebino (ID: %s)</target>
       </trans-unit>
-      <trans-unit id="tl_content.editheader.0">
-        <source>Edit article</source>
-        <target>Uredi članek</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editheader.1">
+      <trans-unit id="tl_content.editheader">
         <source>Edit the article settings</source>
         <target>Uredi nastavitve članka</target>
+      </trans-unit>
+      <trans-unit id="tl_content.toggle">
+        <source>Hide/unhide content element ID %s</source>
       </trans-unit>
       <trans-unit id="tl_content.pasteafter.0">
         <source>Paste at the top</source>
@@ -858,34 +867,16 @@
         <target>Prilepi za element z vsebino (ID: %s)</target>
       </trans-unit>
       <trans-unit id="tl_content.pastenew.0">
-        <source>Add new at the top</source>
-        <target>Dodaj novo na vrh</target>
+        <source>Create a new content element at the top</source>
       </trans-unit>
       <trans-unit id="tl_content.pastenew.1">
-        <source>Add new after content element ID %s</source>
-        <target>Vstavi novega za element z vsebino (ID: %s)</target>
+        <source>Create a new content element after content element ID %s</source>
       </trans-unit>
-      <trans-unit id="tl_content.toggle.0">
-        <source>Toggle visibility</source>
-        <target>Preklopi vidljivost</target>
-      </trans-unit>
-      <trans-unit id="tl_content.toggle.1">
-        <source>Toggle the visibility of element ID %s</source>
-        <target>Spremeni vidljivost elementa (ID: %s)</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editalias.0">
-        <source>Edit source element</source>
-        <target>Uredi vir elementa</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editalias.1">
+      <trans-unit id="tl_content.editalias">
         <source>Edit the source element ID %s</source>
         <target>Uredi vir elementa z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_content.editarticle.0">
-        <source>Edit article</source>
-        <target>Uredi članek</target>
-      </trans-unit>
-      <trans-unit id="tl_content.editarticle.1">
+      <trans-unit id="tl_content.editarticle">
         <source>Edit article ID %s</source>
         <target>Uredi članek (ID: %s)</target>
       </trans-unit>

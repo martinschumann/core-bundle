@@ -10,13 +10,13 @@
 
 namespace Contao;
 
+use Contao\Image\DeferredImageInterface;
 use Contao\Image\Image as NewImage;
 use Contao\Image\ImageDimensions;
 use Contao\Image\ImportantPart;
 use Contao\Image\ResizeConfiguration;
 use Contao\Image\ResizeOptions;
 use Imagine\Image\Box;
-use Imagine\Image\Point;
 
 /**
  * Resizes images
@@ -39,7 +39,6 @@ use Imagine\Image\Point;
  */
 class Image
 {
-
 	/**
 	 * The File instance of the original image
 	 *
@@ -69,7 +68,7 @@ class Image
 	protected $targetHeight = 0;
 
 	/**
-	 * The resize mode (defaults to crop for BC)
+	 * The resize mode (defaults to crop for backwards compatibility)
 	 *
 	 * @var string
 	 */
@@ -121,7 +120,7 @@ class Image
 	 */
 	public function __construct(File $file)
 	{
-		@trigger_error('Using new Contao\Image() has been deprecated and will no longer work in Contao 5.0. Use the contao.image.image_factory service instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.3', 'Using the "Contao\Image" class has been deprecated and will no longer work in Contao 5.0. Use the "contao.image.image_factory" service instead.');
 
 		// Check whether the file exists
 		if (!$file->exists())
@@ -188,7 +187,7 @@ class Image
 	{
 		if ($importantPart !== null)
 		{
-			if (!isset($importantPart['x']) || !isset($importantPart['y']) || !isset($importantPart['width']) || !isset($importantPart['height']))
+			if (!isset($importantPart['x'], $importantPart['y'], $importantPart['width'], $importantPart['height']))
 			{
 				throw new \InvalidArgumentException('Malformed array for setting the important part!');
 			}
@@ -201,7 +200,6 @@ class Image
 
 			$this->importantPart['width'] = max(1, min($this->fileObj->viewWidth - $this->importantPart['x'], (int) $importantPart['width']));
 			$this->importantPart['height'] = max(1, min($this->fileObj->viewHeight - $this->importantPart['y'], (int) $importantPart['height']));
-
 		}
 		else
 		{
@@ -395,7 +393,7 @@ class Image
 
 		$strCacheKey = substr(md5
 		(
-			  '-w' . $this->getTargetWidth()
+			'-w' . $this->getTargetWidth()
 			. '-h' . $this->getTargetHeight()
 			. '-o' . $this->getOriginalPath()
 			. '-m' . $this->getResizeMode()
@@ -420,9 +418,10 @@ class Image
 		$image = $this->prepareImage();
 		$resizeConfig = $this->prepareResizeConfig();
 
-		if (!System::getContainer()->getParameter('contao.image.bypass_cache')
-			&& $this->getTargetPath()
+		if (
+			$this->getTargetPath()
 			&& !$this->getForceOverride()
+			&& !System::getContainer()->getParameter('contao.image.bypass_cache')
 			&& file_exists($this->strRootDir . '/' . $this->getTargetPath())
 			&& $this->fileObj->mtime <= filemtime($this->strRootDir . '/' . $this->getTargetPath())
 		) {
@@ -456,6 +455,7 @@ class Image
 					->setImagineOptions(System::getContainer()->getParameter('contao.image.imagine_options'))
 					->setTargetPath($this->targetPath ? $this->strRootDir . '/' . $this->targetPath : null)
 					->setBypassCache(System::getContainer()->getParameter('contao.image.bypass_cache'))
+					->setSkipIfDimensionsMatch(true)
 			)
 		;
 
@@ -534,8 +534,10 @@ class Image
 		}
 
 		return new ImportantPart(
-			new Point($importantPart['x'], $importantPart['y']),
-			new Box($importantPart['width'], $importantPart['height'])
+			$importantPart['x'] / $this->fileObj->viewWidth,
+			$importantPart['y'] / $this->fileObj->viewHeight,
+			$importantPart['width'] / $this->fileObj->viewWidth,
+			$importantPart['height'] / $this->fileObj->viewHeight
 		);
 	}
 
@@ -562,7 +564,7 @@ class Image
 			{
 				$resizeConfig->setMode($this->resizeMode);
 			}
-			catch (\InvalidArgumentException $exception)
+			catch (\Throwable $exception)
 			{
 				$resizeConfig->setMode(ResizeConfiguration::MODE_CROP);
 			}
@@ -610,7 +612,7 @@ class Image
 	 */
 	public static function getPath($src)
 	{
-		if ($src == '')
+		if (!$src)
 		{
 			return '';
 		}
@@ -622,7 +624,7 @@ class Image
 			return $src;
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		if (strncmp($src, 'icon', 4) === 0)
 		{
@@ -634,32 +636,30 @@ class Image
 			$filename = pathinfo($src, PATHINFO_FILENAME);
 
 			// Prefer SVG icons
-			if (file_exists($rootDir . '/assets/contao/images/' . $filename . '.svg'))
+			if (file_exists($projectDir . '/assets/contao/images/' . $filename . '.svg'))
 			{
 				return 'assets/contao/images/' . $filename . '.svg';
 			}
 
 			return 'assets/contao/images/' . $src;
 		}
-		else
+
+		$theme = Backend::getTheme();
+
+		if (pathinfo($src, PATHINFO_EXTENSION) == 'svg')
 		{
-			$theme = Backend::getTheme();
-
-			if (pathinfo($src, PATHINFO_EXTENSION) == 'svg')
-			{
-				return 'system/themes/' . $theme . '/icons/' . $src;
-			}
-
-			$filename = pathinfo($src, PATHINFO_FILENAME);
-
-			// Prefer SVG icons
-			if (file_exists($rootDir . '/system/themes/' . $theme . '/icons/' . $filename . '.svg'))
-			{
-				return 'system/themes/' . $theme . '/icons/' . $filename . '.svg';
-			}
-
-			return 'system/themes/' . $theme . '/images/' . $src;
+			return 'system/themes/' . $theme . '/icons/' . $src;
 		}
+
+		$filename = pathinfo($src, PATHINFO_FILENAME);
+
+		// Prefer SVG icons
+		if (file_exists($projectDir . '/system/themes/' . $theme . '/icons/' . $filename . '.svg'))
+		{
+			return 'system/themes/' . $theme . '/icons/' . $filename . '.svg';
+		}
+
+		return 'system/themes/' . $theme . '/images/' . $src;
 	}
 
 	/**
@@ -675,23 +675,32 @@ class Image
 	{
 		$src = static::getPath($src);
 
-		if ($src == '')
+		if (!$src)
 		{
 			return '';
 		}
 
 		$container = System::getContainer();
-		$rootDir = $container->getParameter('kernel.project_dir');
+		$projectDir = $container->getParameter('kernel.project_dir');
 		$webDir = StringUtil::stripRootDir($container->getParameter('contao.web_dir'));
 
-		if (!is_file($rootDir . '/' . $src))
+		if (!is_file($projectDir . '/' . $src))
 		{
+			try
+			{
+				$deferredImage = $container->get('contao.image.image_factory')->create($projectDir . '/' . $src);
+			}
+			catch (\Exception $e)
+			{
+				$deferredImage = null;
+			}
+
 			// Handle public bundle resources
-			if (file_exists($rootDir . '/' . $webDir . '/' . $src))
+			if (file_exists($projectDir . '/' . $webDir . '/' . $src))
 			{
 				$src = $webDir . '/' . $src;
 			}
-			else
+			elseif (!$deferredImage instanceof DeferredImageInterface)
 			{
 				return '';
 			}
@@ -707,7 +716,7 @@ class Image
 
 		$context = (strncmp($src, 'assets/', 7) === 0) ? 'assets_context' : 'files_context';
 
-		return '<img src="' . Controller::addStaticUrlTo(System::urlEncode($src), $container->get('contao.assets.'.$context)) . '" width="' . $objFile->width . '" height="' . $objFile->height . '" alt="' . StringUtil::specialchars($alt) . '"' . (($attributes != '') ? ' ' . $attributes : '') . '>';
+		return '<img src="' . Controller::addStaticUrlTo(System::urlEncode($src), $container->get('contao.assets.' . $context)) . '" width="' . $objFile->width . '" height="' . $objFile->height . '" alt="' . StringUtil::specialchars($alt) . '"' . ($attributes ? ' ' . $attributes : '') . '>';
 	}
 
 	/**
@@ -725,7 +734,7 @@ class Image
 	 */
 	public static function resize($image, $width, $height, $mode='')
 	{
-		@trigger_error('Using Image::resize() has been deprecated and will no longer work in Contao 5.0. Use the contao.image.image_factory service instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.3', 'Using "Contao\Image::resize()" has been deprecated and will no longer work in Contao 5.0. Use the "contao.image.image_factory" service instead.');
 
 		return static::get($image, $width, $height, $mode, $image, true) ? true : false;
 	}
@@ -733,8 +742,8 @@ class Image
 	/**
 	 * Create an image instance from the given image path and size
 	 *
-	 * @param string|File   $image The image path or File instance
-	 * @param array|integer $size  The image size as array (width, height, resize mode) or an tl_image_size ID
+	 * @param string|File          $image The image path or File instance
+	 * @param array|integer|string $size  The image size as array (width, height, resize mode) or an tl_image_size ID or a predifined image size key
 	 *
 	 * @return static The created image instance
 	 *
@@ -743,20 +752,28 @@ class Image
 	 */
 	public static function create($image, $size=null)
 	{
-		@trigger_error('Using Image::create() has been deprecated and will no longer work in Contao 5.0. Use the contao.image.image_factory service instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.3', 'Using "Contao\Image::create()" has been deprecated and will no longer work in Contao 5.0. Use the "contao.image.image_factory" service instead.');
 
 		if (\is_string($image))
 		{
 			$image = new File(rawurldecode($image));
 		}
 
-		/** @var Image $imageObj */
 		$imageObj = new static($image);
 
-		// tl_image_size ID as resize mode
-		if (\is_array($size) && !empty($size[2]) && is_numeric($size[2]))
+		if (\is_array($size) && !empty($size[2]))
 		{
-			$size = (int) $size[2];
+			// tl_image_size ID as resize mode
+			if (is_numeric($size[2]))
+			{
+				$size = (int) $size[2];
+			}
+
+			// Predefined image size as resize mode
+			elseif (\is_string($size[2]) && $size[2][0] === '_')
+			{
+				$size = $size[2];
+			}
 		}
 
 		if (\is_array($size))
@@ -770,8 +787,8 @@ class Image
 			;
 		}
 
-		// Load the image size from the database if $size is an ID
-		elseif (($imageSize = ImageSizeModel::findByPk($size)) !== null)
+		// Load the image size from the database if $size is an ID or a predefined size
+		elseif (($imageSize = self::getImageSizeConfig($size)) !== null)
 		{
 			$imageObj
 				->setTargetWidth($imageSize->width)
@@ -782,20 +799,57 @@ class Image
 		}
 
 		$fileRecord = FilesModel::findByPath($image->path);
+		$currentSize = $image->imageViewSize;
 
 		// Set the important part
 		if ($fileRecord !== null && $fileRecord->importantPartWidth && $fileRecord->importantPartHeight)
 		{
 			$imageObj->setImportantPart(array
 			(
-				'x' => (int) $fileRecord->importantPartX,
-				'y' => (int) $fileRecord->importantPartY,
-				'width' => (int) $fileRecord->importantPartWidth,
-				'height' => (int) $fileRecord->importantPartHeight,
+				'x' => (int) ($fileRecord->importantPartX * $currentSize[0]),
+				'y' => (int) ($fileRecord->importantPartY * $currentSize[1]),
+				'width' => (int) ($fileRecord->importantPartWidth * $currentSize[0]),
+				'height' => (int) ($fileRecord->importantPartHeight * $currentSize[1]),
 			));
 		}
 
 		return $imageObj;
+	}
+
+	private static function getImageSizeConfig($size)
+	{
+		if (is_numeric($size))
+		{
+			return ImageSizeModel::findByPk($size);
+		}
+
+		if (!\is_string($size) || $size[0] !== '_')
+		{
+			return null;
+		}
+
+		static $predefinedSizes = null;
+
+		if ($predefinedSizes === null)
+		{
+			$factory = System::getContainer()->get('contao.image.image_factory');
+			$predefinedSizes = (new \ReflectionObject($factory))->getProperty('predefinedSizes');
+			$predefinedSizes->setAccessible(true);
+			$predefinedSizes = $predefinedSizes->getValue($factory) ?? array();
+		}
+
+		if (!isset($predefinedSizes[$size]))
+		{
+			return null;
+		}
+
+		$imageSize = new \stdClass();
+		$imageSize->width = $predefinedSizes[$size]['width'];
+		$imageSize->height = $predefinedSizes[$size]['height'];
+		$imageSize->resizeMode = $predefinedSizes[$size]['resizeMode'];
+		$imageSize->zoom = $predefinedSizes[$size]['zoom'];
+
+		return $imageSize;
 	}
 
 	/**
@@ -815,9 +869,9 @@ class Image
 	 */
 	public static function get($image, $width, $height, $mode='', $target=null, $force=false)
 	{
-		@trigger_error('Using Image::get() has been deprecated and will no longer work in Contao 5.0. Use the contao.image.image_factory service instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.3', 'Using "Contao\Image::get()" has been deprecated and will no longer work in Contao 5.0. Use the "contao.image.image_factory" service instead.');
 
-		if ($image == '')
+		if (!$image)
 		{
 			return null;
 		}
@@ -853,7 +907,7 @@ class Image
 	 */
 	public static function getPixelValue($size)
 	{
-		@trigger_error('Using Image::getPixelValue() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.3', 'Using "Contao\Image::getPixelValue()" has been deprecated and will no longer work in Contao 5.0. Use the "contao.image.image_factory" service instead.');
 
 		$value = preg_replace('/[^0-9.-]+/', '', $size);
 		$unit = preg_replace('/[^acehimnprtvwx%]/', '', $size);
@@ -864,39 +918,28 @@ class Image
 			case '':
 			case 'px':
 				return (int) round($value);
-				break;
 
+			case 'pc':
 			case 'em':
 				return (int) round($value * 16);
-				break;
 
 			case 'ex':
 				return (int) round($value * 16 / 2);
-				break;
 
 			case 'pt':
 				return (int) round($value * 16 / 12);
-				break;
-
-			case 'pc':
-				return (int) round($value * 16);
-				break;
 
 			case 'in':
 				return (int) round($value * 16 * 6);
-				break;
 
 			case 'cm':
 				return (int) round($value * 16 / (2.54 / 6));
-				break;
 
 			case 'mm':
 				return (int) round($value * 16 / (25.4 / 6));
-				break;
 
 			case '%':
 				return (int) round($value * 16 / 100);
-				break;
 		}
 
 		return 0;

@@ -12,31 +12,29 @@ declare(strict_types=1);
 
 namespace Contao\CoreBundle\EventListener;
 
-use Contao\BackendUser;
 use Contao\Config;
-use Contao\CoreBundle\Exception\ForwardPageNotFoundException;
-use Contao\CoreBundle\Exception\IncompleteInstallationException;
-use Contao\CoreBundle\Exception\InsecureInstallationException;
 use Contao\CoreBundle\Exception\InvalidRequestTokenException;
-use Contao\CoreBundle\Exception\NoActivePageFoundException;
-use Contao\CoreBundle\Exception\NoLayoutSpecifiedException;
-use Contao\CoreBundle\Exception\NoRootPageFoundException;
 use Contao\CoreBundle\Exception\ResponseException;
+use Contao\CoreBundle\Exception\RouteParametersException;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\PageError404;
 use Contao\StringUtil;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\AcceptHeader;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Event\GetResponseForExceptionEvent;
+use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
-use Symfony\Component\HttpKernel\Kernel;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
+use Symfony\Component\Security\Core\Security;
+use Twig\Environment;
+use Twig\Error\Error;
 
+/**
+ * @internal
+ */
 class PrettyErrorScreenListener
 {
     /**
@@ -45,7 +43,7 @@ class PrettyErrorScreenListener
     private $prettyErrorScreens;
 
     /**
-     * @var \Twig_Environment
+     * @var Environment
      */
     private $twig;
 
@@ -55,41 +53,22 @@ class PrettyErrorScreenListener
     private $framework;
 
     /**
-     * @var TokenStorageInterface
+     * @var Security
      */
-    private $tokenStorage;
+    private $security;
 
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
-
-    /**
-     * @var array
-     */
-    private static $mapper = [
-        ForwardPageNotFoundException::class => 'forward_page_not_found',
-        IncompleteInstallationException::class => 'incomplete_installation',
-        InsecureInstallationException::class => 'insecure_installation',
-        InvalidRequestTokenException::class => 'invalid_request_token',
-        NoActivePageFoundException::class => 'no_active_page_found',
-        NoLayoutSpecifiedException::class => 'no_layout_specified',
-        NoRootPageFoundException::class => 'no_root_page_found',
-    ];
-
-    public function __construct(bool $prettyErrorScreens, \Twig_Environment $twig, ContaoFramework $framework, TokenStorageInterface $tokenStorage, LoggerInterface $logger = null)
+    public function __construct(bool $prettyErrorScreens, Environment $twig, ContaoFramework $framework, Security $security)
     {
         $this->prettyErrorScreens = $prettyErrorScreens;
         $this->twig = $twig;
         $this->framework = $framework;
-        $this->tokenStorage = $tokenStorage;
-        $this->logger = $logger;
+        $this->security = $security;
     }
 
     /**
      * Map an exception to an error screen.
      */
-    public function onKernelException(GetResponseForExceptionEvent $event): void
+    public function __invoke(ExceptionEvent $event): void
     {
         if (!$event->isMasterRequest()) {
             return;
@@ -108,12 +87,18 @@ class PrettyErrorScreenListener
         $this->handleException($event);
     }
 
-    private function handleException(GetResponseForExceptionEvent $event): void
+    private function handleException(ExceptionEvent $event): void
     {
-        $exception = $event->getException();
+        $exception = $event->getThrowable();
+
+        try {
+            $isBackendUser = $this->security->isGranted('ROLE_USER');
+        } catch (AuthenticationCredentialsNotFoundException $e) {
+            $isBackendUser = false;
+        }
 
         switch (true) {
-            case $this->isBackendUser():
+            case $isBackendUser:
                 $this->renderBackendException($event);
                 break;
 
@@ -138,15 +123,20 @@ class PrettyErrorScreenListener
         }
     }
 
-    private function renderBackendException(GetResponseForExceptionEvent $event): void
+    private function renderBackendException(ExceptionEvent $event): void
     {
-        $exception = $event->getException();
+        $exception = $event->getThrowable();
 
-        $this->logException($exception);
+        if ($exception instanceof RouteParametersException) {
+            $this->renderTemplate('missing_route_parameters', 501, $event);
+
+            return;
+        }
+
         $this->renderTemplate('backend', $this->getStatusCodeForException($exception), $event);
     }
 
-    private function renderErrorScreenByType(int $type, GetResponseForExceptionEvent $event): void
+    private function renderErrorScreenByType(int $type, ExceptionEvent $event): void
     {
         static $processing;
 
@@ -188,36 +178,23 @@ class PrettyErrorScreenListener
     /**
      * Checks the exception chain for a known exception.
      */
-    private function renderErrorScreenByException(GetResponseForExceptionEvent $event): void
+    private function renderErrorScreenByException(ExceptionEvent $event): void
     {
-        $exception = $event->getException();
+        $exception = $event->getThrowable();
         $statusCode = $this->getStatusCodeForException($exception);
         $template = null;
 
-        $this->logException($exception);
-
         // Look for a template
         do {
-            if ($exception instanceof \Exception) {
-                $template = $this->getTemplateForException($exception);
+            if ($exception instanceof InvalidRequestTokenException) {
+                $template = 'invalid_request_token';
             }
         } while (null === $template && null !== ($exception = $exception->getPrevious()));
 
         $this->renderTemplate($template ?: 'error', $statusCode, $event);
     }
 
-    private function getTemplateForException(\Exception $exception): ?string
-    {
-        foreach (self::$mapper as $class => $template) {
-            if ($exception instanceof $class) {
-                return $template;
-            }
-        }
-
-        return null;
-    }
-
-    private function renderTemplate(string $template, int $statusCode, GetResponseForExceptionEvent $event): void
+    private function renderTemplate(string $template, int $statusCode, ExceptionEvent $event): void
     {
         if (!$this->prettyErrorScreens) {
             return;
@@ -228,19 +205,25 @@ class PrettyErrorScreenListener
 
         try {
             $event->setResponse(new Response($this->twig->render($view, $parameters), $statusCode));
-        } catch (\Twig_Error $e) {
+        } catch (Error $e) {
             $event->setResponse(new Response($this->twig->render('@ContaoCore/Error/error.html.twig'), 500));
         }
     }
 
     /**
-     * @return array<string,string|int>
+     * @return array<string,mixed>
      */
-    private function getTemplateParameters(string $view, int $statusCode, GetResponseForExceptionEvent $event): array
+    private function getTemplateParameters(string $view, int $statusCode, ExceptionEvent $event): array
     {
         /** @var Config $config */
         $config = $this->framework->getAdapter(Config::class);
         $encoded = StringUtil::encodeEmail($config->get('adminEmail'));
+
+        try {
+            $isBackendUser = $this->security->isGranted('ROLE_USER');
+        } catch (AuthenticationCredentialsNotFoundException $e) {
+            $isBackendUser = false;
+        }
 
         return [
             'statusCode' => $statusCode,
@@ -249,52 +232,13 @@ class PrettyErrorScreenListener
             'base' => $event->getRequest()->getBasePath(),
             'language' => $event->getRequest()->getLocale(),
             'adminEmail' => '&#109;&#97;&#105;&#108;&#116;&#111;&#58;'.$encoded,
-            'exception' => $event->getException()->getMessage(),
+            'isBackendUser' => $isBackendUser,
+            'exception' => $event->getThrowable()->getMessage(),
+            'throwable' => $event->getThrowable(),
         ];
     }
 
-    private function logException(\Exception $exception): void
-    {
-        if (Kernel::VERSION_ID >= 40100 || null === $this->logger || !$this->isLoggable($exception)) {
-            return;
-        }
-
-        $this->logger->critical('An exception occurred.', ['exception' => $exception]);
-    }
-
-    private function isLoggable(\Exception $exception): bool
-    {
-        do {
-            if ($exception instanceof ForwardPageNotFoundException) {
-                return true;
-            }
-
-            if (isset(self::$mapper[\get_class($exception)])) {
-                return false;
-            }
-        } while (null !== ($exception = $exception->getPrevious()));
-
-        return true;
-    }
-
-    private function isBackendUser(): bool
-    {
-        $token = $this->tokenStorage->getToken();
-
-        if (null === $token) {
-            return false;
-        }
-
-        $user = $token->getUser();
-
-        if (null === $user) {
-            return false;
-        }
-
-        return $user instanceof BackendUser;
-    }
-
-    private function getStatusCodeForException(\Exception $exception): int
+    private function getStatusCodeForException(\Throwable $exception): int
     {
         if ($exception instanceof HttpException) {
             return (int) $exception->getStatusCode();

@@ -71,6 +71,14 @@ class PickerConfig implements \JsonSerializable
         return $this->current;
     }
 
+    /**
+     * Returns an extra value for a given provider or the general extra value.
+     */
+    public function getExtraForProvider(string $name, string $provider)
+    {
+        return $this->extras[$provider][$name] ?? $this->getExtra($name);
+    }
+
     public function getExtra(string $name)
     {
         return $this->extras[$name] ?? null;
@@ -89,9 +97,6 @@ class PickerConfig implements \JsonSerializable
         return new self($this->context, $this->extras, $this->value, $current);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function jsonSerialize(): array
     {
         return [

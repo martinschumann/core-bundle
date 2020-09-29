@@ -16,6 +16,7 @@ use Contao\Image\ResizeConfiguration;
  * Provide methods to handle input field "file tree".
  *
  * @property string  $orderField
+ * @property boolean $isSortable
  * @property boolean $multiple
  * @property boolean $isGallery
  * @property boolean $isDownloads
@@ -29,7 +30,6 @@ use Contao\Image\ResizeConfiguration;
  */
 class FileTree extends Widget
 {
-
 	/**
 	 * Submit user input
 	 * @var boolean
@@ -64,8 +64,13 @@ class FileTree extends Widget
 		$this->import(Database::class, 'Database');
 		parent::__construct($arrAttributes);
 
+		if ($this->isSortable && !$this->filesOnly && !$this->orderField && ($this->isGallery || $this->isDownloads))
+		{
+			throw new \RuntimeException('A file tree in gallery or downloads mode needs an "orderField" to be sortable');
+		}
+
 		// Prepare the order field
-		if ($this->orderField != '')
+		if ($this->orderField)
 		{
 			$this->strOrderId = $this->orderField . str_replace($this->strField, '', $this->strId);
 			$this->strOrderName = $this->orderField . str_replace($this->strField, '', $this->strName);
@@ -97,7 +102,7 @@ class FileTree extends Widget
 		}
 
 		// Store the order value
-		if ($this->orderField != '')
+		if ($this->orderField)
 		{
 			$arrNew = array();
 
@@ -117,7 +122,7 @@ class FileTree extends Widget
 		}
 
 		// Return the value as usual
-		if ($varInput == '')
+		if (!$varInput)
 		{
 			if ($this->mandatory)
 			{
@@ -126,18 +131,17 @@ class FileTree extends Widget
 
 			return '';
 		}
-		elseif (strpos($varInput, ',') === false)
+
+		if (strpos($varInput, ',') === false)
 		{
 			$varInput = StringUtil::uuidToBin($varInput);
 
 			return $this->multiple ? array($varInput) : $varInput;
 		}
-		else
-		{
-			$arrValue = array_values(array_filter(explode(',', $varInput)));
 
-			return $this->multiple ? array_map('StringUtil::uuidToBin', $arrValue) : StringUtil::uuidToBin($arrValue[0]);
-		}
+		$arrValue = array_values(array_filter(explode(',', $varInput)));
+
+		return $this->multiple ? array_map('StringUtil::uuidToBin', $arrValue) : StringUtil::uuidToBin($arrValue[0]);
 	}
 
 	/**
@@ -147,7 +151,7 @@ class FileTree extends Widget
 	 */
 	protected function checkValue($varInput)
 	{
-		if ($varInput == '')
+		if (!$varInput)
 		{
 			return;
 		}
@@ -168,19 +172,19 @@ class FileTree extends Widget
 			return;
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		foreach ($objFiles as $objFile)
 		{
 			// Only files can be selected
-			if ($this->filesOnly && is_dir($rootDir . '/' . $objFile->path))
+			if ($this->filesOnly && is_dir($projectDir . '/' . $objFile->path))
 			{
 				$this->addError($GLOBALS['TL_LANG']['ERR']['filesOnly']);
 				break;
 			}
 
 			// Only folders can be selected
-			if ($this->files === false && !is_dir($rootDir . '/' . $objFile->path))
+			if ($this->files === false && !is_dir($projectDir . '/' . $objFile->path))
 			{
 				$this->addError($GLOBALS['TL_LANG']['ERR']['foldersOnly']);
 				break;
@@ -194,7 +198,7 @@ class FileTree extends Widget
 			}
 
 			// Only certain file types can be selected
-			if ($this->extensions && !is_dir($rootDir . '/' . $objFile->path))
+			if ($this->extensions && !is_dir($projectDir . '/' . $objFile->path))
 			{
 				$objFile = new File($objFile->path);
 				$extensions = StringUtil::trimsplit(',', $this->extensions);
@@ -217,20 +221,21 @@ class FileTree extends Widget
 	{
 		$arrSet = array();
 		$arrValues = array();
-		$blnHasOrder = ($this->orderField != '' && \is_array($this->{$this->orderField}));
+		$blnHasOrder = $this->orderField && \is_array($this->{$this->orderField});
 
-		if (!empty($this->varValue)) // Can be an array
+		// $this->varValue can be an array, so use empty() here
+		if (!empty($this->varValue))
 		{
 			$objFiles = FilesModel::findMultipleByUuids((array) $this->varValue);
 			$allowedDownload = StringUtil::trimsplit(',', strtolower(Config::get('allowedDownload')));
-			$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+			$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 			if ($objFiles !== null)
 			{
 				while ($objFiles->next())
 				{
 					// File system and database seem not in sync
-					if (!file_exists($rootDir . '/' . $objFiles->path))
+					if (!file_exists($projectDir . '/' . $objFiles->path))
 					{
 						continue;
 					}
@@ -261,67 +266,58 @@ class FileTree extends Widget
 					}
 
 					// Show a sortable list of files only
-					else
+					elseif ($objFiles->type == 'folder')
 					{
-						if ($objFiles->type == 'folder')
-						{
-							$objSubfiles = FilesModel::findByPid($objFiles->uuid, array('order' => 'name'));
+						$objSubfiles = FilesModel::findByPid($objFiles->uuid, array('order' => 'name'));
 
-							if ($objSubfiles === null)
+						if ($objSubfiles === null)
+						{
+							continue;
+						}
+
+						while ($objSubfiles->next())
+						{
+							// Skip subfolders
+							if ($objSubfiles->type == 'folder')
 							{
 								continue;
 							}
 
-							while ($objSubfiles->next())
-							{
-								// Skip subfolders
-								if ($objSubfiles->type == 'folder')
-								{
-									continue;
-								}
-
-								$objFile = new File($objSubfiles->path);
-								$strInfo = '<span class="dirname">' . \dirname($objSubfiles->path) . '/</span>' . $objFile->basename . ' <span class="tl_gray">(' . $this->getReadableSize($objFile->size) . ($objFile->isImage ? ', ' . $objFile->width . 'x' . $objFile->height . ' px' : '') . ')</span>';
-
-								if ($this->isGallery)
-								{
-									// Only show images
-									if ($objFile->isImage)
-									{
-										$arrValues[$objSubfiles->uuid] = $this->getPreviewImage($objFile, $strInfo);
-									}
-								}
-								else
-								{
-									// Only show allowed download types
-									if (\in_array($objFile->extension, $allowedDownload) && !preg_match('/^meta(_[a-z]{2})?\.txt$/', $objFile->basename))
-									{
-										$arrValues[$objSubfiles->uuid] = Image::getHtml($objFile->icon) . ' ' . $strInfo;
-									}
-								}
-							}
-						}
-						else
-						{
-							$objFile = new File($objFiles->path);
-							$strInfo = '<span class="dirname">' . \dirname($objFiles->path) . '/</span>' . $objFile->basename . ' <span class="tl_gray">(' . $this->getReadableSize($objFile->size) . ($objFile->isImage ? ', ' . $objFile->width . 'x' . $objFile->height . ' px' : '') . ')</span>';
+							$objFile = new File($objSubfiles->path);
+							$strInfo = '<span class="dirname">' . \dirname($objSubfiles->path) . '/</span>' . $objFile->basename . ' <span class="tl_gray">(' . $this->getReadableSize($objFile->size) . ($objFile->isImage ? ', ' . $objFile->width . 'x' . $objFile->height . ' px' : '') . ')</span>';
 
 							if ($this->isGallery)
 							{
 								// Only show images
 								if ($objFile->isImage)
 								{
-									$arrValues[$objFiles->uuid] = $this->getPreviewImage($objFile, $strInfo, 'gimage removable');
+									$arrValues[$objSubfiles->uuid] = $this->getPreviewImage($objFile, $strInfo);
 								}
 							}
-							else
+							// Only show allowed download types
+							elseif (\in_array($objFile->extension, $allowedDownload) && !preg_match('/^meta(_[a-z]{2})?\.txt$/', $objFile->basename))
 							{
-								// Only show allowed download types
-								if (\in_array($objFile->extension, $allowedDownload) && !preg_match('/^meta(_[a-z]{2})?\.txt$/', $objFile->basename))
-								{
-									$arrValues[$objFiles->uuid] = Image::getHtml($objFile->icon) . ' ' . $strInfo;
-								}
+								$arrValues[$objSubfiles->uuid] = Image::getHtml($objFile->icon) . ' ' . $strInfo;
 							}
+						}
+					}
+					else
+					{
+						$objFile = new File($objFiles->path);
+						$strInfo = '<span class="dirname">' . \dirname($objFiles->path) . '/</span>' . $objFile->basename . ' <span class="tl_gray">(' . $this->getReadableSize($objFile->size) . ($objFile->isImage ? ', ' . $objFile->width . 'x' . $objFile->height . ' px' : '') . ')</span>';
+
+						if ($this->isGallery)
+						{
+							// Only show images
+							if ($objFile->isImage)
+							{
+								$arrValues[$objFiles->uuid] = $this->getPreviewImage($objFile, $strInfo, 'gimage removable');
+							}
+						}
+						// Only show allowed download types
+						elseif (\in_array($objFile->extension, $allowedDownload) && !preg_match('/^meta(_[a-z]{2})?\.txt$/', $objFile->basename))
+						{
+							$arrValues[$objFiles->uuid] = Image::getHtml($objFile->icon) . ' ' . $strInfo;
 						}
 					}
 				}
@@ -330,27 +326,7 @@ class FileTree extends Widget
 			// Apply a custom sort order
 			if ($blnHasOrder)
 			{
-				$arrNew = array();
-
-				foreach ((array) $this->{$this->orderField} as $i)
-				{
-					if (isset($arrValues[$i]))
-					{
-						$arrNew[$i] = $arrValues[$i];
-						unset($arrValues[$i]);
-					}
-				}
-
-				if (!empty($arrValues))
-				{
-					foreach ($arrValues as $k=>$v)
-					{
-						$arrNew[$k] = $v;
-					}
-				}
-
-				$arrValues = $arrNew;
-				unset($arrNew);
+				$arrValues = ArrayUtil::sortByOrderField($arrValues, $this->{$this->orderField}, null, true);
 			}
 		}
 
@@ -358,15 +334,15 @@ class FileTree extends Widget
 		$strSet = implode(',', array_map('StringUtil::binToUuid', $arrSet));
 		$strOrder = $blnHasOrder ? implode(',', array_map('StringUtil::binToUuid', $this->{$this->orderField})) : '';
 
-		$return = '<input type="hidden" name="'.$this->strName.'" id="ctrl_'.$this->strId.'" value="'.$strSet.'">' . ($blnHasOrder ? '
-  <input type="hidden" name="'.$this->strOrderName.'" id="ctrl_'.$this->strOrderId.'" value="'.$strOrder.'">' : '') . '
-  <div class="selector_container">' . (($blnHasOrder && \count($arrValues) > 1) ? '
+		$return = '<input type="hidden" name="' . $this->strName . '" id="ctrl_' . $this->strId . '" value="' . $strSet . '">' . ($blnHasOrder ? '
+  <input type="hidden" name="' . $this->strOrderName . '" id="ctrl_' . $this->strOrderId . '" value="' . $strOrder . '">' : '') . '
+  <div class="selector_container">' . ((($blnHasOrder || $this->isSortable) && \count($arrValues) > 1) ? '
     <p class="sort_hint">' . $GLOBALS['TL_LANG']['MSC']['dragItemsHint'] . '</p>' : '') . '
-    <ul id="sort_'.$this->strId.'" class="'.trim(($blnHasOrder ? 'sortable ' : '').($this->isGallery ? 'sgallery' : '')).'">';
+    <ul id="sort_' . $this->strId . '" class="' . trim(($blnHasOrder || $this->isSortable ? 'sortable ' : '') . ($this->isGallery ? 'sgallery' : '')) . '">';
 
 		foreach ($arrValues as $k=>$v)
 		{
-			$return .= '<li data-id="'.StringUtil::binToUuid($k).'">'.$v.'</li>';
+			$return .= '<li data-id="' . StringUtil::binToUuid($k) . '">' . $v . '</li>';
 		}
 
 		$return .= '</ul>';
@@ -374,34 +350,14 @@ class FileTree extends Widget
 		if (!System::getContainer()->get('contao.picker.builder')->supportsContext('file'))
 		{
 			$return .= '
-	<p><button class="tl_submit" disabled>'.$GLOBALS['TL_LANG']['MSC']['changeSelection'].'</button></p>';
+	<p><button class="tl_submit" disabled>' . $GLOBALS['TL_LANG']['MSC']['changeSelection'] . '</button></p>';
 		}
 		else
 		{
-			$extras = array('fieldType'=>$this->fieldType);
-
-			if ($this->files)
-			{
-				$extras['files'] = (bool) $this->files;
-			}
-
-			if ($this->filesOnly)
-			{
-				$extras['filesOnly'] = (bool) $this->filesOnly;
-			}
-
-			if ($this->path)
-			{
-				$extras['path'] = (string) $this->path;
-			}
-
-			if ($this->extensions)
-			{
-				$extras['extensions'] = (string) $this->extensions;
-			}
+			$extras = $this->getPickerUrlExtras($arrValues);
 
 			$return .= '
-    <p><a href="' . ampersand(System::getContainer()->get('contao.picker.builder')->getUrl('file', $extras)) . '" class="tl_submit" id="ft_' . $this->strName . '">'.$GLOBALS['TL_LANG']['MSC']['changeSelection'].'</a></p>
+    <p><a href="' . StringUtil::ampersand(System::getContainer()->get('contao.picker.builder')->getUrl('file', $extras)) . '" class="tl_submit" id="ft_' . $this->strName . '">' . $GLOBALS['TL_LANG']['MSC']['changeSelection'] . '</a></p>
     <script>
       $("ft_' . $this->strName . '").addEvent("click", function(e) {
         e.preventDefault();
@@ -417,17 +373,52 @@ class FileTree extends Widget
                 json.javascript && Browser.exec(json.javascript);
                 $("ctrl_' . $this->strId . '").fireEvent("change");
               }
-            }).post({"action":"reloadFiletree", "name":"' . $this->strId . '", "value":value.join("\t"), "REQUEST_TOKEN":"' . REQUEST_TOKEN . '"});
+            }).post({"action":"reloadFiletree", "name":"' . $this->strName . '", "value":value.join("\t"), "REQUEST_TOKEN":"' . REQUEST_TOKEN . '"});
           }
         });
       });
-    </script>' . ($blnHasOrder ? '
-    <script>Backend.makeMultiSrcSortable("sort_'.$this->strId.'", "ctrl_'.$this->strOrderId.'", "ctrl_'.$this->strId.'")</script>' : '');
+    </script>' . ($blnHasOrder || $this->isSortable ? '
+    <script>Backend.makeMultiSrcSortable("sort_' . $this->strId . '", "ctrl_' . ($blnHasOrder ? $this->strOrderId : $this->strId) . '", "ctrl_' . $this->strId . '")</script>' : '');
 		}
 
 		$return = '<div>' . $return . '</div></div>';
 
 		return $return;
+	}
+
+	/**
+	 * Return the extra parameters for the picker URL
+	 *
+	 * @param array $values
+	 *
+	 * @return array
+	 */
+	protected function getPickerUrlExtras($values = array())
+	{
+		$extras = array();
+		$extras['fieldType'] = $this->fieldType;
+
+		if ($this->files)
+		{
+			$extras['files'] = (bool) $this->files;
+		}
+
+		if ($this->filesOnly)
+		{
+			$extras['filesOnly'] = (bool) $this->filesOnly;
+		}
+
+		if ($this->path)
+		{
+			$extras['path'] = (string) $this->path;
+		}
+
+		if ($this->extensions)
+		{
+			$extras['extensions'] = (string) $this->extensions;
+		}
+
+		return $extras;
 	}
 
 	/**
@@ -441,7 +432,7 @@ class FileTree extends Widget
 	 */
 	protected function getPreviewImage(File $objFile, $strInfo, $strClass='gimage')
 	{
-		if (($objFile->isSvgImage || ($objFile->height <= Config::get('gdMaxImgHeight') && $objFile->width <= Config::get('gdMaxImgWidth'))) && $objFile->viewWidth && $objFile->viewHeight)
+		if ($objFile->viewWidth && $objFile->viewHeight && ($objFile->isSvgImage || ($objFile->height <= Config::get('gdMaxImgHeight') && $objFile->width <= Config::get('gdMaxImgWidth'))))
 		{
 			// Inline the image if no preview image will be generated (see #636)
 			if ($objFile->height !== null && $objFile->height <= 75 && $objFile->width !== null && $objFile->width <= 100)
@@ -450,8 +441,8 @@ class FileTree extends Widget
 			}
 			else
 			{
-				$rootDir = System::getContainer()->getParameter('kernel.project_dir');
-				$image = System::getContainer()->get('contao.image.image_factory')->create($rootDir . '/' . $objFile->path, array(100, 75, ResizeConfiguration::MODE_BOX))->getUrl($rootDir);
+				$projectDir = System::getContainer()->getParameter('kernel.project_dir');
+				$image = System::getContainer()->get('contao.image.image_factory')->create($projectDir . '/' . $objFile->path, array(100, 75, ResizeConfiguration::MODE_BOX))->getUrl($projectDir);
 			}
 		}
 		else

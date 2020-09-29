@@ -5,17 +5,30 @@ services:
     _instanceof:
         Contao\CoreBundle\Framework\FrameworkAwareInterface:
             calls:
-                - ['setFramework', ['@contao.framework']]
+                - [setFramework, ['@contao.framework']]
 
     contao.command.automator:
         class: Contao\CoreBundle\Command\AutomatorCommand
         arguments:
             - '@contao.framework'
 
+    contao.command.crawl:
+        class: Contao\CoreBundle\Command\CrawlCommand
+        arguments:
+            - '@contao.crawl.escargot_factory'
+            - '@filesystem'
+
+    Contao\CoreBundle\Command\CronCommand:
+        arguments:
+            - '@Contao\CoreBundle\Cron\Cron'
+
     contao.command.debug_dca:
         class: Contao\CoreBundle\Command\DebugDcaCommand
         arguments:
             - '@contao.framework'
+
+    contao.command.debug_fragments:
+        class: Contao\CoreBundle\Command\DebugFragmentsCommand
 
     contao.command.filesync:
         class: Contao\CoreBundle\Command\FilesyncCommand
@@ -28,6 +41,23 @@ services:
             - '%contao.image.target_dir%'
         public: true
 
+    Contao\CoreBundle\Command\MigrateCommand:
+        arguments:
+            - '@Contao\CoreBundle\Migration\MigrationCollection'
+            - '@contao.resource_locator'
+            - '%kernel.project_dir%'
+            - '@contao.framework'
+            - '@?contao.installer'
+
+    contao.command.resize_images:
+        class: Contao\CoreBundle\Command\ResizeImagesCommand
+        arguments:
+            - '@contao.image.image_factory'
+            - '@contao.image.resizer'
+            - '%contao.image.target_dir%'
+            - '@contao.image.deferred_image_storage'
+            - '@?filesystem'
+
     contao.command.symlinks:
         class: Contao\CoreBundle\Command\SymlinksCommand
         arguments:
@@ -38,11 +68,23 @@ services:
             - '@event_dispatcher'
         public: true
 
+    Contao\CoreBundle\Command\UserCreateCommand:
+        arguments:
+            - '@contao.framework'
+            - '@database_connection'
+            - '@security.encoder_factory'
+            - '%contao.locales%'
+
+    Contao\CoreBundle\Command\UserListCommand:
+        arguments:
+            - '@contao.framework'
+
     contao.command.user_password_command:
         class: Contao\CoreBundle\Command\UserPasswordCommand
         arguments:
             - '@contao.framework'
             - '@database_connection'
+            - '@security.encoder_factory'
 
     contao.command.version:
         class: Contao\CoreBundle\Command\VersionCommand

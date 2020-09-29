@@ -14,7 +14,7 @@ use League\Uri\Components\Query;
 use League\Uri\Http;
 use Patchwork\Utf8;
 
-@trigger_error('Using the logout module has been deprecated and will no longer work in Contao 5.0. Use the logout page instead.', E_USER_DEPRECATED);
+trigger_deprecation('contao/core-bundle', '4.2', 'Using the logout module has been deprecated and will no longer work in Contao 5.0. Use the logout page instead.');
 
 /**
  * Front end module "logout".
@@ -26,7 +26,6 @@ use Patchwork\Utf8;
  */
 class ModuleLogout extends Module
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -40,7 +39,9 @@ class ModuleLogout extends Module
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 			$objTemplate->wildcard = '### ' . Utf8::strtoupper($GLOBALS['TL_LANG']['FMD']['logout'][0]) . ' ###';
@@ -52,19 +53,13 @@ class ModuleLogout extends Module
 			return $objTemplate->parse();
 		}
 
-		// Set last page visited
-		if ($this->redirectBack)
-		{
-			$_SESSION['LAST_PAGE_VISITED'] = $this->getReferer();
-		}
-
 		$strLogoutUrl = System::getContainer()->get('security.logout_url_generator')->getLogoutUrl();
 		$strRedirect = Environment::get('base');
 
 		// Redirect to last page visited
-		if ($this->redirectBack && !empty($_SESSION['LAST_PAGE_VISITED']))
+		if ($this->redirectBack && ($strReferer = $this->getReferer()))
 		{
-			$strRedirect = $_SESSION['LAST_PAGE_VISITED'];
+			$strRedirect = $strReferer;
 		}
 
 		// Redirect to jumpTo page
@@ -88,7 +83,9 @@ class ModuleLogout extends Module
 	/**
 	 * Generate the module
 	 */
-	protected function compile() {}
+	protected function compile()
+	{
+	}
 }
 
 class_alias(ModuleLogout::class, 'ModuleLogout');

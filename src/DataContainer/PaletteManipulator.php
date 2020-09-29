@@ -38,7 +38,7 @@ class PaletteManipulator
 
     public static function create(): self
     {
-        return new static();
+        return new self();
     }
 
     /**
@@ -180,7 +180,7 @@ class PaletteManipulator
     /**
      * Converts a palette string to a configuration array.
      *
-     * @return array<string,array<string,string[]|bool>>
+     * @return array<int|string, array<mixed>>
      */
     private function explode(string $palette): array
     {
@@ -200,7 +200,7 @@ class PaletteManipulator
             $hide = false;
             $fields = StringUtil::trimsplit(',', $group);
 
-            if (preg_match('#\{(.+?)(:hide)?\}#', $fields[0], $matches)) {
+            if (preg_match('#{(.+?)(:hide)?}#', $fields[0], $matches)) {
                 $legend = $matches[1];
                 $hide = \count($matches) > 2 && ':hide' === $matches[2];
                 array_shift($fields);
@@ -231,7 +231,7 @@ class PaletteManipulator
             }
 
             if (!\is_int($legend)) {
-                $palette .= sprintf('{%s%s},', $legend, ($group['hide'] ? ':hide' : ''));
+                $palette .= sprintf('{%s%s},', $legend, $group['hide'] ? ':hide' : '');
             }
 
             $palette .= implode(',', $group['fields']);
@@ -380,7 +380,7 @@ class PaletteManipulator
      *
      * @return string|false
      */
-    private function findLegendForField(array &$config, string $field)
+    private function findLegendForField(array $config, string $field)
     {
         foreach ($config as $legend => $group) {
             if (\in_array($field, $group['fields'], true)) {

@@ -10,14 +10,18 @@
 
 namespace Contao;
 
-use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
+use Contao\CoreBundle\Exception\RedirectResponseException;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Provide methods to manage back end users.
  *
  * @property boolean $isAdmin
  * @property array   $groups
+ * @property array   $elements
+ * @property array   $fields
  * @property array   $pagemounts
  * @property array   $filemounts
  * @property array   $filemountIds
@@ -29,7 +33,6 @@ use Symfony\Component\Routing\RouterInterface;
  */
 class BackendUser extends User
 {
-
 	/**
 	 * Edit page flag
 	 * @var string
@@ -69,6 +72,7 @@ class BackendUser extends User
 	/**
 	 * Symfony Security session key
 	 * @var string
+	 * @deprecated Deprecated since Contao 4.8, to be removed in Contao 5.0
 	 */
 	const SECURITY_SESSION_KEY = '_security_contao_backend';
 
@@ -165,31 +169,24 @@ class BackendUser extends User
 		{
 			case 'isAdmin':
 				return $this->arrData['admin'] ? true : false;
-				break;
 
 			case 'groups':
-				return \is_array($this->arrData['groups']) ? $this->arrData['groups'] : (($this->arrData['groups'] != '') ? array($this->arrData['groups']) : array());
-				break;
+				return \is_array($this->arrData['groups']) ? $this->arrData['groups'] : ($this->arrData['groups'] ? array($this->arrData['groups']) : array());
 
 			case 'pagemounts':
-				return \is_array($this->arrData['pagemounts']) ? $this->arrData['pagemounts'] : (($this->arrData['pagemounts'] != '') ? array($this->arrData['pagemounts']) : false);
-				break;
+				return \is_array($this->arrData['pagemounts']) ? $this->arrData['pagemounts'] : ($this->arrData['pagemounts'] ? array($this->arrData['pagemounts']) : false);
 
 			case 'filemounts':
-				return \is_array($this->arrData['filemounts']) ? $this->arrData['filemounts'] : (($this->arrData['filemounts'] != '') ? array($this->arrData['filemounts']) : false);
-				break;
+				return \is_array($this->arrData['filemounts']) ? $this->arrData['filemounts'] : ($this->arrData['filemounts'] ? array($this->arrData['filemounts']) : false);
 
 			case 'filemountIds':
 				return $this->arrFilemountIds;
-				break;
 
 			case 'fop':
-				return \is_array($this->arrData['fop']) ? $this->arrData['fop'] : (($this->arrData['fop'] != '') ? array($this->arrData['fop']) : false);
-				break;
+				return \is_array($this->arrData['fop']) ? $this->arrData['fop'] : ($this->arrData['fop'] ? array($this->arrData['fop']) : false);
 
 			case 'alexf':
 				return $this->alexf;
-				break;
 		}
 
 		return parent::__get($strKey);
@@ -205,9 +202,29 @@ class BackendUser extends User
 	 */
 	public function authenticate()
 	{
-		@trigger_error('Using BackendUser::authenticate() has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\BackendUser::authenticate()" has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.');
 
-		return System::getContainer()->get('contao.security.token_checker')->hasBackendUser();
+		// Do not redirect if authentication is successful
+		if (System::getContainer()->get('contao.security.token_checker')->hasBackendUser())
+		{
+			return true;
+		}
+
+		if (!$request = System::getContainer()->get('request_stack')->getCurrentRequest())
+		{
+			return false;
+		}
+
+		$route = $request->attributes->get('_route');
+
+		if ($route == 'contao_backend_login')
+		{
+			return false;
+		}
+
+		$url = System::getContainer()->get('router')->generate('contao_backend_login', array('redirect' => $request->getUri()), UrlGeneratorInterface::ABSOLUTE_URL);
+
+		throw new RedirectResponseException(System::getContainer()->get('uri_signer')->sign($url));
 	}
 
 	/**
@@ -220,7 +237,7 @@ class BackendUser extends User
 	 */
 	public function login()
 	{
-		@trigger_error('Using BackendUser::login() has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\BackendUser::login()" has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.');
 
 		return System::getContainer()->get('contao.security.token_checker')->hasBackendUser();
 	}
@@ -249,7 +266,8 @@ class BackendUser extends User
 		{
 			return true;
 		}
-		elseif ($array == 'filemounts')
+
+		if ($array == 'filemounts')
 		{
 			// Check the subfolders (filemounts)
 			foreach ($this->filemounts as $folder)
@@ -306,10 +324,12 @@ class BackendUser extends User
 			{
 				$row['chmod'] = Config::get('defaultChmod');
 			}
+
 			if ($row['cuser'] === false)
 			{
 				$row['cuser'] = (int) Config::get('defaultUser');
 			}
+
 			if ($row['cgroup'] === false)
 			{
 				$row['cgroup'] = (int) Config::get('defaultGroup');
@@ -319,16 +339,16 @@ class BackendUser extends User
 		// Set permissions
 		$chmod = StringUtil::deserialize($row['chmod']);
 		$chmod = \is_array($chmod) ? $chmod : array($chmod);
-		$permission = array('w'.$int);
+		$permission = array('w' . $int);
 
 		if (\in_array($row['cgroup'], $this->groups))
 		{
-			$permission[] = 'g'.$int;
+			$permission[] = 'g' . $int;
 		}
 
 		if ($row['cuser'] == $this->id)
 		{
-			$permission[] = 'u'.$int;
+			$permission[] = 'u' . $int;
 		}
 
 		return \count(array_intersect($permission, $chmod)) > 0;
@@ -394,7 +414,7 @@ class BackendUser extends User
 
 		// Inherit permissions
 		$always = array('alexf');
-		$depends = array('modules', 'themes', 'pagemounts', 'alpty', 'filemounts', 'fop', 'forms', 'formp', 'imageSizes', 'amg');
+		$depends = array('modules', 'themes', 'elements', 'fields', 'pagemounts', 'alpty', 'filemounts', 'fop', 'forms', 'formp', 'imageSizes', 'amg');
 
 		// HOOK: Take custom permissions
 		if (!empty($GLOBALS['TL_PERMISSIONS']) && \is_array($GLOBALS['TL_PERMISSIONS']))
@@ -417,7 +437,7 @@ class BackendUser extends User
 
 		foreach ((array) $this->groups as $id)
 		{
-			$objGroup = $this->Database->prepare("SELECT * FROM tl_user_group WHERE id=? AND disable!='1' AND (start='' OR start<='$time') AND (stop='' OR stop>'" . ($time + 60) . "')")
+			$objGroup = $this->Database->prepare("SELECT * FROM tl_user_group WHERE id=? AND disable!='1' AND (start='' OR start<='$time') AND (stop='' OR stop>'$time')")
 									   ->limit(1)
 									   ->execute($id);
 
@@ -430,7 +450,7 @@ class BackendUser extends User
 					// The new page/file picker can return integers instead of arrays, so use empty() instead of is_array() and StringUtil::deserialize(true) here
 					if (!empty($value))
 					{
-						$this->$field = array_merge((\is_array($this->$field) ? $this->$field : (($this->$field != '') ? array($this->$field) : array())), $value);
+						$this->$field = array_merge((\is_array($this->$field) ? $this->$field : ($this->$field ? array($this->$field) : array())), $value);
 						$this->$field = array_unique($this->$field);
 					}
 				}
@@ -486,30 +506,18 @@ class BackendUser extends User
 	 */
 	public function navigation($blnShowAll=false)
 	{
-		/** @var AttributeBagInterface $objSessionBag */
-		$objSessionBag = System::getContainer()->get('session')->getBag('contao_backend');
-
 		/** @var RouterInterface $router */
 		$router = System::getContainer()->get('router');
 
 		$arrModules = array();
-		$session = $objSessionBag->all();
-
-		// Toggle nodes
-		if (Input::get('mtg'))
-		{
-			$session['backend_modules'][Input::get('mtg')] = (isset($session['backend_modules'][Input::get('mtg')]) && $session['backend_modules'][Input::get('mtg')] == 0) ? 1 : 0;
-			$objSessionBag->replace($session);
-			Controller::redirect(preg_replace('/(&(amp;)?|\?)mtg=[^& ]*/i', '', Environment::get('request')));
-		}
-
+		$arrStatus = System::getContainer()->get('session')->getBag('contao_backend')->get('backend_modules');
 		$strRefererId = System::getContainer()->get('request_stack')->getCurrentRequest()->attributes->get('_contao_referer_id');
 
 		foreach ($GLOBALS['BE_MOD'] as $strGroupName=>$arrGroupModules)
 		{
 			if (!empty($arrGroupModules) && ($strGroupName == 'system' || $this->hasAccess(array_keys($arrGroupModules), 'modules')))
 			{
-				$arrModules[$strGroupName]['class'] = ' node-expanded';
+				$arrModules[$strGroupName]['class'] = 'group-' . $strGroupName . ' node-expanded';
 				$arrModules[$strGroupName]['title'] = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['collapseNode']);
 				$arrModules[$strGroupName]['label'] = (($label = \is_array($GLOBALS['TL_LANG']['MOD'][$strGroupName]) ? $GLOBALS['TL_LANG']['MOD'][$strGroupName][0] : $GLOBALS['TL_LANG']['MOD'][$strGroupName]) != false) ? $label : $strGroupName;
 				$arrModules[$strGroupName]['href'] = $router->generate('contao_backend', array('do'=>Input::get('do'), 'mtg'=>$strGroupName, 'ref'=>$strRefererId));
@@ -550,7 +558,7 @@ class BackendUser extends User
 			$arrModules[$strGroupName]['isClosed'] = false;
 
 			// Do not show the modules if the group is closed
-			if (!$blnShowAll && isset($session['backend_modules'][$strGroupName]) && $session['backend_modules'][$strGroupName] < 1)
+			if (!$blnShowAll && isset($arrStatus[$strGroupName]) && $arrStatus[$strGroupName] < 1)
 			{
 				$arrModules[$strGroupName]['class'] = str_replace('node-expanded', '', $arrModules[$strGroupName]['class']) . ' node-collapsed';
 				$arrModules[$strGroupName]['title'] = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['expandNode']);
@@ -581,10 +589,58 @@ class BackendUser extends User
 	{
 		if ($this->isAdmin)
 		{
-			return array('ROLE_USER', 'ROLE_ADMIN', 'ROLE_ALLOWED_TO_SWITCH');
+			return array('ROLE_USER', 'ROLE_ADMIN', 'ROLE_ALLOWED_TO_SWITCH', 'ROLE_ALLOWED_TO_SWITCH_MEMBER');
+		}
+
+		if (!empty($this->amg) && \is_array($this->amg))
+		{
+			return array('ROLE_USER', 'ROLE_ALLOWED_TO_SWITCH_MEMBER');
 		}
 
 		return $this->roles;
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function serialize()
+	{
+		return serialize(array('admin' => $this->admin, 'amg' => $this->amg, 'parent' => parent::serialize()));
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function unserialize($serialized)
+	{
+		$data = unserialize($serialized, array('allowed_classes'=>false));
+
+		if (array_keys($data) != array('admin', 'amg', 'parent'))
+		{
+			return;
+		}
+
+		list($this->admin, $this->amg, $parent) = array_values($data);
+
+		parent::unserialize($parent);
+	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function isEqualTo(UserInterface $user)
+	{
+		if (!$user instanceof self)
+		{
+			return false;
+		}
+
+		if ((bool) $this->admin !== (bool) $user->admin)
+		{
+			return false;
+		}
+
+		return parent::isEqualTo($user);
 	}
 }
 

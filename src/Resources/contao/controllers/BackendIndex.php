@@ -13,7 +13,10 @@ namespace Contao;
 use Contao\CoreBundle\Security\Exception\LockedException;
 use Scheb\TwoFactorBundle\Security\Authentication\Exception\InvalidTwoFactorCodeException;
 use Scheb\TwoFactorBundle\Security\Authentication\Token\TwoFactorToken;
+use Scheb\TwoFactorBundle\Security\TwoFactor\Event\TwoFactorAuthenticationEvent;
+use Scheb\TwoFactorBundle\Security\TwoFactor\Event\TwoFactorAuthenticationEvents;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\UriSigner;
 use Symfony\Component\Routing\Router;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
@@ -25,7 +28,6 @@ use Symfony\Component\Security\Core\Exception\AuthenticationException;
  */
 class BackendIndex extends Backend
 {
-
 	/**
 	 * Initialize the controller
 	 *
@@ -67,19 +69,23 @@ class BackendIndex extends Backend
 			Message::addError($GLOBALS['TL_LANG']['ERR']['invalidLogin']);
 		}
 
-		$queryString = '';
-		$arrParams = array();
+		$router = $container->get('router');
+		$targetPath = $router->generate('contao_backend', array(), Router::ABSOLUTE_URL);
+		$request = $container->get('request_stack')->getCurrentRequest();
 
-		if ($referer = Input::get('referer', true))
+		if ($request && $request->query->has('redirect'))
 		{
-			$queryString = '?' . base64_decode($referer);
-			$arrParams['referer'] = $referer;
+			/** @var UriSigner $uriSigner */
+			$uriSigner = $container->get('uri_signer');
+
+			// We cannot use $request->getUri() here as we want to work with the original URI (no query string reordering)
+			if ($uriSigner->check($request->getSchemeAndHttpHost() . $request->getBaseUrl() . $request->getPathInfo() . (null !== ($qs = $request->server->get('QUERY_STRING')) ? '?' . $qs : '')))
+			{
+				$targetPath = $request->query->get('redirect');
+			}
 		}
 
-		$router = $container->get('router');
-
 		$objTemplate = new BackendTemplate('be_login');
-		$objTemplate->action = ampersand(Environment::get('request'));
 		$objTemplate->headline = $GLOBALS['TL_LANG']['MSC']['loginBT'];
 
 		/** @var TokenInterface $token */
@@ -87,9 +93,12 @@ class BackendIndex extends Backend
 
 		if ($token instanceof TwoFactorToken)
 		{
+			// Dispatch 2FA form event to prepare 2FA providers
+			$event = new TwoFactorAuthenticationEvent($request, $token);
+			$container->get('event_dispatcher')->dispatch($event, TwoFactorAuthenticationEvents::FORM);
+
 			$objTemplate = new BackendTemplate('be_login_two_factor');
 			$objTemplate->headline = $GLOBALS['TL_LANG']['MSC']['twoFactorAuthentication'];
-			$objTemplate->action = $router->generate('contao_backend_two_factor');
 			$objTemplate->authCode = $GLOBALS['TL_LANG']['MSC']['twoFactorVerification'];
 			$objTemplate->cancel = $GLOBALS['TL_LANG']['MSC']['cancelBT'];
 		}
@@ -99,7 +108,7 @@ class BackendIndex extends Backend
 		$objTemplate->base = Environment::get('base');
 		$objTemplate->language = $GLOBALS['TL_LANGUAGE'];
 		$objTemplate->languages = System::getLanguages(true); // backwards compatibility
-		$objTemplate->host = Environment::get('host');
+		$objTemplate->host = Backend::getDecodedHostname();
 		$objTemplate->charset = Config::get('characterSet');
 		$objTemplate->userLanguage = $GLOBALS['TL_LANG']['tl_user']['language'][0];
 		$objTemplate->curLanguage = Input::post('language') ?: str_replace('-', '_', $GLOBALS['TL_LANGUAGE']);
@@ -110,8 +119,7 @@ class BackendIndex extends Backend
 		$objTemplate->feLink = $GLOBALS['TL_LANG']['MSC']['feLink'];
 		$objTemplate->default = $GLOBALS['TL_LANG']['MSC']['default'];
 		$objTemplate->jsDisabled = $GLOBALS['TL_LANG']['MSC']['jsDisabled'];
-		$objTemplate->targetPath = StringUtil::specialchars($router->generate('contao_backend', array(), Router::ABSOLUTE_URL) . $queryString);
-		$objTemplate->failurePath = StringUtil::specialchars($router->generate('contao_backend_login', $arrParams, Router::ABSOLUTE_URL));
+		$objTemplate->targetPath = StringUtil::specialchars(base64_encode($targetPath));
 
 		return $objTemplate->getResponse();
 	}

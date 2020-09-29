@@ -21,7 +21,6 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  */
 class PageRoot extends Frontend
 {
-
 	/**
 	 * Redirect to the first active regular page
 	 *
@@ -35,12 +34,12 @@ class PageRoot extends Frontend
 	{
 		if (!$blnReturn)
 		{
-			$this->redirect($this->getRedirectUrl($rootPageId), 302);
+			$this->redirect($this->getRedirectUrl($rootPageId));
 		}
 
 		$objNextPage = $this->getNextPage($rootPageId);
 
-		return ($blnPreferAlias && $objNextPage->alias != '') ? $objNextPage->alias : $objNextPage->id;
+		return ($blnPreferAlias && $objNextPage->alias) ? $objNextPage->alias : $objNextPage->id;
 	}
 
 	/**
@@ -52,7 +51,7 @@ class PageRoot extends Frontend
 	 */
 	public function getResponse($rootPageId)
 	{
-		return new RedirectResponse($this->getRedirectUrl($rootPageId), 303);
+		return new RedirectResponse($this->getRedirectUrl($rootPageId));
 	}
 
 	/**
@@ -71,7 +70,8 @@ class PageRoot extends Frontend
 		// No published pages yet
 		if (null === $objNextPage)
 		{
-			$this->log('No active page found under root page "' . $rootPageId . '")', __METHOD__, TL_ERROR);
+			$this->log('No active page found under root page "' . $rootPageId . '"', __METHOD__, TL_ERROR);
+
 			throw new NoActivePageFoundException('No active page found under root page.');
 		}
 

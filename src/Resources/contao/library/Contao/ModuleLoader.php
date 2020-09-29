@@ -28,7 +28,6 @@ namespace Contao;
  */
 class ModuleLoader
 {
-
 	/**
 	 * Old module names
 	 * @var array
@@ -53,7 +52,7 @@ class ModuleLoader
 	 */
 	public static function getActive()
 	{
-		@trigger_error('Using ModuleLoader::getActive() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\ModuleLoader::getActive()" has been deprecated and will no longer work in Contao 5.0.');
 
 		$bundles = array_keys(System::getContainer()->getParameter('kernel.bundles'));
 
@@ -77,7 +76,7 @@ class ModuleLoader
 	 */
 	public static function getDisabled()
 	{
-		@trigger_error('Using ModuleLoader::getDisabled() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\ModuleLoader::getDisabled()" has been deprecated and will no longer work in Contao 5.0.');
 
 		return array();
 	}

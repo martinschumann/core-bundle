@@ -22,7 +22,6 @@ use Symfony\Component\Console\Output\NullOutput;
  */
 class Automator extends System
 {
-
 	/**
 	 * Make the constuctor public
 	 */
@@ -36,11 +35,16 @@ class Automator extends System
 	 */
 	public function purgeSearchTables()
 	{
-		$objDatabase = Database::getInstance();
+		$searchIndexer = System::getContainer()->get('contao.search.indexer');
 
-		// Truncate the tables
-		$objDatabase->execute("TRUNCATE TABLE tl_search");
-		$objDatabase->execute("TRUNCATE TABLE tl_search_index");
+		// The search indexer is disabled
+		if (null === $searchIndexer)
+		{
+			return;
+		}
+
+		// Clear the index
+		$searchIndexer->clear();
 
 		$strCachePath = StringUtil::stripRootDir(System::getContainer()->getParameter('kernel.cache_dir'));
 
@@ -95,6 +99,20 @@ class Automator extends System
 	}
 
 	/**
+	 * Purge the crawl queue
+	 */
+	public function purgeCrawlQueue()
+	{
+		$objDatabase = Database::getInstance();
+
+		// Truncate the table
+		$objDatabase->execute("TRUNCATE TABLE tl_crawl_queue");
+
+		// Add a log entry
+		$this->log('Purged the crawl queue', __METHOD__, TL_CRON);
+	}
+
+	/**
 	 * Purge the image cache
 	 */
 	public function purgeImageCache()
@@ -104,7 +122,7 @@ class Automator extends System
 		$strRootDir = $container->getParameter('kernel.project_dir');
 
 		// Walk through the subfolders
-		foreach (scan($strRootDir . '/' . $strTargetPath) as $dir)
+		foreach (Folder::scan($strRootDir . '/' . $strTargetPath) as $dir)
 		{
 			if (strncmp($dir, '.', 1) !== 0)
 			{
@@ -113,7 +131,7 @@ class Automator extends System
 			}
 		}
 
-		// Also empty the page cache so there are no links to deleted images
+		// Also empty the shared cache so there are no links to deleted images
 		$this->purgePageCache();
 
 		// Add a log entry
@@ -137,7 +155,7 @@ class Automator extends System
 		$this->import(StyleSheets::class, 'StyleSheets');
 		$this->StyleSheets->updateStyleSheets();
 
-		// Also empty the page cache so there are no links to deleted scripts
+		// Also empty the shared cache so there are no links to deleted scripts
 		$this->purgePageCache();
 
 		// Add a log entry
@@ -145,7 +163,7 @@ class Automator extends System
 	}
 
 	/**
-	 * Purge the page cache
+	 * Purge the shared cache
 	 */
 	public function purgePageCache()
 	{
@@ -153,7 +171,7 @@ class Automator extends System
 
 		if (!$container->has('fos_http_cache.cache_manager'))
 		{
-			$this->log('Cannot purge the page cache; invalid reverse proxy configuration', __METHOD__, TL_ERROR);
+			$this->log('Cannot purge the shared cache; invalid reverse proxy configuration', __METHOD__, TL_ERROR);
 
 			return;
 		}
@@ -163,7 +181,7 @@ class Automator extends System
 
 		if (!$cacheManager->supports(CacheManager::CLEAR))
 		{
-			$this->log('Cannot purge the page cache; invalid reverse proxy configuration', __METHOD__, TL_ERROR);
+			$this->log('Cannot purge the shared cache; invalid reverse proxy configuration', __METHOD__, TL_ERROR);
 
 			return;
 		}
@@ -171,7 +189,7 @@ class Automator extends System
 		$cacheManager->clearCache();
 
 		// Add a log entry
-		$this->log('Purged the page cache (reverse proxy)', __METHOD__, TL_CRON);
+		$this->log('Purged the shared cache', __METHOD__, TL_CRON);
 	}
 
 	/**
@@ -284,7 +302,7 @@ class Automator extends System
 		{
 			$shareDir = System::getContainer()->getParameter('contao.web_dir') . '/share';
 
-			foreach (scan($shareDir) as $file)
+			foreach (Folder::scan($shareDir) as $file)
 			{
 				if (is_dir($shareDir . '/' . $file))
 				{
@@ -315,47 +333,15 @@ class Automator extends System
 
 		$this->purgeXmlFiles();
 
-		// Only root pages should have sitemap names
-		$objDatabase->execute("UPDATE tl_page SET createSitemap='', sitemapName='' WHERE type!='root'");
+		$strQuery = "SELECT id, language, sitemapName FROM tl_page WHERE type='root' AND createSitemap='1' AND sitemapName!='' AND published='1' AND (start='' OR start<='$time') AND (stop='' OR stop>'$time')";
 
 		// Get a particular root page
 		if ($intId > 0)
 		{
-			do
-			{
-				$objRoot = $objDatabase->prepare("SELECT * FROM tl_page WHERE id=?")
-									   ->limit(1)
-									   ->execute($intId);
-
-				if ($objRoot->numRows < 1)
-				{
-					break;
-				}
-
-				$intId = $objRoot->pid;
-			}
-			while ($objRoot->type != 'root' && $intId > 0);
-
-			// Make sure the page is published
-			if (!$objRoot->published || ($objRoot->start != '' && $objRoot->start > $time) || ($objRoot->stop != '' && $objRoot->stop <= ($time + 60)))
-			{
-				return;
-			}
-
-			// Check the sitemap name
-			if (!$objRoot->createSitemap || !$objRoot->sitemapName)
-			{
-				return;
-			}
-
-			$objRoot->reset();
+			$strQuery .= ' AND id=' . (int) $intId;
 		}
 
-		// Get all published root pages
-		else
-		{
-			$objRoot = $objDatabase->execute("SELECT id, language, sitemapName FROM tl_page WHERE type='root' AND createSitemap='1' AND sitemapName!='' AND (start='' OR start<='$time') AND (stop='' OR stop>'" . ($time + 60) . "') AND published='1'");
-		}
+		$objRoot = $objDatabase->execute($strQuery);
 
 		// Return if there are no pages
 		if ($objRoot->numRows < 1)
@@ -397,7 +383,7 @@ class Automator extends System
 				}
 
 				$strUrl = implode('/', $strUrl);
-				$strUrl = ampersand($strUrl, true);
+				$strUrl = StringUtil::ampersand($strUrl);
 
 				$objFile->append('  <url><loc>' . $strUrl . '</loc></url>');
 			}
@@ -428,7 +414,7 @@ class Automator extends System
 			}
 		}
 
-		// Also empty the page cache so there are no links to deleted files
+		// Also empty the shared cache so there are no links to deleted files
 		$this->purgePageCache();
 
 		// Add a log entry
@@ -478,10 +464,10 @@ class Automator extends System
 	 */
 	public function rotateLogs()
 	{
-		@trigger_error('Using Automator::rotateLogs() has been deprecated and will no longer work in Contao 5.0. Use the logger service instead, which rotates its log files automatically.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Automator::rotateLogs()" has been deprecated and will no longer work in Contao 5.0. Use the logger service instead, which rotates its log files automatically.');
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
-		$arrFiles = preg_grep('/\.log$/', scan($rootDir . '/system/logs'));
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
+		$arrFiles = preg_grep('/\.log$/', Folder::scan($projectDir . '/system/logs'));
 
 		foreach ($arrFiles as $strFile)
 		{
@@ -498,7 +484,7 @@ class Automator extends System
 			{
 				$strGzName = 'system/logs/' . $strFile . '.' . $i;
 
-				if (file_exists($rootDir . '/' . $strGzName))
+				if (file_exists($projectDir . '/' . $strGzName))
 				{
 					$objFile = new File($strGzName);
 					$objFile->renameTo('system/logs/' . $strFile . '.' . ($i+1));

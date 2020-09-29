@@ -40,7 +40,6 @@ namespace Contao;
  */
 class FeedItem
 {
-
 	/**
 	 * Data
 	 * @var array
@@ -80,12 +79,7 @@ class FeedItem
 	 */
 	public function __get($strKey)
 	{
-		if (isset($this->arrData[$strKey]))
-		{
-			return $this->arrData[$strKey];
-		}
-
-		return null;
+		return $this->arrData[$strKey] ?? null;
 	}
 
 	/**
@@ -109,7 +103,7 @@ class FeedItem
 	 */
 	public function addEnclosure($strFile, $strUrl=null, $strMedia='enclosure')
 	{
-		if ($strFile == '' || !file_exists(System::getContainer()->getParameter('kernel.project_dir') . '/' . $strFile))
+		if (!$strFile || !file_exists(System::getContainer()->getParameter('kernel.project_dir') . '/' . $strFile))
 		{
 			return;
 		}

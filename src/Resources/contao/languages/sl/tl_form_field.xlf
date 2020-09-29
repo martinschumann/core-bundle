@@ -1,114 +1,6 @@
 <?xml version="1.0" ?><xliff version="1.1">
   <file datatype="php" original="src/Resources/contao/languages/en/tl_form_field.php" source-language="en" target-language="sl">
     <body>
-      <trans-unit id="FFL.explanation.0">
-        <source>Explanation</source>
-        <target>Pojasnilo</target>
-      </trans-unit>
-      <trans-unit id="FFL.explanation.1">
-        <source>A custom field to insert an explanation text.</source>
-        <target>prilagojeno polja za vnos opisnega besedila</target>
-      </trans-unit>
-      <trans-unit id="FFL.html.0">
-        <source>HTML code</source>
-        <target>HTML koda</target>
-      </trans-unit>
-      <trans-unit id="FFL.html.1">
-        <source>A custom field to insert HTML code.</source>
-        <target>prilagojeno polje za vnos HTML kode</target>
-      </trans-unit>
-      <trans-unit id="FFL.fieldsetStart.0">
-        <source>Fieldset start</source>
-      </trans-unit>
-      <trans-unit id="FFL.fieldsetStart.1">
-        <source>The opening part of a fieldset with an optional legend.</source>
-      </trans-unit>
-      <trans-unit id="FFL.fieldsetStop.0">
-        <source>Fieldset stop</source>
-      </trans-unit>
-      <trans-unit id="FFL.fieldsetStop.1">
-        <source>The closing part of a fieldset.</source>
-      </trans-unit>
-      <trans-unit id="FFL.text.0">
-        <source>Text field</source>
-        <target>Polje za besedilo</target>
-      </trans-unit>
-      <trans-unit id="FFL.text.1">
-        <source>A single-line input field for a short or medium text.</source>
-        <target>Enovrstično vnosno polje za krajši tekst.</target>
-      </trans-unit>
-      <trans-unit id="FFL.password.0">
-        <source>Password field</source>
-        <target>Polje za geslo</target>
-      </trans-unit>
-      <trans-unit id="FFL.password.1">
-        <source>A single-line input field for a password. Contao automatically adds a confirmation field.</source>
-        <target>Enovrstično polje za vnos gesla.</target>
-      </trans-unit>
-      <trans-unit id="FFL.textarea.0">
-        <source>Textarea</source>
-        <target>Območje za besedilo</target>
-      </trans-unit>
-      <trans-unit id="FFL.textarea.1">
-        <source>A multi-line input field for a medium or long text.</source>
-        <target>Večvrstično vnosno polje za daljši tekst.</target>
-      </trans-unit>
-      <trans-unit id="FFL.select.0">
-        <source>Select menu</source>
-        <target>Izberi meni</target>
-      </trans-unit>
-      <trans-unit id="FFL.select.1">
-        <source>A single- or multi-line drop-down menu.</source>
-        <target>Enovrstični ali večvrstični spustni meni.</target>
-      </trans-unit>
-      <trans-unit id="FFL.radio.0">
-        <source>Radio button menu</source>
-        <target>Meni z izbirnim gumbom.</target>
-      </trans-unit>
-      <trans-unit id="FFL.radio.1">
-        <source>A list of multiple options from which one can be selected.</source>
-        <target>Seznam več možnosti izbire, kjer lahko uporabnik izbere le eno.</target>
-      </trans-unit>
-      <trans-unit id="FFL.checkbox.0">
-        <source>Checkbox menu</source>
-        <target>Naštevalni meni (checkbox)</target>
-      </trans-unit>
-      <trans-unit id="FFL.checkbox.1">
-        <source>A list of multiple options from which any can be selected.</source>
-        <target>Seznam večih možnosti, kjer lahko uporabnik označi eno ali več le-teh.</target>
-      </trans-unit>
-      <trans-unit id="FFL.upload.0">
-        <source>File upload</source>
-        <target>Naloži datoteko</target>
-      </trans-unit>
-      <trans-unit id="FFL.upload.1">
-        <source>A single-line input field to upload a local file to the server.</source>
-        <target>Enovrstično vnosno polje za nalaganje datoteke z uporabnikovega računalnika na strežnik.</target>
-      </trans-unit>
-      <trans-unit id="FFL.hidden.0">
-        <source>Hidden field</source>
-        <target>Skrito polje</target>
-      </trans-unit>
-      <trans-unit id="FFL.hidden.1">
-        <source>A single-line input field that is not visible in the form.</source>
-        <target>Enovrstično vnosno polje, ki ni vidno v obrazcu.</target>
-      </trans-unit>
-      <trans-unit id="FFL.captcha.0">
-        <source>Security question</source>
-        <target>Varnostno vprašanje</target>
-      </trans-unit>
-      <trans-unit id="FFL.captcha.1">
-        <source>A simple math question to verify that the form is being submitted by a human (CAPTCHA).</source>
-        <target>Enostavno matematično vprašanje za preverjanje vnosa s strani človeka (CAPTCHA).</target>
-      </trans-unit>
-      <trans-unit id="FFL.submit.0">
-        <source>Submit field</source>
-        <target>Oddaj obrazec</target>
-      </trans-unit>
-      <trans-unit id="FFL.submit.1">
-        <source>A button to submit the form.</source>
-        <target>Gumb za oddajanje obrazca.</target>
-      </trans-unit>
       <trans-unit id="tl_form_field.type.0">
         <source>Field type</source>
         <target>Vrsta polja</target>
@@ -202,8 +94,8 @@
         <target>Razširjen nabor znakov</target>
       </trans-unit>
       <trans-unit id="tl_form_field.extnd.1">
-        <source>Allows everything except special characters which are usually encoded for security reasons (#/()&lt;=&gt;).</source>
-        <target>Dovoljen vseh znakov, z izjemo posebnih, ki so navadno kodirani zavoljo varnostnih razlogov (#/()&lt;=&gt;).</target>
+        <source>Allows everything except special characters which are usually encoded for security reasons: #&lt;&gt;()\=</source>
+        <target>Dovoli vse razen posebnih znakov, ki so pogosto spremenjeni iz varnostnih razlogov: #&lt;&gt;()\=</target>
       </trans-unit>
       <trans-unit id="tl_form_field.date.0">
         <source>Date</source>
@@ -276,6 +168,29 @@
       <trans-unit id="tl_form_field.maxlength.1">
         <source>Limit the field length to a certain number of characters (text) or bytes (file uploads).</source>
         <target>Omejite dolžino polja na določeno število znakov (besedilo) ali bajtov (nalaganje datotek).</target>
+      </trans-unit>
+      <trans-unit id="tl_form_field.minval.0">
+        <source>Minimum value</source>
+        <target>Najmanjša dovoljena vrednost</target>
+      </trans-unit>
+      <trans-unit id="tl_form_field.minval.1">
+        <source>Here you can set the minimum value for numeric fields.</source>
+        <target>Tu lahko določite najmanjšo dovoljeno vrednost za številska polja.</target>
+      </trans-unit>
+      <trans-unit id="tl_form_field.maxval.0">
+        <source>Maximum value</source>
+        <target>Največja dovoljena vrednost</target>
+      </trans-unit>
+      <trans-unit id="tl_form_field.maxval.1">
+        <source>Here you can set the maximum value for numeric fields.</source>
+        <target>Tu lahko določite največjo dovoljeno vrednost za številska polja.</target>
+      </trans-unit>
+      <trans-unit id="tl_form_field.step.0">
+        <source>Step</source>
+        <target>Korak</target>
+      </trans-unit>
+      <trans-unit id="tl_form_field.step.1">
+        <source>Here you can set the discrete step size of the field.</source>
       </trans-unit>
       <trans-unit id="tl_form_field.size.0">
         <source>Rows and columns</source>
@@ -382,12 +297,12 @@
         <target>Tukaj lahko nastavite velikost za polje Naloži (&lt;em&gt;velikost&lt;/em&gt; atribut).</target>
       </trans-unit>
       <trans-unit id="tl_form_field.customTpl.0">
-        <source>Custom form field template</source>
-        <target>Predloga polja obrazca po meri</target>
+        <source>Form field template</source>
+        <target>Predloga za vnosno polje</target>
       </trans-unit>
       <trans-unit id="tl_form_field.customTpl.1">
-        <source>Here you can overwrite the default form field template.</source>
-        <target>Tukaj lahko spremenite privzeto predlogo polja obrazca.</target>
+        <source>Here you can select the form field template.</source>
+        <target>Tu lahko določite predlogo za vnosno polje</target>
       </trans-unit>
       <trans-unit id="tl_form_field.slabel.0">
         <source>Submit button label</source>
@@ -466,84 +381,56 @@
         <target>Vidnost</target>
       </trans-unit>
       <trans-unit id="tl_form_field.new.0">
-        <source>New field</source>
-        <target>Novo polje</target>
+        <source>New</source>
+        <target>Nov</target>
       </trans-unit>
       <trans-unit id="tl_form_field.new.1">
-        <source>Create a new field</source>
-        <target>Ustvari novo polje</target>
+        <source>Create a new form field</source>
+        <target>Ustvari nov vnosno polje</target>
       </trans-unit>
-      <trans-unit id="tl_form_field.show.0">
-        <source>Field details</source>
-        <target>Podrobnosti polja</target>
+      <trans-unit id="tl_form_field.show">
+        <source>Show the details of form field ID %s</source>
+        <target>Prikaži podrobnosti vnosnega polja z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form_field.show.1">
-        <source>Show the details of field ID %s</source>
-        <target>Prikaži podrobnosti o polju z ID %s</target>
+      <trans-unit id="tl_form_field.edit">
+        <source>Edit form field ID %s</source>
+        <target>Uredi vnosno polje z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form_field.edit.0">
-        <source>Edit field</source>
-        <target>Uredi polje</target>
+      <trans-unit id="tl_form_field.cut">
+        <source>Move form field ID %s</source>
+        <target>Premakni vnosno polje z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form_field.edit.1">
-        <source>Edit field ID %s</source>
-        <target>Uredi polje z ID %s</target>
+      <trans-unit id="tl_form_field.copy">
+        <source>Duplicate form field ID %s</source>
+        <target>Podvoji vnosno polje z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form_field.cut.0">
-        <source>Move field</source>
-        <target>Premakni polje</target>
+      <trans-unit id="tl_form_field.delete">
+        <source>Delete form field ID %s</source>
+        <target>Izbriši vnosno polje z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form_field.cut.1">
-        <source>Move field ID %s</source>
-        <target>Premakni polje z ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.copy.0">
-        <source>Duplicate field</source>
-        <target>Podvoji polje</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.copy.1">
-        <source>Duplicate field ID %s</source>
-        <target>Podvoji polje z ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.delete.0">
-        <source>Delete field</source>
-        <target>Izbriši polje</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.delete.1">
-        <source>Delete field ID %s</source>
-        <target>Izbriši polje z ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.editheader.0">
-        <source>Edit form</source>
-        <target>Uredi obrazec</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.editheader.1">
+      <trans-unit id="tl_form_field.editheader">
         <source>Edit the form settings</source>
         <target>Uredi nastavitve obrazca</target>
+      </trans-unit>
+      <trans-unit id="tl_form_field.toggle">
+        <source>Hide/unhide form field ID %s</source>
+        <target>Skrij/prikaži vnosno polje z ID %s</target>
       </trans-unit>
       <trans-unit id="tl_form_field.pasteafter.0">
         <source>Paste at the top</source>
         <target>Prilepi na vrh</target>
       </trans-unit>
       <trans-unit id="tl_form_field.pasteafter.1">
-        <source>Paste after field ID %s</source>
-        <target>Prilepi za polje z ID %s</target>
+        <source>Paste after form field ID %s</source>
+        <target>Vstavi za vnosno polje z ID %s</target>
       </trans-unit>
       <trans-unit id="tl_form_field.pastenew.0">
-        <source>Add new at the top</source>
-        <target>Dodaj novo na vrh</target>
+        <source>Create a new form field at the top</source>
+        <target>Ustvari novo vnosno polje na začetku</target>
       </trans-unit>
       <trans-unit id="tl_form_field.pastenew.1">
-        <source>Add new after field ID %s</source>
-        <target>Dodaj novega za polje z ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.toggle.0">
-        <source>Toggle visibility</source>
-        <target>Preklopi vidljivost</target>
-      </trans-unit>
-      <trans-unit id="tl_form_field.toggle.1">
-        <source>Toggle the visibility of field ID %s</source>
-        <target>Preklopi vidljivost polja z ID %s</target>
+        <source>Create a new form field after form field ID %s</source>
+        <target>Ustvari novo vnosno polje za poljem z ID %s</target>
       </trans-unit>
       <trans-unit id="tl_form_field.option.1">
         <source>Import options from a CSV file</source>

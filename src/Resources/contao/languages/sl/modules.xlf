@@ -14,7 +14,7 @@
         <target>Članki se uporabljajo kot shramba za elemente vsebine kot so tekst, slike ali hiperpovezave. Vsak članek je objavljen na določeni strani. Ta modul vam omogoča urejanje vaših člankov.</target>
       </trans-unit>
       <trans-unit id="MOD.form.0">
-        <source>Form generator</source>
+        <source>Forms</source>
         <target>Obrazci</target>
       </trans-unit>
       <trans-unit id="MOD.form.1">
@@ -30,8 +30,7 @@
         <target>Teme</target>
       </trans-unit>
       <trans-unit id="MOD.themes.1">
-        <source>Manage front end modules, style sheets, page layouts and templates</source>
-        <target>Upravljaj module, sloge, postavitev strani in predloge.</target>
+        <source>Manage themes, front end modules, page layouts or image sizes</source>
       </trans-unit>
       <trans-unit id="MOD.page.0">
         <source>Site structure</source>
@@ -46,8 +45,8 @@
         <target>Predloge</target>
       </trans-unit>
       <trans-unit id="MOD.tpl_editor.1">
-        <source>Edit templates in the back end</source>
-        <target>Modul vam omogoča urejanje predlog v ozadju spletnega mesta.</target>
+        <source>Add or edit custom templates</source>
+        <target>Ustvari ali uredi predloge po meri</target>
       </trans-unit>
       <trans-unit id="MOD.accounts">
         <source>Account manager</source>
@@ -58,32 +57,34 @@
         <target>Člani</target>
       </trans-unit>
       <trans-unit id="MOD.member.1">
-        <source>Manage member accounts (front end users)</source>
-        <target>Člani so registrirani uporabniki vašega spletnega mesta (npr. kupci spletne trgovine, prejemniki spletnega časopisa ali člani z geslom zaščitenega spletnega mesta). Ta modul vam omogoča upravljanje s člani.</target>
+        <source>Manage member accounts (front end)</source>
       </trans-unit>
       <trans-unit id="MOD.mgroup.0">
         <source>Member groups</source>
         <target>Skupine članov</target>
       </trans-unit>
       <trans-unit id="MOD.mgroup.1">
-        <source>Manage member groups (front end user groups)</source>
-        <target>Člani so lahko dodeljeni večim skupinam članov z različnimi nastavitvami. Ta modul vam omogoča upravljanje s skupinami članov.</target>
+        <source>Manage member groups (front end)</source>
       </trans-unit>
       <trans-unit id="MOD.user.0">
         <source>Users</source>
         <target>Uporabniki</target>
       </trans-unit>
       <trans-unit id="MOD.user.1">
-        <source>Manage user accounts (back end users)</source>
-        <target>Modul vam omogoča ustvarjanje novih TYPOlight uporabnikov in upravljanje z obstoječimi uporabniškimi računi.</target>
+        <source>Manage user accounts (back end)</source>
       </trans-unit>
       <trans-unit id="MOD.group.0">
         <source>User groups</source>
         <target>Uporabniške skupine</target>
       </trans-unit>
       <trans-unit id="MOD.group.1">
-        <source>Manage user groups (back end user groups)</source>
-        <target>Uporabniki so lahko dodeljeni večim skupinam uporabnikov z različnimi nastavitvami. Ta modul vam omogoča upravljanje s skupinami uporabnikov.</target>
+        <source>Manage user groups (back end)</source>
+      </trans-unit>
+      <trans-unit id="MOD.opt_in.0">
+        <source>Double opt-in</source>
+      </trans-unit>
+      <trans-unit id="MOD.opt_in.1">
+        <source>Manage double opt-in tokens</source>
       </trans-unit>
       <trans-unit id="MOD.system">
         <source>System</source>
@@ -94,38 +95,39 @@
         <target>Upravljalec datotek</target>
       </trans-unit>
       <trans-unit id="MOD.files.1">
-        <source>Manage files and folders or upload new files to the server</source>
-        <target>Modul vam omogoča prenos novih datotek na strežnik ali upravljanje z obstoječimi datotekami in mapami.</target>
+        <source>Manage files and folders</source>
+        <target>Upravljaj z datotekami in mapami</target>
       </trans-unit>
       <trans-unit id="MOD.log.0">
         <source>System log</source>
         <target>Sistemski arhiv</target>
       </trans-unit>
       <trans-unit id="MOD.log.1">
-        <source>Browse the system log and analyze the activity on the website</source>
-        <target>Določeni sistemski dogodki se zapišejo v sistemski arhiv. Ta modul vam omogoča analiziranje teh dogodkov.</target>
+        <source>Browse the system log</source>
+        <target>Preglej sistemski dnevnik</target>
       </trans-unit>
       <trans-unit id="MOD.settings.0">
         <source>Settings</source>
         <target>Nastavitve</target>
       </trans-unit>
       <trans-unit id="MOD.settings.1">
-        <source>Check and optimize the Contao configuration</source>
-        <target>Modul vam omogoča spreminjanje lokalne instalacije in upravljanje z osnovnimi nastavitvami, recimo obliko datoma ali znakovnimi značilnostmi.</target>
+        <source>Adjust the Contao configuration</source>
+        <target>Prilagodi nastavitve Contaa</target>
       </trans-unit>
       <trans-unit id="MOD.maintenance.0">
         <source>Maintenance</source>
         <target>Vzdrževanje sistema</target>
       </trans-unit>
       <trans-unit id="MOD.maintenance.1">
-        <source>Maintain or update Contao</source>
-        <target>Modul vam omogoča vzdrževanje vaše TYPOlight instalacije.</target>
+        <source>Crawl the website or purge generated data</source>
       </trans-unit>
       <trans-unit id="MOD.security.0">
         <source>Security</source>
+        <target>Varnost</target>
       </trans-unit>
       <trans-unit id="MOD.security.1">
         <source>Secure your account</source>
+        <target>Zaščiti svoj račun</target>
       </trans-unit>
       <trans-unit id="MOD.undo.0">
         <source>Restore</source>
@@ -145,6 +147,7 @@
       </trans-unit>
       <trans-unit id="MOD.tl_content">
         <source>Content elements</source>
+        <target>Elementi vsebine</target>
       </trans-unit>
       <trans-unit id="MOD.tl_form_field">
         <source>Fields</source>
@@ -257,8 +260,8 @@
         <target>Generira meni številčenja(paginacije) za navigacijo med članki.</target>
       </trans-unit>
       <trans-unit id="FMD.sitemap.0">
-        <source>Sitemap</source>
-        <target>Zemljevid strani</target>
+        <source>HTML sitemap</source>
+        <target>Zemljevid strani v HTML</target>
       </trans-unit>
       <trans-unit id="FMD.sitemap.1">
         <source>Generates a list of all pages in the site structure</source>
@@ -281,24 +284,21 @@
         <target>Samodejna odjava</target>
       </trans-unit>
       <trans-unit id="FMD.logout.1">
-        <source>Automatically logs out a user</source>
-        <target>Samodejno odjavi uporabnika.</target>
+        <source>Automatically logs out a member</source>
       </trans-unit>
       <trans-unit id="FMD.personalData.0">
         <source>Personal data</source>
         <target>Osebni podatki</target>
       </trans-unit>
       <trans-unit id="FMD.personalData.1">
-        <source>Generates a form to edit a user's personal data</source>
-        <target>Generira obrazec za urejanje osebnih podatkov uporabnika.</target>
+        <source>Generates a form to edit a member's personal data</source>
       </trans-unit>
       <trans-unit id="FMD.registration.0">
         <source>Registration</source>
         <target>Registracija člana</target>
       </trans-unit>
       <trans-unit id="FMD.registration.1">
-        <source>Generates a user registration form</source>
-        <target>Generira obrazec za registracijo uporabnika.</target>
+        <source>Generates a member registration form</source>
       </trans-unit>
       <trans-unit id="FMD.changePassword.0">
         <source>Change password</source>
@@ -379,6 +379,13 @@
       <trans-unit id="FMD.rssReader.1">
         <source>Adds an RSS feed to the page</source>
         <target>Modul omogoča uvoz RSS virov (feeds).</target>
+      </trans-unit>
+      <trans-unit id="FMD.two_factor.0">
+        <source>Two-factor authentication</source>
+        <target>Dvostopenjska prijava</target>
+      </trans-unit>
+      <trans-unit id="FMD.two_factor.1">
+        <source>Generates a form to set up or change two-factor authentication</source>
       </trans-unit>
     </body>
   </file>

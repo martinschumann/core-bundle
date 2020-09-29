@@ -10,7 +10,7 @@
 
 namespace Contao;
 
-@trigger_error('Using the Contao\GdImage class has been deprecated and will no longer work in Contao 5.0. Use the Imagine library instead.', E_USER_DEPRECATED);
+trigger_deprecation('contao/core-bundle', '4.3', 'Using the "Contao\GdImage" class has been deprecated and will no longer work in Contao 5.0. Use the Imagine library instead.');
 
 /**
  * GD image class
@@ -33,7 +33,6 @@ namespace Contao;
  */
 class GdImage
 {
-
 	/**
 	 * The GD resource handle
 	 *
@@ -71,7 +70,7 @@ class GdImage
 			$extension = 'jpeg';
 		}
 
-		if (\in_array($extension, array('gif', 'jpeg', 'png')))
+		if (\in_array($extension, array('gif', 'jpeg', 'png', 'webp')))
 		{
 			$function = 'imagecreatefrom' . $extension;
 		}
@@ -199,9 +198,12 @@ class GdImage
 				imagepng($this->gdResource, $path);
 				break;
 
+			case 'webp':
+				imagewebp($this->gdResource, $path);
+				break;
+
 			default:
 				throw new \InvalidArgumentException('Image type "' . $extension . '" cannot be generated');
-				break;
 		}
 
 		return $this;

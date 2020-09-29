@@ -8,9 +8,21 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Backend;
+use Contao\BackendUser;
+use Contao\Config;
+use Contao\CoreBundle\Exception\AccessDeniedException;
+use Contao\FilesModel;
+use Contao\Folder;
+use Contao\Image;
+use Contao\Input;
+use Contao\StringUtil;
+use Contao\StyleSheets;
+use Contao\System;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+
 $GLOBALS['TL_DCA']['tl_theme'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -60,21 +72,18 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 		(
 			'importTheme' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['importTheme'],
 				'href'                => 'key=importTheme',
 				'class'               => 'header_theme_import',
 				'button_callback'     => array('tl_theme', 'importTheme')
 			),
 			'store' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['store'],
 				'href'                => 'key=themeStore',
 				'class'               => 'header_store',
 				'button_callback'     => array('tl_theme', 'themeStore')
 			),
 			'all' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['MSC']['all'],
 				'href'                => 'act=select',
 				'class'               => 'header_edit_all',
 				'attributes'          => 'onclick="Backend.getScrollOffset()" accesskey="e"'
@@ -84,55 +93,47 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 		(
 			'edit' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['edit'],
 				'href'                => 'act=edit',
 				'icon'                => 'edit.svg'
 			),
 			'delete' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['delete'],
 				'href'                => 'act=delete',
 				'icon'                => 'delete.svg',
 				'attributes'          => 'onclick="if(!confirm(\'' . $GLOBALS['TL_LANG']['MSC']['deleteConfirm'] . '\'))return false;Backend.getScrollOffset()"'
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg',
 				'attributes'          => 'style="margin-right:3px"'
 			),
 			'css' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['css'],
 				'href'                => 'table=tl_style_sheet',
 				'icon'                => 'css.svg',
 				'button_callback'     => array('tl_theme', 'editCss')
 			),
 			'modules' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['modules'],
 				'href'                => 'table=tl_module',
 				'icon'                => 'modules.svg',
 				'button_callback'     => array('tl_theme', 'editModules')
 			),
 			'layout' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['layout'],
 				'href'                => 'table=tl_layout',
 				'icon'                => 'layout.svg',
 				'button_callback'     => array('tl_theme', 'editLayout')
 			),
 			'imageSizes' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['imageSizes'],
 				'href'                => 'table=tl_image_size',
 				'icon'                => 'sizes.svg',
 				'button_callback'     => array('tl_theme', 'editImageSizes')
 			),
 			'exportTheme' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_theme']['exportTheme'],
 				'href'                => 'key=exportTheme',
 				'icon'                => 'theme_export.svg',
 				'button_callback'     => array('tl_theme', 'exportTheme')
@@ -143,7 +144,7 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 	// Palettes
 	'palettes' => array
 	(
-		'default'                     => '{title_legend},name,author;{config_legend},folders,screenshot,templates;{image_legend:hide},defaultImageDensities;{vars_legend},vars'
+		'default'                     => '{title_legend},name,author;{config_legend},folders,screenshot,templates;{vars_legend},vars'
 	),
 
 	// Fields
@@ -159,7 +160,6 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 		),
 		'name' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_theme']['name'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'sorting'                 => true,
@@ -170,7 +170,6 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 		),
 		'author' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_theme']['author'],
 			'inputType'               => 'text',
 			'exclude'                 => true,
 			'sorting'                 => true,
@@ -181,7 +180,6 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 		),
 		'folders' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_theme']['folders'],
 			'exclude'                 => true,
 			'inputType'               => 'fileTree',
 			'eval'                    => array('multiple'=>true, 'fieldType'=>'checkbox'),
@@ -189,15 +187,13 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 		),
 		'screenshot' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_theme']['screenshot'],
 			'exclude'                 => true,
 			'inputType'               => 'fileTree',
-			'eval'                    => array('fieldType'=>'radio', 'filesOnly'=>true, 'isGallery'=>true, 'extensions'=>Contao\Config::get('validImageTypes')),
+			'eval'                    => array('fieldType'=>'radio', 'filesOnly'=>true, 'isGallery'=>true, 'extensions'=>Config::get('validImageTypes')),
 			'sql'                     => "binary(16) NULL"
 		),
 		'templates' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_theme']['templates'],
 			'exclude'                 => true,
 			'inputType'               => 'select',
 			'options_callback'        => array('tl_theme', 'getTemplateFolders'),
@@ -206,19 +202,9 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
 		),
 		'vars' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_theme']['vars'],
 			'inputType'               => 'keyValueWizard',
 			'exclude'                 => true,
 			'sql'                     => "text NULL"
-		),
-		'defaultImageDensities' => array
-		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_theme']['defaultImageDensities'],
-			'inputType'               => 'text',
-			'explanation'             => 'imageSizeDensities',
-			'exclude'                 => true,
-			'eval'                    => array('helpwizard'=>true, 'maxlength'=>255, 'tl_class'=>'w50'),
-			'sql'                     => "varchar(255) NOT NULL default ''"
 		)
 	)
 );
@@ -228,22 +214,21 @@ $GLOBALS['TL_DCA']['tl_theme'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_theme extends Contao\Backend
+class tl_theme extends Backend
 {
-
 	/**
 	 * Import the back end user object
 	 */
 	public function __construct()
 	{
 		parent::__construct();
-		$this->import('Contao\BackendUser', 'User');
+		$this->import(BackendUser::class, 'User');
 	}
 
 	/**
 	 * Check permissions to edit the table
 	 *
-	 * @throws Contao\CoreBundle\Exception\AccessDeniedException
+	 * @throws AccessDeniedException
 	 */
 	public function checkPermission()
 	{
@@ -253,19 +238,19 @@ class tl_theme extends Contao\Backend
 		}
 
 		// Check the theme import and export permissions (see #5835)
-		switch (Contao\Input::get('key'))
+		switch (Input::get('key'))
 		{
 			case 'importTheme':
 				if (!$this->User->hasAccess('theme_import', 'themes'))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to import themes.');
+					throw new AccessDeniedException('Not enough permissions to import themes.');
 				}
 				break;
 
 			case 'exportTheme':
 				if (!$this->User->hasAccess('theme_import', 'themes'))
 				{
-					throw new Contao\CoreBundle\Exception\AccessDeniedException('Not enough permissions to export themes.');
+					throw new AccessDeniedException('Not enough permissions to export themes.');
 				}
 				break;
 		}
@@ -281,14 +266,14 @@ class tl_theme extends Contao\Backend
 	 */
 	public function addPreviewImage($row, $label)
 	{
-		if ($row['screenshot'] != '')
+		if ($row['screenshot'])
 		{
-			$objFile = Contao\FilesModel::findByUuid($row['screenshot']);
+			$objFile = FilesModel::findByUuid($row['screenshot']);
 
-			if ($objFile !== null)
+			if ($objFile !== null && file_exists(TL_ROOT . '/' . $objFile->path))
 			{
-				$rootDir = Contao\System::getContainer()->getParameter('kernel.project_dir');
-				$label = Contao\Image::getHtml(Contao\System::getContainer()->get('contao.image.image_factory')->create($rootDir . '/' . $objFile->path, array(75, 50, 'center_top'))->getUrl($rootDir), '', 'class="theme_preview"') . ' ' . $label;
+				$projectDir = System::getContainer()->getParameter('kernel.project_dir');
+				$label = Image::getHtml(System::getContainer()->get('contao.image.image_factory')->create($projectDir . '/' . $objFile->path, array(75, 50, 'center_top'))->getUrl($projectDir), '', 'class="theme_preview"') . ' ' . $label;
 			}
 		}
 
@@ -300,12 +285,12 @@ class tl_theme extends Contao\Backend
 	 */
 	public function updateStyleSheet()
 	{
-		/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
-		$objSession = Contao\System::getContainer()->get('session');
+		/** @var SessionInterface $objSession */
+		$objSession = System::getContainer()->get('session');
 
 		if ($objSession->get('style_sheet_update_all'))
 		{
-			$this->import('Contao\StyleSheets', 'StyleSheets');
+			$this->import(StyleSheets::class, 'StyleSheets');
 			$this->StyleSheets->updateStyleSheets();
 		}
 
@@ -320,8 +305,8 @@ class tl_theme extends Contao\Backend
 	 */
 	public function scheduleUpdate()
 	{
-		/** @var Symfony\Component\HttpFoundation\Session\SessionInterface $objSession */
-		$objSession = Contao\System::getContainer()->get('session');
+		/** @var SessionInterface $objSession */
+		$objSession = System::getContainer()->get('session');
 
 		$objSession->set('style_sheet_update_all', true);
 	}
@@ -347,11 +332,11 @@ class tl_theme extends Contao\Backend
 	protected function doGetTemplateFolders($path, $level=0)
 	{
 		$return = array();
-		$rootDir = Contao\System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
-		foreach (scan($rootDir . '/' . $path) as $file)
+		foreach (Folder::scan($projectDir . '/' . $path) as $file)
 		{
-			if (is_dir($rootDir . '/' . $path . '/' . $file))
+			if (is_dir($projectDir . '/' . $path . '/' . $file))
 			{
 				$return[$path . '/' . $file] = str_repeat(' &nbsp; &nbsp; ', $level) . $file;
 				$return = array_merge($return, $this->doGetTemplateFolders($path . '/' . $file, $level+1));
@@ -374,7 +359,7 @@ class tl_theme extends Contao\Backend
 	 */
 	public function importTheme($href, $label, $title, $class, $attributes)
 	{
-		return $this->User->hasAccess('theme_import', 'themes') ? '<a href="'.$this->addToUrl($href).'" class="'.$class.'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.$label.'</a> ' : '';
+		return $this->User->hasAccess('theme_import', 'themes') ? '<a href="' . $this->addToUrl($href) . '" class="' . $class . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . $label . '</a> ' : '';
 	}
 
 	/**
@@ -384,7 +369,7 @@ class tl_theme extends Contao\Backend
 	 */
 	public function themeStore()
 	{
-		return '<a href="https://themes.contao.org" title="' . Contao\StringUtil::specialchars($GLOBALS['TL_LANG']['tl_theme']['store'][1]) . '" class="header_store" target="_blank" rel="noreferrer noopener">' . $GLOBALS['TL_LANG']['tl_theme']['store'][0] . '</a>';
+		return '<a href="https://themes.contao.org" title="' . StringUtil::specialchars($GLOBALS['TL_LANG']['tl_theme']['store'][1]) . '" class="header_store" target="_blank" rel="noreferrer noopener">' . $GLOBALS['TL_LANG']['tl_theme']['store'][0] . '</a>';
 	}
 
 	/**
@@ -401,7 +386,7 @@ class tl_theme extends Contao\Backend
 	 */
 	public function editCss($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->hasAccess('css', 'themes') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->hasAccess('css', 'themes') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -418,7 +403,7 @@ class tl_theme extends Contao\Backend
 	 */
 	public function editModules($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->hasAccess('modules', 'themes') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->hasAccess('modules', 'themes') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -435,7 +420,7 @@ class tl_theme extends Contao\Backend
 	 */
 	public function editLayout($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->hasAccess('layout', 'themes') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->hasAccess('layout', 'themes') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -452,7 +437,7 @@ class tl_theme extends Contao\Backend
 	 */
 	public function editImageSizes($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->hasAccess('image_sizes', 'themes') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->hasAccess('image_sizes', 'themes') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 
 	/**
@@ -469,6 +454,6 @@ class tl_theme extends Contao\Backend
 	 */
 	public function exportTheme($row, $href, $label, $title, $icon, $attributes)
 	{
-		return $this->User->hasAccess('theme_export', 'themes') ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : Contao\Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)).' ';
+		return $this->User->hasAccess('theme_export', 'themes') ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : Image::getHtml(preg_replace('/\.svg$/i', '_.svg', $icon)) . ' ';
 	}
 }

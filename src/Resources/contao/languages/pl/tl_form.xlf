@@ -33,6 +33,12 @@
         <source>Send the submitted data to an e-mail address.</source>
         <target>Jeśli wybierzesz tę opcję, dane z formularza zostaną wysłane e-mailem.</target>
       </trans-unit>
+      <trans-unit id="tl_form.mailerTransport.0">
+        <source>Mailer transport</source>
+      </trans-unit>
+      <trans-unit id="tl_form.mailerTransport.1">
+        <source>Here you can override the mailer transport used to send the form via e-mail.</source>
+      </trans-unit>
       <trans-unit id="tl_form.recipient.0">
         <source>Recipient address</source>
         <target>Adresat</target>
@@ -80,6 +86,20 @@
       <trans-unit id="tl_form.csv.1">
         <source>The form data will be attached to the e-mail as a CSV file.</source>
         <target>Dane będą załączone do e-maila jako plik CSV (dane rozdzielone przecinkami).</target>
+      </trans-unit>
+      <trans-unit id="tl_form.csv_excel.0">
+        <source>CSV file (Microsoft Excel)</source>
+      </trans-unit>
+      <trans-unit id="tl_form.csv_excel.1">
+        <source>The form data will be attached to the e-mail as a CSV file readable by Microsoft Excel.</source>
+      </trans-unit>
+      <trans-unit id="tl_form.skipEmpty.0">
+        <source>Skip empty fields</source>
+        <target>Pomiń puste pola</target>
+      </trans-unit>
+      <trans-unit id="tl_form.skipEmpty.1">
+        <source>Do not include empty fields in the form data.</source>
+        <target>Nie załączaj pustych pól w danych formularza.</target>
       </trans-unit>
       <trans-unit id="tl_form.email.0">
         <source>E-mail</source>
@@ -194,50 +214,30 @@
         <target>Ustawienia szablonów</target>
       </trans-unit>
       <trans-unit id="tl_form.new.0">
-        <source>New form</source>
-        <target>Nowy formularz</target>
+        <source>New</source>
+        <target>Nowy</target>
       </trans-unit>
       <trans-unit id="tl_form.new.1">
         <source>Create a new form</source>
         <target>Utwórz nowy formularz</target>
       </trans-unit>
-      <trans-unit id="tl_form.show.0">
-        <source>Form details</source>
-        <target>Szczegóły formularza</target>
-      </trans-unit>
-      <trans-unit id="tl_form.show.1">
+      <trans-unit id="tl_form.show">
         <source>Show the details of form ID %s</source>
         <target>Pokaż szczegóły formularza ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.edit.0">
-        <source>Edit form</source>
-        <target>Edytuj nagłówek formularza</target>
-      </trans-unit>
-      <trans-unit id="tl_form.edit.1">
+      <trans-unit id="tl_form.edit">
         <source>Edit form ID %s</source>
         <target>Edytuj formularz ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.editheader.0">
-        <source>Edit form</source>
-        <target>Edytuj nagłówek formularza</target>
+      <trans-unit id="tl_form.editheader">
+        <source>Edit the settings of form ID %s</source>
+        <target>Edytuj ustawienia formularza ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.editheader.1">
-        <source>Edit the form settings</source>
-        <target>Edytuj nagłówek tego formularza</target>
-      </trans-unit>
-      <trans-unit id="tl_form.copy.0">
-        <source>Duplicate form</source>
-        <target>Duplikuj formularz</target>
-      </trans-unit>
-      <trans-unit id="tl_form.copy.1">
+      <trans-unit id="tl_form.copy">
         <source>Duplicate form ID %s</source>
         <target>Duplikuj formularz ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_form.delete.0">
-        <source>Delete form</source>
-        <target>Skasuj formularz</target>
-      </trans-unit>
-      <trans-unit id="tl_form.delete.1">
+      <trans-unit id="tl_form.delete">
         <source>Delete form ID %s</source>
         <target>Skasuj formularz ID %s</target>
       </trans-unit>

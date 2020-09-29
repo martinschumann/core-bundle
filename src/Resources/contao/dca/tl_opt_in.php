@@ -8,9 +8,17 @@
  * @license LGPL-3.0-or-later
  */
 
+use Contao\Backend;
+use Contao\Controller;
+use Contao\DataContainer;
+use Contao\Image;
+use Contao\Message;
+use Contao\OptInModel;
+use Contao\StringUtil;
+use Contao\System;
+
 $GLOBALS['TL_DCA']['tl_opt_in'] = array
 (
-
 	// Config
 	'config' => array
 	(
@@ -52,14 +60,12 @@ $GLOBALS['TL_DCA']['tl_opt_in'] = array
 		(
 			'resend' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_opt_in']['resend'],
 				'href'                => 'key=resend',
 				'icon'                => 'resend.svg',
 				'button_callback'     => array('tl_opt_in', 'resendButton')
 			),
 			'show' => array
 			(
-				'label'               => &$GLOBALS['TL_LANG']['tl_opt_in']['show'],
 				'href'                => 'act=show',
 				'icon'                => 'show.svg'
 			)
@@ -79,7 +85,6 @@ $GLOBALS['TL_DCA']['tl_opt_in'] = array
 		),
 		'token' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_opt_in']['token'],
 			'search'                  => true,
 			'sql'                     => "varchar(24) NOT NULL default ''"
 		),
@@ -94,7 +99,6 @@ $GLOBALS['TL_DCA']['tl_opt_in'] = array
 		),
 		'confirmedOn' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_opt_in']['confirmedOn'],
 			'filter'                  => true,
 			'sorting'                 => true,
 			'flag'                    => 6,
@@ -103,7 +107,6 @@ $GLOBALS['TL_DCA']['tl_opt_in'] = array
 		),
 		'removeOn' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_opt_in']['removeOn'],
 			'filter'                  => true,
 			'sorting'                 => true,
 			'flag'                    => 6,
@@ -112,7 +115,6 @@ $GLOBALS['TL_DCA']['tl_opt_in'] = array
 		),
 		'invalidatedThrough' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_opt_in']['invalidatedThrough'],
 			'search'                  => true,
 			'sql'                     => "varchar(24) NOT NULL default ''"
 		),
@@ -126,13 +128,11 @@ $GLOBALS['TL_DCA']['tl_opt_in'] = array
 		),
 		'emailSubject' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_opt_in']['emailSubject'],
 			'search'                  => true,
 			'sql'                     => "varchar(255) NOT NULL default ''"
 		),
 		'emailText' => array
 		(
-			'label'                   => &$GLOBALS['TL_LANG']['tl_opt_in']['emailText'],
 			'search'                  => true,
 			'sql'                     => "text NULL"
 		)
@@ -144,19 +144,18 @@ $GLOBALS['TL_DCA']['tl_opt_in'] = array
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
-class tl_opt_in extends Contao\Backend
+class tl_opt_in extends Backend
 {
-
 	/**
 	 * Show the related records
 	 *
 	 * @param array $data
-	 * @param array $arrRow
+	 * @param array $row
 	 */
 	public function showRelatedRecords($data, $row)
 	{
-		Contao\System::loadLanguageFile('tl_opt_in_related');
-		Contao\Controller::loadDataContainer('tl_opt_in_related');
+		System::loadLanguageFile('tl_opt_in_related');
+		Controller::loadDataContainer('tl_opt_in_related');
 
 		$objRelated = $this->Database->prepare("SELECT * FROM tl_opt_in_related WHERE pid=?")
 									 ->execute($row['id']);
@@ -168,7 +167,7 @@ class tl_opt_in extends Contao\Backend
 
 			foreach ($arrRow as $k=>$v)
 			{
-				$label = \is_array($GLOBALS['TL_DCA']['tl_opt_in_related']['fields'][$k]['label']) ? $GLOBALS['TL_DCA']['tl_opt_in_related']['fields'][$k]['label'][0] : $GLOBALS['TL_DCA']['tl_opt_in_related']['fields'][$k]['label'];
+				$label = is_array($GLOBALS['TL_DCA']['tl_opt_in_related']['fields'][$k]['label']) ? $GLOBALS['TL_DCA']['tl_opt_in_related']['fields'][$k]['label'][0] : $GLOBALS['TL_DCA']['tl_opt_in_related']['fields'][$k]['label'];
 
 				$arrAdd[$label] = $v;
 			}
@@ -182,15 +181,15 @@ class tl_opt_in extends Contao\Backend
 	/**
 	 * Resend the double opt-in token
 	 *
-	 * @param Contao\DataContainer $dc
+	 * @param DataContainer $dc
 	 */
-	public function resendToken(Contao\DataContainer $dc)
+	public function resendToken(DataContainer $dc)
 	{
-		$model = Contao\OptInModel::findByPk($dc->id);
+		$model = OptInModel::findByPk($dc->id);
 
-		Contao\System::getContainer()->get('contao.opt-in')->find($model->token)->send();
-		Contao\Message::addConfirmation(sprintf($GLOBALS['TL_LANG']['MSC']['resendToken'], $model->email));
-		Contao\Controller::redirect($this->getReferer());
+		System::getContainer()->get('contao.opt-in')->find($model->token)->send();
+		Message::addConfirmation(sprintf($GLOBALS['TL_LANG']['MSC']['resendToken'], $model->email));
+		Controller::redirect($this->getReferer());
 	}
 
 	/**
@@ -207,6 +206,6 @@ class tl_opt_in extends Contao\Backend
 	 */
 	public function resendButton($row, $href, $label, $title, $icon, $attributes)
 	{
-		return (!$row['confirmedOn'] &&!$row['invalidatedThrough'] && $row['emailSubject'] && $row['emailText'] && $row['createdOn'] > strtotime('-24 hours')) ? '<a href="'.$this->addToUrl($href.'&amp;id='.$row['id']).'" title="'.Contao\StringUtil::specialchars($title).'"'.$attributes.'>'.Contao\Image::getHtml($icon, $label).'</a> ' : '';
+		return (!$row['confirmedOn'] &&!$row['invalidatedThrough'] && $row['emailSubject'] && $row['emailText'] && $row['createdOn'] > strtotime('-24 hours')) ? '<a href="' . $this->addToUrl($href . '&amp;id=' . $row['id']) . '" title="' . StringUtil::specialchars($title) . '"' . $attributes . '>' . Image::getHtml($icon, $label) . '</a> ' : '';
 	}
 }

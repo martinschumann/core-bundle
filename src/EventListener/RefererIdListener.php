@@ -13,16 +13,18 @@ declare(strict_types=1);
 namespace Contao\CoreBundle\EventListener;
 
 use Contao\CoreBundle\Routing\ScopeMatcher;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\Security\Csrf\CsrfToken;
-use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\Security\Csrf\TokenGenerator\TokenGeneratorInterface;
 
+/**
+ * @internal
+ */
 class RefererIdListener
 {
     /**
-     * @var CsrfTokenManagerInterface
+     * @var TokenGeneratorInterface
      */
-    private $tokenManager;
+    private $tokenGenerator;
 
     /**
      * @var ScopeMatcher
@@ -30,20 +32,20 @@ class RefererIdListener
     private $scopeMatcher;
 
     /**
-     * @var CsrfToken
+     * @var string
      */
     private $token;
 
-    public function __construct(CsrfTokenManagerInterface $tokenManager, ScopeMatcher $scopeMatcher)
+    public function __construct(TokenGeneratorInterface $tokenGenerator, ScopeMatcher $scopeMatcher)
     {
-        $this->tokenManager = $tokenManager;
+        $this->tokenGenerator = $tokenGenerator;
         $this->scopeMatcher = $scopeMatcher;
     }
 
     /**
      * Adds the referer ID to the request.
      */
-    public function onKernelRequest(GetResponseEvent $event): void
+    public function __invoke(RequestEvent $event): void
     {
         if (!$this->scopeMatcher->isBackendMasterRequest($event)) {
             return;
@@ -52,9 +54,9 @@ class RefererIdListener
         $request = $event->getRequest();
 
         if (null === $this->token) {
-            $this->token = $this->tokenManager->refreshToken('contao_referer_id');
+            $this->token = $this->tokenGenerator->generateToken();
         }
 
-        $request->attributes->set('_contao_referer_id', $this->token->getValue());
+        $request->attributes->set('_contao_referer_id', $this->token);
     }
 }

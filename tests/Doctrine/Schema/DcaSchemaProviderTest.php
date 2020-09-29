@@ -43,8 +43,11 @@ class DcaSchemaProviderTest extends DoctrineTestCase
         $this->assertTrue($table->getColumn('id')->getNotnull());
         $this->assertFalse($table->getColumn('id')->getFixed());
 
-        if (null !== ($default = $table->getColumn('id')->getDefault())) {
-            $this->assertSame(0, $default);
+        /** @var int|null $idDefault */
+        $idDefault = $table->getColumn('id')->getDefault();
+
+        if (null !== $idDefault) {
+            $this->assertSame(0, $idDefault);
         }
 
         $this->assertTrue($table->hasColumn('pid'));
@@ -59,8 +62,10 @@ class DcaSchemaProviderTest extends DoctrineTestCase
         $this->assertSame(128, $table->getColumn('title')->getLength());
         $this->assertSame('utf8mb4_bin', $table->getColumn('title')->getPlatformOption('collation'));
 
-        if (null !== ($default = $table->getColumn('title')->getDefault())) {
-            $this->assertSame('', $default);
+        $titleDefault = $table->getColumn('title')->getDefault();
+
+        if (null !== $titleDefault) {
+            $this->assertSame('', $titleDefault);
         }
 
         $this->assertTrue($table->hasColumn('uppercase'));
@@ -94,7 +99,13 @@ class DcaSchemaProviderTest extends DoctrineTestCase
         $this->assertFalse($table->getColumn('price')->getFixed());
         $this->assertSame(6, $table->getColumn('price')->getPrecision());
         $this->assertSame(2, $table->getColumn('price')->getScale());
-        $this->assertSame(1.99, $table->getColumn('price')->getDefault());
+
+        /** @var float|null $priceDefault */
+        $priceDefault = $table->getColumn('price')->getDefault();
+
+        if (null !== $priceDefault) {
+            $this->assertSame(1.99, $priceDefault);
+        }
 
         $this->assertTrue($table->hasColumn('thumb'));
         $this->assertSame('blob', $table->getColumn('thumb')->getType()->getName());
@@ -119,8 +130,10 @@ class DcaSchemaProviderTest extends DoctrineTestCase
         $this->assertTrue($table->getColumn('published')->getNotnull());
         $this->assertTrue($table->getColumn('published')->getFixed());
 
-        if (null !== ($default = $table->getColumn('published')->getDefault())) {
-            $this->assertSame('', $default);
+        $publishedDefault = $table->getColumn('published')->getDefault();
+
+        if (null !== $publishedDefault) {
+            $this->assertSame('', $publishedDefault);
         }
     }
 
@@ -194,6 +207,25 @@ class DcaSchemaProviderTest extends DoctrineTestCase
         ];
     }
 
+    public function testHandlesSimpleFieldDefinition(): void
+    {
+        $dca = [
+            'tl_member' => [
+                'TABLE_FIELDS' => [
+                    'id' => '`id` INTEGER',
+                ],
+            ],
+        ];
+
+        $schema = $this->getProvider($dca)->createSchema();
+        $table = $schema->getTable('tl_member');
+
+        $this->assertTrue($table->hasColumn('id'));
+        $this->assertSame('integer', $table->getColumn('id')->getType()->getName());
+        $this->assertFalse($table->getColumn('id')->getNotnull());
+        $this->assertFalse($table->getColumn('id')->getFixed());
+    }
+
     public function testReadsTheTableOptions(): void
     {
         $options = 'ENGINE=InnoDB ROW_FORMAT=DYNAMIC';
@@ -216,7 +248,6 @@ class DcaSchemaProviderTest extends DoctrineTestCase
         $this->assertSame('InnoDB', $table->getOption('engine'));
         $this->assertSame('utf8', $table->getOption('charset'));
         $this->assertSame('utf8_unicode_ci', $table->getOption('collate'));
-        $this->assertSame('DYNAMIC', $table->getOption('row_format'));
 
         $provider = $this->getProvider(
             [],
@@ -237,7 +268,6 @@ class DcaSchemaProviderTest extends DoctrineTestCase
         $this->assertSame('InnoDB', $table->getOption('engine'));
         $this->assertSame('utf8mb4', $table->getOption('charset'));
         $this->assertSame('utf8mb4_unicode_ci', $table->getOption('collate'));
-        $this->assertSame('DYNAMIC', $table->getOption('row_format'));
 
         $provider = $this->getProvider(
             [

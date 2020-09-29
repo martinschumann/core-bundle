@@ -20,12 +20,13 @@ use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
+use Webmozart\PathUtil\Path;
 
+/**
+ * @internal
+ */
 class AddAssetsPackagesPass implements CompilerPassInterface
 {
-    /**
-     * {@inheritdoc}
-     */
     public function process(ContainerBuilder $container): void
     {
         if (!$container->hasDefinition('assets.packages')) {
@@ -53,19 +54,19 @@ class AddAssetsPackagesPass implements CompilerPassInterface
         $bundles = $container->getParameter('kernel.bundles');
         $meta = $container->getParameter('kernel.bundles_metadata');
 
-        foreach ($bundles as $name => $class) {
-            if (!is_dir($meta[$name]['path'].'/Resources/public')) {
+        foreach (array_keys($bundles) as $name) {
+            if (null === ($path = $this->findBundlePath($meta, $name))) {
                 continue;
             }
 
             $packageVersion = $version;
             $packageName = $this->getBundlePackageName($name);
             $serviceId = 'assets._package_'.$packageName;
-            $basePath = 'bundles/'.preg_replace('/bundle$/', '', strtolower($name));
+            $basePath = Path::join('bundles', preg_replace('/bundle$/', '', strtolower($name)));
 
-            if (is_file($meta[$name]['path'].'/Resources/public/manifest.json')) {
+            if (is_file($manifestPath = Path::join($path, 'manifest.json'))) {
                 $def = new ChildDefinition('assets.json_manifest_version_strategy');
-                $def->replaceArgument(0, $meta[$name]['path'].'/Resources/public/manifest.json');
+                $def->replaceArgument(0, $manifestPath);
 
                 $container->setDefinition('assets._version_'.$packageName, $def);
                 $packageVersion = new Reference('assets._version_'.$packageName);
@@ -85,12 +86,12 @@ class AddAssetsPackagesPass implements CompilerPassInterface
         $context = new Reference('contao.assets.assets_context');
 
         foreach (Versions::VERSIONS as $name => $version) {
-            if (0 !== strncmp('contao-components/', $name, 18)) {
+            if (!Path::isBasePath('contao-components', $name)) {
                 continue;
             }
 
             $serviceId = 'assets._package_'.$name;
-            $basePath = 'assets/'.substr($name, 18);
+            $basePath = Path::join('assets', Path::makeRelative($name, 'contao-components'));
             $version = $this->createVersionStrategy($container, $version, $name);
 
             $container->setDefinition($serviceId, $this->createPackageDefinition($basePath, $version, $context));
@@ -132,5 +133,18 @@ class AddAssetsPackagesPass implements CompilerPassInterface
         }
 
         return Container::underscore($className);
+    }
+
+    private function findBundlePath(array $meta, string $name): ?string
+    {
+        if (is_dir($path = Path::join($meta[$name]['path'], 'Resources/public'))) {
+            return $path;
+        }
+
+        if (is_dir($path = Path::join($meta[$name]['path'], 'public'))) {
+            return $path;
+        }
+
+        return null;
     }
 }

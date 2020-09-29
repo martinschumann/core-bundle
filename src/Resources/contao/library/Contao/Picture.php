@@ -16,10 +16,8 @@ use Contao\Image\PictureConfigurationItem;
 use Contao\Image\ResizeConfiguration;
 use Contao\Image\ResizeOptions;
 use Contao\Model\Collection;
-use Imagine\Image\Box;
-use Imagine\Image\Point;
 
-@trigger_error('Using the Contao\Picture class has been deprecated and will no longer work in Contao 5.0. Use the contao.image.picture_factory service instead.', E_USER_DEPRECATED);
+trigger_deprecation('contao/core-bundle', '4.3', 'Using the "Contao\Picture" class has been deprecated and will no longer work in Contao 5.0. Use the "contao.image.picture_factory" service instead.');
 
 /**
  * Resizes images and creates picture data
@@ -49,7 +47,6 @@ use Imagine\Image\Point;
  */
 class Picture
 {
-
 	/**
 	 * The Image instance of the source image
 	 *
@@ -67,7 +64,7 @@ class Picture
 	/**
 	 * The image size items collection
 	 *
-	 * @var ImageSizeItemModel[]|Collection
+	 * @var array<ImageSizeItemModel|object>|Collection
 	 */
 	protected $imageSizeItems = array();
 
@@ -84,8 +81,8 @@ class Picture
 	/**
 	 * Create a picture instance from the given image path and size
 	 *
-	 * @param string|File   $file The image path or File instance
-	 * @param array|integer $size The image size as array (width, height, resize mode) or an tl_image_size ID
+	 * @param string|File          $file The image path or File instance
+	 * @param array|integer|string $size The image size as array (width, height, resize mode) or an tl_image_size ID or a predifined image size key
 	 *
 	 * @return static The created picture instance
 	 */
@@ -99,15 +96,24 @@ class Picture
 		$imageSize = null;
 		$picture = new static($file);
 
-		// tl_image_size ID as resize mode
-		if (\is_array($size) && !empty($size[2]) && is_numeric($size[2]))
+		if (\is_array($size) && !empty($size[2]))
 		{
-			$size = (int) $size[2];
+			// tl_image_size ID as resize mode
+			if (is_numeric($size[2]))
+			{
+				$size = (int) $size[2];
+			}
+
+			// Predefined image size as resize mode
+			elseif (\is_string($size[2]) && $size[2][0] === '_')
+			{
+				$size = $size[2];
+			}
 		}
 
 		$imageSize = null;
 
-		if (!\is_array($size))
+		if (!\is_array($size) && (!\is_string($size) || $size[0] !== '_'))
 		{
 			$imageSize = ImageSizeModel::findByPk($size);
 
@@ -115,6 +121,11 @@ class Picture
 			{
 				$size = array();
 			}
+		}
+
+		if (\is_string($size) && $size[0] === '_')
+		{
+			$imageSize = $size;
 		}
 
 		if (\is_array($size))
@@ -136,15 +147,16 @@ class Picture
 		}
 
 		$fileRecord = FilesModel::findByPath($file->path);
+		$currentSize = $file->imageViewSize;
 
 		if ($fileRecord !== null && $fileRecord->importantPartWidth && $fileRecord->importantPartHeight)
 		{
 			$picture->setImportantPart(array
 			(
-				'x' => (int) $fileRecord->importantPartX,
-				'y' => (int) $fileRecord->importantPartY,
-				'width' => (int) $fileRecord->importantPartWidth,
-				'height' => (int) $fileRecord->importantPartHeight,
+				'x' => (int) ($fileRecord->importantPartX * $currentSize[0]),
+				'y' => (int) ($fileRecord->importantPartY * $currentSize[1]),
+				'width' => (int) ($fileRecord->importantPartWidth * $currentSize[0]),
+				'height' => (int) ($fileRecord->importantPartHeight * $currentSize[1]),
 			));
 		}
 
@@ -168,7 +180,7 @@ class Picture
 	/**
 	 * Set the image size
 	 *
-	 * @param ImageSizeModel|object $imageSize The image size
+	 * @param ImageSizeModel|object|string $imageSize The image size or a predifined image size key
 	 *
 	 * @return $this The picture object
 	 */
@@ -182,7 +194,7 @@ class Picture
 	/**
 	 * Set the image size items collection
 	 *
-	 * @param ImageSizeItemModel[]|Collection $imageSizeItems The image size items collection
+	 * @param array<ImageSizeItemModel|object>|Collection $imageSizeItems The image size items collection
 	 *
 	 * @return $this The picture object
 	 */
@@ -205,27 +217,37 @@ class Picture
 	 */
 	public function getTemplateData()
 	{
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
-		$image = System::getContainer()->get('contao.image.image_factory')->create($rootDir . '/' . $this->image->getOriginalPath());
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
+		$image = System::getContainer()->get('contao.image.image_factory')->create($projectDir . '/' . $this->image->getOriginalPath());
 
-		$config = new PictureConfiguration();
-		$config->setSize($this->getConfigurationItem($this->imageSize));
-
-		$sizeItems = array();
-
-		foreach ($this->imageSizeItems as $imageSizeItem)
+		if (\is_string($this->imageSize) && $this->imageSize[0] === '_')
 		{
-			$sizeItems[] = $this->getConfigurationItem($imageSizeItem);
+			$config = $this->imageSize;
+		}
+		else
+		{
+			$config = new PictureConfiguration();
+			$config->setSize($this->getConfigurationItem($this->imageSize));
+
+			$sizeItems = array();
+
+			foreach ($this->imageSizeItems as $imageSizeItem)
+			{
+				$sizeItems[] = $this->getConfigurationItem($imageSizeItem);
+			}
+
+			$config->setSizeItems($sizeItems);
 		}
 
-		$config->setSizeItems($sizeItems);
-
 		$importantPart = $this->image->getImportantPart();
+		$imageSize = $image->getDimensions()->getSize();
 
 		$image->setImportantPart(
 			new ImportantPart(
-				new Point($importantPart['x'], $importantPart['y']),
-				new Box($importantPart['width'], $importantPart['height'])
+				$importantPart['x'] / $imageSize->getWidth(),
+				$importantPart['y'] / $imageSize->getHeight(),
+				$importantPart['width'] / $imageSize->getWidth(),
+				$importantPart['height'] / $imageSize->getHeight()
 			)
 		);
 
@@ -233,27 +255,28 @@ class Picture
 		$staticUrl = $container->get('contao.assets.files_context')->getStaticUrl();
 
 		$picture = $container
-			->get('contao.image.picture_generator')
-			->generate(
+			->get('contao.image.picture_factory')
+			->create(
 				$image,
 				$config,
 				(new ResizeOptions())
 					->setImagineOptions($container->getParameter('contao.image.imagine_options'))
 					->setBypassCache($container->getParameter('contao.image.bypass_cache'))
+					->setSkipIfDimensionsMatch(true)
 			)
 		;
 
 		return array
 		(
-			'img' => $picture->getImg($rootDir, $staticUrl),
-			'sources' => $picture->getSources($rootDir, $staticUrl),
+			'img' => $picture->getImg($projectDir, $staticUrl),
+			'sources' => $picture->getSources($projectDir, $staticUrl),
 		);
 	}
 
 	/**
 	 * Get the config for one picture source element
 	 *
-	 * @param Model|object $imageSize The image size or image size item model
+	 * @param ImageSizeModel|ImageSizeItemModel|object $imageSize The image size or image size item model
 	 *
 	 * @return PictureConfigurationItem
 	 */
@@ -266,7 +289,7 @@ class Picture
 
 		if (substr_count($mode, '_') === 1)
 		{
-			$importantPart = $this->image->setImportantPart(null)->getImportantPart();
+			$importantPart = $this->image->setImportantPart()->getImportantPart();
 
 			$mode = explode('_', $mode);
 
@@ -296,9 +319,9 @@ class Picture
 		}
 
 		$resizeConfig
-			->setWidth($imageSize->width)
-			->setHeight($imageSize->height)
-			->setZoomLevel($imageSize->zoom)
+			->setWidth((int) $imageSize->width)
+			->setHeight((int) $imageSize->height)
+			->setZoomLevel((int) $imageSize->zoom)
 		;
 
 		if ($mode)

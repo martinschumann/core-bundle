@@ -21,7 +21,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class PageError404 extends Frontend
 {
-
 	/**
 	 * Generate an error 404 page
 	 */
@@ -82,20 +81,17 @@ class PageError404 extends Frontend
 	 */
 	protected function prepare()
 	{
-		// Check the search index (see #3761)
-		Search::removeEntry(Environment::get('base') . Environment::get('relativeRequest'));
-
 		// Find the matching root page
 		$objRootPage = $this->getRootPageFromUrl();
 
 		// Forward if the language should be but is not set (see #4028)
-		if (Config::get('addLanguageToUrl'))
+		if ($objRootPage->urlPrefix && System::getContainer()->getParameter('contao.legacy_routing'))
 		{
 			// Get the request string without the script name
 			$strRequest = Environment::get('relativeRequest');
 
 			// Only redirect if there is no language fragment (see #4669)
-			if ($strRequest != '' && !preg_match('@^[a-z]{2}(-[A-Z]{2})?/@', $strRequest))
+			if ($strRequest && !preg_match('@^[a-z]{2}(-[A-Z]{2})?/@', $strRequest))
 			{
 				// Handle language fragments without trailing slash (see #7666)
 				if (preg_match('@^[a-z]{2}(-[A-Z]{2})?$@', $strRequest))
@@ -113,7 +109,7 @@ class PageError404 extends Frontend
 						$strRequest = Environment::get('script') . '/' . $objRootPage->language . '/' . $strRequest;
 					}
 
-					$this->redirect($strRequest, 301);
+					$this->redirect($strRequest);
 				}
 			}
 		}
@@ -135,10 +131,11 @@ class PageError404 extends Frontend
 			if (null === $objNextPage)
 			{
 				$this->log('Forward page ID "' . $obj404->jumpTo . '" does not exist', __METHOD__, TL_ERROR);
+
 				throw new ForwardPageNotFoundException('Forward page not found');
 			}
 
-			$this->redirect($objNextPage->getFrontendUrl(), (($obj404->redirect == 'temporary') ? 302 : 301));
+			$this->redirect($objNextPage->getFrontendUrl());
 		}
 
 		return $obj404;

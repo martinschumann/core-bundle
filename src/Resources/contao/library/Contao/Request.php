@@ -40,7 +40,6 @@ namespace Contao;
  */
 class Request
 {
-
 	/**
 	 * Request data
 	 * @var string
@@ -166,7 +165,6 @@ class Request
 
 			default:
 				throw new \Exception(sprintf('Invalid argument "%s"', $strKey));
-				break;
 		}
 	}
 
@@ -183,35 +181,27 @@ class Request
 		{
 			case 'error':
 				return $this->strError;
-				break;
 
 			case 'code':
 				return $this->intCode;
-				break;
 
 			case 'request':
 				return $this->strRequest;
-				break;
 
 			case 'response':
 				return $this->strResponse;
-				break;
 
 			case 'headers':
 				return $this->arrResponseHeaders;
-				break;
 
 			case 'username':
 				return $this->strUsername;
-				break;
 
 			case 'redirect':
 				return $this->blnFollowRedirects;
-				break;
 
 			case 'rlimit':
 				return $this->intRedirectLimit;
-				break;
 		}
 
 		return null;
@@ -235,7 +225,7 @@ class Request
 	 */
 	public function hasError()
 	{
-		return $this->strError != '';
+		return (bool) $this->strError;
 	}
 
 	/**
@@ -279,12 +269,11 @@ class Request
 				$this->strError = 'Invalid schema ' . $uri['scheme'];
 
 				return;
-				break;
 		}
 
 		if (!\is_resource($fp))
 		{
-			$this->strError = trim($errno .' '. $errstr);
+			$this->strError = trim($errno . ' ' . $errstr);
 
 			return;
 		}
@@ -300,7 +289,7 @@ class Request
 		(
 			'Host' => 'Host: ' . $host,
 			'User-Agent' => 'User-Agent: Contao (+https://contao.org/)',
-			'Content-Length' => 'Content-Length: '. \strlen($this->strData),
+			'Content-Length' => 'Content-Length: ' . \strlen($this->strData),
 			'Connection' => 'Connection: close'
 		);
 
@@ -308,7 +297,7 @@ class Request
 		{
 			$default['Authorization'] = 'Authorization: Basic ' . base64_encode($uri['user'] . ':' . $uri['pass']);
 		}
-		elseif ($this->strUsername != '')
+		elseif ($this->strUsername)
 		{
 			$default['Authorization'] = 'Authorization: Basic ' . base64_encode($this->strUsername . ':' . $this->strPassword);
 		}
@@ -318,11 +307,11 @@ class Request
 			$default[$header] = $header . ': ' . $value;
 		}
 
-		$request = strtoupper($this->strMethod) .' '. $path ." HTTP/1.0\r\n";
+		$request = strtoupper($this->strMethod) . ' ' . $path . " HTTP/1.0\r\n";
 		$request .= implode("\r\n", $default);
 		$request .= "\r\n\r\n";
 
-		if ($this->strData != '')
+		if ($this->strData)
 		{
 			$request .= $this->strData . "\r\n";
 		}
@@ -347,7 +336,7 @@ class Request
 		{
 			list($header, $value) = explode(':', $line, 2);
 
-			if (isset($this->arrResponseHeaders[$header]) && $header == 'Set-Cookie')
+			if ($header == 'Set-Cookie' && isset($this->arrResponseHeaders[$header]))
 			{
 				$this->arrResponseHeaders[$header] .= ',' . trim($value);
 			}

@@ -14,8 +14,8 @@
         <target>Управление статьями и элементами контента</target>
       </trans-unit>
       <trans-unit id="MOD.form.0">
-        <source>Form generator</source>
-        <target>Генератор форм</target>
+        <source>Forms</source>
+        <target>Формы</target>
       </trans-unit>
       <trans-unit id="MOD.form.1">
         <source>Create custom forms and store or send the submitted data</source>
@@ -30,8 +30,8 @@
         <target>Темы</target>
       </trans-unit>
       <trans-unit id="MOD.themes.1">
-        <source>Manage front end modules, style sheets, page layouts and templates</source>
-        <target>Управление модулями внешнего интерфейса, таблицами стилей, макетами страниц и шаблонами.</target>
+        <source>Manage themes, front end modules, page layouts or image sizes</source>
+        <target>Управление темами, модулями внешнего интерфейса, макетами страниц или размерами изображений</target>
       </trans-unit>
       <trans-unit id="MOD.page.0">
         <source>Site structure</source>
@@ -46,8 +46,8 @@
         <target>Шаблоны</target>
       </trans-unit>
       <trans-unit id="MOD.tpl_editor.1">
-        <source>Edit templates in the back end</source>
-        <target>Редактирование шаблонов в панели управления</target>
+        <source>Add or edit custom templates</source>
+        <target>Добавить или редактировать пользовательские шаблоны</target>
       </trans-unit>
       <trans-unit id="MOD.accounts">
         <source>Account manager</source>
@@ -58,32 +58,40 @@
         <target>Участники</target>
       </trans-unit>
       <trans-unit id="MOD.member.1">
-        <source>Manage member accounts (front end users)</source>
-        <target>Управление учётными записями участников (пользователей внешнего интерфейса).</target>
+        <source>Manage member accounts (front end)</source>
+        <target>Управление учётными записями участников (внешний интерфейс).</target>
       </trans-unit>
       <trans-unit id="MOD.mgroup.0">
         <source>Member groups</source>
         <target>Группы участников</target>
       </trans-unit>
       <trans-unit id="MOD.mgroup.1">
-        <source>Manage member groups (front end user groups)</source>
-        <target>Управление группами участников (групп пользователей внешнего интерфейса).</target>
+        <source>Manage member groups (front end)</source>
+        <target>Управление группами участников (внешний интерфейс).</target>
       </trans-unit>
       <trans-unit id="MOD.user.0">
         <source>Users</source>
         <target>Пользователи</target>
       </trans-unit>
       <trans-unit id="MOD.user.1">
-        <source>Manage user accounts (back end users)</source>
-        <target>Управление учётными записями пользователей (пользователей панели управления).</target>
+        <source>Manage user accounts (back end)</source>
+        <target>Управление учётными записями пользователей (панель управления).</target>
       </trans-unit>
       <trans-unit id="MOD.group.0">
         <source>User groups</source>
         <target>Группы пользователей</target>
       </trans-unit>
       <trans-unit id="MOD.group.1">
-        <source>Manage user groups (back end user groups)</source>
-        <target>Управление группами пользователей (групп пользователей панели управления).</target>
+        <source>Manage user groups (back end)</source>
+        <target>Управление группами пользователей (панель управления).</target>
+      </trans-unit>
+      <trans-unit id="MOD.opt_in.0">
+        <source>Double opt-in</source>
+        <target>Двойное подтверждение</target>
+      </trans-unit>
+      <trans-unit id="MOD.opt_in.1">
+        <source>Manage double opt-in tokens</source>
+        <target>Управление двойными токенами</target>
       </trans-unit>
       <trans-unit id="MOD.system">
         <source>System</source>
@@ -94,32 +102,32 @@
         <target>Файл-менеджер</target>
       </trans-unit>
       <trans-unit id="MOD.files.1">
-        <source>Manage files and folders or upload new files to the server</source>
-        <target>Управление файлами и каталогами, а так-же, средство загрузки новых файлов на сервер</target>
+        <source>Manage files and folders</source>
+        <target>Управление файлами и каталогами</target>
       </trans-unit>
       <trans-unit id="MOD.log.0">
         <source>System log</source>
         <target>Системный журнал</target>
       </trans-unit>
       <trans-unit id="MOD.log.1">
-        <source>Browse the system log and analyze the activity on the website</source>
-        <target>Просмотр системного журнала и анализ деятельности на веб-сайте</target>
+        <source>Browse the system log</source>
+        <target>Просмотр системного журнала</target>
       </trans-unit>
       <trans-unit id="MOD.settings.0">
         <source>Settings</source>
         <target>Настройки</target>
       </trans-unit>
       <trans-unit id="MOD.settings.1">
-        <source>Check and optimize the Contao configuration</source>
-        <target>Проверка и оптимизация конфигурации Contao</target>
+        <source>Adjust the Contao configuration</source>
+        <target>Настройка конфигурации Contao</target>
       </trans-unit>
       <trans-unit id="MOD.maintenance.0">
         <source>Maintenance</source>
         <target>Обслуживание</target>
       </trans-unit>
       <trans-unit id="MOD.maintenance.1">
-        <source>Maintain or update Contao</source>
-        <target>Обслуживание или обновление Contao.</target>
+        <source>Crawl the website or purge generated data</source>
+        <target>Просканировать веб-сайт или удалить сгенерированные данные</target>
       </trans-unit>
       <trans-unit id="MOD.security.0">
         <source>Security</source>
@@ -262,8 +270,8 @@
         <target>Создает меню разбиения на страницы для навигации по статьям</target>
       </trans-unit>
       <trans-unit id="FMD.sitemap.0">
-        <source>Sitemap</source>
-        <target>Карта веб-сайта</target>
+        <source>HTML sitemap</source>
+        <target>HTML-карта веб-сайта.</target>
       </trans-unit>
       <trans-unit id="FMD.sitemap.1">
         <source>Generates a list of all pages in the site structure</source>
@@ -286,15 +294,15 @@
         <target>Автоматический выход из системы</target>
       </trans-unit>
       <trans-unit id="FMD.logout.1">
-        <source>Automatically logs out a user</source>
-        <target>Автоматическое завершение сеанса пользователя</target>
+        <source>Automatically logs out a member</source>
+        <target>Автоматическое завершение сеанса участника</target>
       </trans-unit>
       <trans-unit id="FMD.personalData.0">
         <source>Personal data</source>
         <target>Личные данные</target>
       </trans-unit>
       <trans-unit id="FMD.personalData.1">
-        <source>Generates a form to edit a user's personal data</source>
+        <source>Generates a form to edit a member's personal data</source>
         <target>Создает форму для заполнения личных данных участника</target>
       </trans-unit>
       <trans-unit id="FMD.registration.0">
@@ -302,8 +310,8 @@
         <target>Регистрация пользователя</target>
       </trans-unit>
       <trans-unit id="FMD.registration.1">
-        <source>Generates a user registration form</source>
-        <target>Создает форму для заполнения пользователем при регистрации</target>
+        <source>Generates a member registration form</source>
+        <target>Создает форму для заполнения участником при регистрации</target>
       </trans-unit>
       <trans-unit id="FMD.changePassword.0">
         <source>Change password</source>
@@ -384,6 +392,14 @@
       <trans-unit id="FMD.rssReader.1">
         <source>Adds an RSS feed to the page</source>
         <target>Добавляет RSS-канал на страницу</target>
+      </trans-unit>
+      <trans-unit id="FMD.two_factor.0">
+        <source>Two-factor authentication</source>
+        <target>Двухфакторная авторизация</target>
+      </trans-unit>
+      <trans-unit id="FMD.two_factor.1">
+        <source>Generates a form to set up or change two-factor authentication</source>
+        <target>Создает форму для настройки или изменения двухфакторной авторизации</target>
       </trans-unit>
     </body>
   </file>

@@ -49,10 +49,17 @@ body {
 	margin:0;
 }
 .tl_text {
+	margin:2px 0;
 	padding-right:24px;
 }
+.widget-checkbox {
+	margin-top:6px;
+}
+.tl_checkbox + label {
+	margin-left:4px;
+}
 .submit_container {
-	margin-top:9px;
+	margin-top:12px;
 }
 .submit_container a {
 	float:right;
@@ -70,6 +77,7 @@ label[for="username"] {
 	width:16px;
 	height:16px;
 	text-indent:-999em;
+	z-index:1;
 }
 label[for="password"],label[for="confirm"] {
 	position:absolute;
@@ -80,6 +88,7 @@ label[for="password"],label[for="confirm"] {
 	width:14px;
 	height:14px;
 	text-indent:-999em;
+	z-index:1;
 }
 label[for="verify"] {
 	position:absolute;
@@ -90,6 +99,7 @@ label[for="verify"] {
 	width:16px;
 	height:16px;
 	text-indent:-999em;
+	z-index:1;
 }
 .qr_code {
 	margin:0 0 16px;

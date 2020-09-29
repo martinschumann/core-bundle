@@ -35,14 +35,12 @@ var AjaxRequest =
 			parent = $(el).getParent('li');
 
 		if (item) {
-			if (parent.hasClass('node-collapsed')) {
-				item.setStyle('display', null);
-				parent.removeClass('node-collapsed').addClass('node-expanded');
+			if (parent.hasClass('collapsed')) {
+				parent.removeClass('collapsed');
 				$(el).store('tip:title', Contao.lang.collapse);
 				new Request.Contao({ url: url }).post({'action':'toggleNavigation', 'id':id, 'state':1, 'REQUEST_TOKEN':Contao.request_token});
 			} else {
-				item.setStyle('display', 'none');
-				parent.removeClass('node-expanded').addClass('node-collapsed');
+				parent.addClass('collapsed');
 				$(el).store('tip:title', Contao.lang.expand);
 				new Request.Contao({ url: url }).post({'action':'toggleNavigation', 'id':id, 'state':0, 'REQUEST_TOKEN':Contao.request_token});
 			}
@@ -507,7 +505,7 @@ var AjaxRequest =
 				} else {
 					pa = img.getParent('a');
 
-					if (pa && pa.href.indexOf('do=feRedirect') == -1) {
+					if (pa && pa.href.indexOf('contao/preview') == -1) {
 						if (next = pa.getNext('a')) {
 							img = next.getFirst('img');
 						} else {
@@ -928,16 +926,29 @@ var Backend =
 				return;
 			}
 			var frm = window.frames['simple-modal-iframe'],
-				val = [], ul, inp, field, act, it, i;
+				val = [], ul, inp, field, act, it, i, pickerValue, sIndex;
 			if (frm === undefined) {
 				alert('Could not find the SimpleModal frame');
 				return;
 			}
 			ul = frm.document.getElementById(opt.id);
+			// Load the previous values (#1816)
+			if (pickerValue = ul.get('data-picker-value')) {
+				val = JSON.parse(pickerValue);
+			}
 			inp = ul.getElementsByTagName('input');
 			for (i=0; i<inp.length; i++) {
-				if (inp[i].checked && !inp[i].id.match(/^(check_all_|reset_)/)) {
-					val.push(inp[i].get('value'));
+				if (inp[i].id.match(/^(check_all_|reset_)/)) {
+					continue;
+				}
+				// Add currently selected value, otherwise remove (#1816)
+				sIndex = val.indexOf(inp[i].get('value'));
+				if (inp[i].checked) {
+					if (sIndex == -1) {
+						val.push(inp[i].get('value'));
+					}
+				} else if (sIndex != -1) {
+					val.splice(sIndex, 1);
 				}
 			}
 			if (opt.callback) {
@@ -986,7 +997,7 @@ var Backend =
 		Backend.openModalSelector({
 			'id': 'tl_listing',
 			'title': win.document.getElement('div.mce-title').get('text'),
-			'url': document.location.pathname + '/picker?context=' + (type == 'file' ? 'link' : 'file') + '&amp;extras[fieldType]=radio&amp;extras[filesOnly]=true&amp;extras[source]=' + source + '&amp;value=' + url + '&amp;popup=1',
+			'url': Contao.routes.backend_picker + '?context=' + (type == 'file' ? 'link' : 'file') + '&amp;extras[fieldType]=radio&amp;extras[filesOnly]=true&amp;extras[source]=' + source + '&amp;value=' + url + '&amp;popup=1',
 			'callback': function(table, value) {
 				win.document.getElementById(field_name).value = value.join(',');
 			}
@@ -1124,6 +1135,7 @@ var Backend =
 			});
 
 			button = new Element('button', {
+				'type': 'button',
 				'html': '<span>...</span>',
 				'class': 'unselectable',
 				'data-state': 0
@@ -2257,7 +2269,7 @@ var Backend =
 	/**
 	 * Meta wizard
 	 *
-	 * @param {object} el The select element
+	 * @param {object} el The submit button
 	 * @param {string} ul The DOM element
 	 */
 	metaWizard: function(el, ul) {
@@ -2304,10 +2316,9 @@ var Backend =
 		// Disable the "add language" button
 		el.getParent('div').getElement('input[type="button"]').setProperty('disabled', true);
 
-		// Disable the option and update chosen
+		// Disable the option
 		opt.options[opt.selectedIndex].setProperty('disabled', true);
 		opt.value = '';
-		opt.fireEvent('liszt:updated');
 	},
 
 	/**
@@ -2317,7 +2328,8 @@ var Backend =
 	 */
 	metaDelete: function(el) {
 		var li = el.getParent('li'),
-			opt = el.getParent('div').getElement('select');
+			select = el.getParent('div').getElement('select'),
+			opt;
 
 		// Empty the last element instead of removing it (see #4858)
 		if (li.getPrevious() === null && li.getNext() === null) {
@@ -2325,10 +2337,13 @@ var Backend =
 				input.value = '';
 			});
 		} else {
-			// Enable the option and update chosen
-			opt.getElement('option[value=' + li.getProperty('data-language') + ']').removeProperty('disabled');
+			// If the language code is valid and the option exists, enable it (see #1635)
+			if (opt = select.getElement('option[value=' + li.getProperty('data-language') + ']')) {
+				opt.removeProperty('disabled');
+			}
+
 			li.destroy();
-			opt.fireEvent('liszt:updated');
+			select.fireEvent('liszt:updated');
 		}
 	},
 
@@ -2476,7 +2491,7 @@ var Backend =
 				widthInput = el.getChildren('input')[0],
 				heightInput = el.getChildren('input')[1],
 				update = function() {
-					if (select.get('value') === '' || select.get('value').toInt().toString() === select.get('value')) {
+					if (select.get('value') === '' || select.get('value').indexOf('_') === 0 || select.get('value').toInt().toString() === select.get('value')) {
 						widthInput.readOnly = true;
 						heightInput.readOnly = true;
 						var dimensions = $(select.getSelected()[0]).get('text');
@@ -2485,8 +2500,7 @@ var Backend =
 							: ['', ''];
 						widthInput.set('value', '').set('placeholder', dimensions[0] * 1 || '');
 						heightInput.set('value', '').set('placeholder', dimensions[1] * 1 || '');
-					}
-					else {
+					} else {
 						widthInput.set('placeholder', '');
 						heightInput.set('placeholder', '');
 						widthInput.readOnly = false;
@@ -2507,7 +2521,7 @@ var Backend =
 	 * @author Kamil Kuzminski
 	 */
 	enableToggleSelect: function() {
-		var container = $('tl_select'),
+		var container = $('tl_listing'),
 			shiftToggle = function(el) {
 				thisIndex = checkboxes.indexOf(el);
 				startIndex = checkboxes.indexOf(start);
@@ -2520,9 +2534,10 @@ var Backend =
 				}
 			},
 			clickEvent = function(e) {
-				var input = this.getElement('input[type="checkbox"],input[type="radio"]');
+				var input = this.getElement('input[type="checkbox"],input[type="radio"]'),
+					limitToggler = $(e.target).getParent('.limit_toggler');
 
-				if (!input || input.get('disabled')) {
+				if (!input || input.get('disabled') || limitToggler !== null) {
 					return;
 				}
 
@@ -2615,22 +2630,23 @@ var Backend =
 		var imageElement = el.getElement('img'),
 			inputElements = {},
 			isDrawing = false,
-			originalWidth = el.get('data-original-width'),
-			originalHeight = el.get('data-original-height'),
 			partElement, startPos,
 			getScale = function() {
-				return imageElement.getComputedSize().width / originalWidth;
+				return {
+					x: imageElement.getComputedSize().width,
+					y: imageElement.getComputedSize().height
+				};
 			},
 			updateImage = function() {
 				var scale = getScale(),
 					imageSize = imageElement.getComputedSize();
 				partElement.setStyles({
-					top: imageSize.computedTop + (inputElements.y.get('value') * scale).round() + 'px',
-					left: imageSize.computedLeft + (inputElements.x.get('value') * scale).round() + 'px',
-					width: (inputElements.width.get('value') * scale).round() + 'px',
-					height: (inputElements.height.get('value') * scale).round() + 'px'
+					top: imageSize.computedTop + (inputElements.y.get('value') * scale.y).round() + 'px',
+					left: imageSize.computedLeft + (inputElements.x.get('value') * scale.x).round() + 'px',
+					width: (inputElements.width.get('value') * scale.x).round() + 'px',
+					height: (inputElements.height.get('value') * scale.y).round() + 'px'
 				});
-				if (!inputElements.width.get('value').toInt() || !inputElements.height.get('value').toInt()) {
+				if (!inputElements.width.get('value').toFloat() || !inputElements.height.get('value').toFloat()) {
 					partElement.setStyle('display', 'none');
 				} else {
 					partElement.setStyle('display', null);
@@ -2641,11 +2657,11 @@ var Backend =
 					styles = partElement.getStyles('top', 'left', 'width', 'height'),
 					imageSize = imageElement.getComputedSize(),
 					values = {
-						x: Math.max(0, Math.min(originalWidth, (styles.left.toFloat() - imageSize.computedLeft) / scale)).round(),
-						y: Math.max(0, Math.min(originalHeight, (styles.top.toFloat() - imageSize.computedTop) / scale)).round()
+						x: Math.max(0, Math.min(1, (styles.left.toFloat() - imageSize.computedLeft) / scale.x)),
+						y: Math.max(0, Math.min(1, (styles.top.toFloat() - imageSize.computedTop) / scale.y))
 					};
-				values.width = Math.min(originalWidth - values.x, styles.width.toFloat() / scale).round();
-				values.height = Math.min(originalHeight - values.y, styles.height.toFloat() / scale).round();
+				values.width = Math.min(1 - values.x, styles.width.toFloat() / scale.x);
+				values.height = Math.min(1 - values.y, styles.height.toFloat() / scale.y);
 				if (!values.width || !values.height) {
 					values.x = values.y = values.width = values.height = '';
 					partElement.setStyle('display', 'none');
@@ -2826,6 +2842,73 @@ var Backend =
 			currentHover = undefined;
 			currentHoverTime = undefined;
 		});
+	},
+
+	/**
+	 * Crawl the website
+	 */
+	crawl: function() {
+		var timeout = 2000,
+			crawl = $('tl_crawl'),
+			progressBar = crawl.getElement('div.progress-bar'),
+			progressCount = crawl.getElement('p.progress-count'),
+			results = crawl.getElement('div.results');
+
+		function updateData(response) {
+			var done = response.total - response.pending,
+				percentage = response.total > 0 ? parseInt(done / response.total * 100, 10) : 100,
+				result;
+
+			progressBar.setStyle('width', percentage + '%');
+			progressBar.set('html', percentage + '%');
+			progressBar.setAttribute('aria-valuenow', percentage);
+			progressCount.set('html', done + ' / ' + response.total);
+
+			if (!response.finished) {
+				return;
+			}
+
+			progressBar.removeClass('running').addClass('finished');
+			results.removeClass('running').addClass('finished');
+
+			for (result in response.results) {
+				if (response.results.hasOwnProperty(result)) {
+					var summary = results.getElement('.result[data-subscriber="' + result + '"] p.summary'),
+						warning = results.getElement('.result[data-subscriber="' + result + '"] p.warning'),
+						log = results.getElement('.result[data-subscriber="' + result + '"] p.subscriber-log'),
+						subscriberResults = response.results[result],
+						subscriberSummary = subscriberResults.summary;
+
+					if (subscriberResults.warning) {
+						warning.set('html', subscriberResults.warning);
+					}
+
+					if (subscriberResults.hasLog) {
+						log.setStyle('display', 'block');
+					}
+
+					summary.addClass(subscriberResults.wasSuccessful ? 'success' : 'failure');
+					summary.set('html', subscriberSummary);
+				}
+			}
+		}
+
+		function execRequest() {
+			new Request({
+				url: window.location.href,
+				onSuccess: function(responseText) {
+					var response = JSON.decode(responseText);
+
+					updateData(response);
+
+					if (!response.finished) {
+						setTimeout(execRequest, timeout);
+					}
+				}
+			}).send();
+		}
+
+		execRequest();
 	}
 };
 

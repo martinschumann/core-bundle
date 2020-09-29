@@ -17,7 +17,6 @@ namespace Contao;
  */
 class DropZone extends FileUpload
 {
-
 	/**
 	 * Generate the markup for the DropZone uploader
 	 *
@@ -29,7 +28,7 @@ class DropZone extends FileUpload
 		$intMaxSize = round(static::getMaxUploadSize() / 1024 / 1024);
 
 		// String of accepted file extensions
-		$strAccepted = implode(',', array_map(function ($a) { return '.' . $a; }, StringUtil::trimsplit(',', strtolower(Config::get('uploadTypes')))));
+		$strAccepted = implode(',', array_map(static function ($a) { return '.' . $a; }, StringUtil::trimsplit(',', strtolower(Config::get('uploadTypes')))));
 
 		// Add the scripts
 		$GLOBALS['TL_CSS'][] = 'assets/dropzone/css/dropzone.min.css';
@@ -51,6 +50,7 @@ class DropZone extends FileUpload
     Dropzone.autoDiscover = false;
     window.addEvent("domready", function() {
       new Dropzone("#tl_files", {
+        url: window.location.href,
         paramName: "' . $this->strName . '",
         maxFilesize: ' . $intMaxSize . ',
         acceptedFiles: "' . $strAccepted . '",

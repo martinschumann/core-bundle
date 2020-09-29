@@ -19,7 +19,6 @@ use Symfony\Component\Finder\Finder;
  */
 class PurgeData extends Backend implements \executable
 {
-
 	/**
 	 * Return true if the module is active
 	 *
@@ -41,7 +40,7 @@ class PurgeData extends Backend implements \executable
 
 		$objTemplate = new BackendTemplate('be_purge_data');
 		$objTemplate->isActive = $this->isActive();
-		$objTemplate->message = Message::generateUnwrapped(__CLASS__);
+		$objTemplate->message = Message::generateUnwrapped(self::class);
 
 		// Run the jobs
 		if (Input::post('FORM_SUBMIT') == 'tl_purge')
@@ -61,7 +60,7 @@ class PurgeData extends Backend implements \executable
 				}
 			}
 
-			Message::addConfirmation($GLOBALS['TL_LANG']['tl_maintenance']['cacheCleared'], __CLASS__);
+			Message::addConfirmation($GLOBALS['TL_LANG']['tl_maintenance']['cacheCleared'], self::class);
 			$this->reload();
 		}
 
@@ -86,7 +85,7 @@ class PurgeData extends Backend implements \executable
 		}
 
 		$container = System::getContainer();
-		$rootDir = $container->getParameter('kernel.project_dir');
+		$projectDir = $container->getParameter('kernel.project_dir');
 		$strCachePath = StringUtil::stripRootDir($container->getParameter('kernel.cache_dir'));
 
 		// Folders
@@ -108,9 +107,16 @@ class PurgeData extends Backend implements \executable
 				$folder = sprintf($folder, $strCachePath);
 
 				// Only check existing folders
-				if (is_dir($rootDir . '/' . $folder))
+				if (is_dir($projectDir . '/' . $folder))
 				{
-					$objFiles = Finder::create()->in($rootDir . '/' . $folder)->files();
+					$objFiles = Finder::create()->in($projectDir . '/' . $folder)->files();
+
+					// Do not count the deferred images JSON files
+					if ($key == 'images')
+					{
+						$objFiles->notPath('deferred');
+					}
+
 					$total = iterator_count($objFiles);
 				}
 
@@ -131,12 +137,11 @@ class PurgeData extends Backend implements \executable
 		}
 
 		$objTemplate->jobs = $arrJobs;
-		$objTemplate->action = ampersand(Environment::get('request'));
 		$objTemplate->headline = $GLOBALS['TL_LANG']['tl_maintenance']['clearCache'];
 		$objTemplate->job = $GLOBALS['TL_LANG']['tl_maintenance']['job'];
 		$objTemplate->description = $GLOBALS['TL_LANG']['tl_maintenance']['description'];
 		$objTemplate->submit = StringUtil::specialchars($GLOBALS['TL_LANG']['tl_maintenance']['clearCache']);
-		$objTemplate->help = (Config::get('showHelp') && ($GLOBALS['TL_LANG']['tl_maintenance']['cacheTables'][1] != '')) ? $GLOBALS['TL_LANG']['tl_maintenance']['cacheTables'][1] : '';
+		$objTemplate->help = (Config::get('showHelp') && $GLOBALS['TL_LANG']['tl_maintenance']['cacheTables'][1]) ? $GLOBALS['TL_LANG']['tl_maintenance']['cacheTables'][1] : '';
 
 		return $objTemplate->parse();
 	}

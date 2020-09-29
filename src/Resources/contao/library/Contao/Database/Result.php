@@ -35,7 +35,6 @@ use Doctrine\DBAL\Driver\Statement as DoctrineStatement;
  */
 class Result
 {
-
 	/**
 	 * Database result
 	 * @var DoctrineStatement
@@ -52,7 +51,7 @@ class Result
 	 * Result set
 	 * @var array
 	 */
-	protected $resultSet;
+	protected $resultSet = array();
 
 	/**
 	 * Current row index
@@ -61,36 +60,40 @@ class Result
 	private $intIndex = -1;
 
 	/**
-	 * End indicator
-	 * @var boolean
+	 * Number of rows
+	 * @var integer
 	 */
-	private $blnDone = false;
+	private $rowCount;
 
 	/**
-	 * Modification indicator
-	 * @var boolean
-	 */
-	private $blnModified = false;
-
-	/**
-	 * Result cache
+	 * Modified values of current row
 	 * @var array
 	 */
-	protected $arrCache = array();
+	private $arrModified = array();
 
 	/**
 	 * Validate the connection resource and store the query string
 	 *
-	 * @param DoctrineStatement $statement The database statement
-	 * @param string            $strQuery  The query string
-	 *
-	 * @todo Try to find a solution that works without fetchAll().
+	 * @param DoctrineStatement|array $statement The database statement
+	 * @param string                  $strQuery  The query string
 	 */
-	public function __construct(DoctrineStatement $statement, $strQuery)
+	public function __construct($statement, $strQuery)
 	{
-		$this->resResult = $statement;
+		if ($statement instanceof DoctrineStatement)
+		{
+			$this->resResult = $statement;
+		}
+		elseif (\is_array($statement) && \count(array_filter(array_map('is_array', $statement))) === \count($statement))
+		{
+			$this->resultSet = array_values($statement);
+			$this->rowCount = \count($this->resultSet);
+		}
+		else
+		{
+			throw new \InvalidArgumentException('$statement must be a Statement object or an array');
+		}
+
 		$this->strQuery = $strQuery;
-		$this->resultSet = $statement->fetchAll(\PDO::FETCH_ASSOC);
 	}
 
 	/**
@@ -98,8 +101,10 @@ class Result
 	 */
 	public function __destruct()
 	{
-		$this->resultSet = null;
-		$this->resResult->closeCursor();
+		if ($this->resResult)
+		{
+			$this->resResult->closeCursor();
+		}
 	}
 
 	/**
@@ -110,13 +115,12 @@ class Result
 	 */
 	public function __set($strKey, $varValue)
 	{
-		if (empty($this->arrCache))
+		if ($this->intIndex === -1)
 		{
 			$this->next();
 		}
 
-		$this->blnModified = true;
-		$this->arrCache[$strKey] = $varValue;
+		$this->arrModified[$strKey] = $varValue;
 	}
 
 	/**
@@ -128,12 +132,13 @@ class Result
 	 */
 	public function __isset($strKey)
 	{
-		if (empty($this->arrCache))
+		if ($this->intIndex === -1)
 		{
 			$this->next();
 		}
 
-		return isset($this->arrCache[$strKey]);
+		// If the modified value is null, return false even if the original value is not null (see #1689)
+		return \array_key_exists($strKey, $this->arrModified) ? isset($this->arrModified[$strKey]) : isset($this->resultSet[$this->intIndex][$strKey]);
 	}
 
 	/**
@@ -149,30 +154,43 @@ class Result
 		{
 			case 'query':
 				return $this->strQuery;
-				break;
 
 			case 'numRows':
 				return $this->count();
-				break;
 
 			case 'numFields':
-				return $this->resResult->columnCount();
-				break;
+				if ($this->resResult)
+				{
+					return $this->resResult->columnCount();
+				}
+
+				if (isset($this->resultSet[0]))
+				{
+					return \count($this->resultSet[0]);
+				}
+
+				return 0;
 
 			case 'isModified':
-				return $this->blnModified;
-				break;
+				return \count($this->arrModified) !== 0;
 
 			default:
-				if (empty($this->arrCache))
+				if ($this->intIndex === -1)
 				{
 					$this->next();
 				}
-				if (isset($this->arrCache[$strKey]))
+
+				// Use array_key_exists() instead of isset(), because the value might be null
+				if (\array_key_exists($strKey, $this->arrModified))
 				{
-					return $this->arrCache[$strKey];
+					return $this->arrModified[$strKey];
 				}
-				break;
+
+				// Use array_key_exists() instead of isset(), because the value might be null
+				if (isset($this->resultSet[$this->intIndex]) && \array_key_exists($strKey, $this->resultSet[$this->intIndex]))
+				{
+					return $this->resultSet[$this->intIndex][$strKey];
+				}
 		}
 
 		return null;
@@ -185,14 +203,12 @@ class Result
 	 */
 	public function fetchRow()
 	{
-		if ($this->intIndex >= $this->count() - 1)
+		if ($row = $this->fetchAssoc())
 		{
-			return false;
+			return array_values($row);
 		}
 
-		$this->arrCache = array_values($this->resultSet[++$this->intIndex]);
-
-		return $this->arrCache;
+		return false;
 	}
 
 	/**
@@ -202,14 +218,16 @@ class Result
 	 */
 	public function fetchAssoc()
 	{
-		if ($this->intIndex >= $this->count() - 1)
+		$this->preload($this->intIndex + 1);
+
+		if ($this->intIndex >= \count($this->resultSet) - 1)
 		{
 			return false;
 		}
 
-		$this->arrCache = $this->resultSet[++$this->intIndex];
+		$this->arrModified = array();
 
-		return $this->arrCache;
+		return $this->resultSet[++$this->intIndex];
 	}
 
 	/**
@@ -279,9 +297,9 @@ class Result
 	public function first()
 	{
 		$this->intIndex = 0;
+		$this->preload(0);
 
-		$this->blnDone = false;
-		$this->arrCache = $this->resultSet[$this->intIndex];
+		$this->arrModified = array();
 
 		return $this;
 	}
@@ -298,8 +316,9 @@ class Result
 			return false;
 		}
 
-		$this->blnDone = false;
-		$this->arrCache = $this->resultSet[--$this->intIndex];
+		$this->preload(--$this->intIndex);
+
+		$this->arrModified = array();
 
 		return $this;
 	}
@@ -311,17 +330,10 @@ class Result
 	 */
 	public function next()
 	{
-		if ($this->blnDone)
-		{
-			return false;
-		}
-
 		if ($this->fetchAssoc() !== false)
 		{
 			return $this;
 		}
-
-		$this->blnDone = true;
 
 		return false;
 	}
@@ -335,8 +347,9 @@ class Result
 	{
 		$this->intIndex = $this->count() - 1;
 
-		$this->blnDone = true;
-		$this->arrCache = $this->resultSet[$this->intIndex];
+		$this->preload($this->intIndex);
+
+		$this->arrModified = array();
 
 		return $this;
 	}
@@ -348,7 +361,19 @@ class Result
 	 */
 	public function count()
 	{
-		return \count($this->resultSet);
+		if ($this->rowCount === null)
+		{
+			$this->rowCount = $this->resResult->rowCount();
+
+			// rowCount() might incorrectly return 0 for some platforms
+			if ($this->rowCount < 1)
+			{
+				$this->preload(PHP_INT_MAX);
+				$this->rowCount = \count($this->resultSet);
+			}
+		}
+
+		return $this->rowCount;
 	}
 
 	/**
@@ -360,12 +385,24 @@ class Result
 	 */
 	public function row($blnEnumerated=false)
 	{
-		if (empty($this->arrCache))
+		if ($this->intIndex === -1)
 		{
 			$this->next();
 		}
 
-		return $blnEnumerated ? array_values($this->arrCache) : $this->arrCache;
+		if (!$this->isModified)
+		{
+			if (!isset($this->resultSet[$this->intIndex]))
+			{
+				return array();
+			}
+
+			return $blnEnumerated ? array_values($this->resultSet[$this->intIndex]) : $this->resultSet[$this->intIndex];
+		}
+
+		$row = array_merge($this->resultSet[$this->intIndex] ?? array(), $this->arrModified);
+
+		return $blnEnumerated ? array_values($row) : $row;
 	}
 
 	/**
@@ -376,10 +413,39 @@ class Result
 	public function reset()
 	{
 		$this->intIndex = -1;
-		$this->blnDone = false;
-		$this->arrCache = array();
+		$this->arrModified = array();
 
 		return $this;
+	}
+
+	/**
+	 * Preload all rows up to the specified index from the underlying statement
+	 * and store them in the resultSet array.
+	 *
+	 * @param int $index
+	 */
+	private function preload($index)
+	{
+		// Optimize memory usage for single row results
+		if ($index === 0 && $this->resResult && $this->resResult->rowCount() === 1)
+		{
+			++$index;
+		}
+
+		while ($this->resResult && \count($this->resultSet) <= $index)
+		{
+			$row = $this->resResult->fetch(\PDO::FETCH_ASSOC);
+
+			if ($row === false)
+			{
+				$this->rowCount = \count($this->resultSet);
+				$this->resResult->closeCursor();
+				$this->resResult = null;
+				break;
+			}
+
+			$this->resultSet[] = $row;
+		}
 	}
 }
 

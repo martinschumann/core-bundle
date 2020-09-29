@@ -34,73 +34,74 @@ use Symfony\Component\Security\Http\Session\SessionAuthenticationStrategy;
  *         echo $user->name;
  *     }
  *
- * @property integer $id
- * @property integer $tstamp
- * @property string  $username
- * @property string  $name
- * @property string  $email
- * @property string  $language
- * @property string  $backendTheme
- * @property string  $fullscreen
- * @property string  $uploader
- * @property string  $showHelp
- * @property string  $thumbnails
- * @property string  $useRTE
- * @property string  $useCE
- * @property string  $password
- * @property string  $pwChange
- * @property string  $admin
- * @property array   $groups
- * @property string  $inherit
- * @property string  $modules
- * @property string  $themes
- * @property array   $pagemounts
- * @property string  $alpty
- * @property array   $filemounts
- * @property string  $fop
- * @property string  $forms
- * @property string  $formp
- * @property array   $amg
- * @property string  $disable
- * @property string  $start
- * @property string  $stop
- * @property array   $session
- * @property integer $dateAdded
- * @property integer $lastLogin
- * @property integer $currentLogin
- * @property integer $loginCount
- * @property integer $locked
- * @property string  $firstname
- * @property string  $lastname
- * @property string  $dateOfBirth
- * @property string  $gender
- * @property string  $company
- * @property string  $street
- * @property string  $postal
- * @property string  $city
- * @property string  $state
- * @property string  $country
- * @property string  $phone
- * @property string  $mobile
- * @property string  $fax
- * @property string  $website
- * @property string  $login
- * @property string  $assignDir
- * @property string  $homeDir
- * @property integer $createdOn
- * @property string  $loginPage
- * @property object  $objImport
- * @property object  $objAuth
- * @property object  $objLogin
- * @property object  $objLogout
- * @property string  $useTwoFactor
- * @property string  $secret
+ * @property integer     $id
+ * @property integer     $tstamp
+ * @property string      $username
+ * @property string      $name
+ * @property string      $email
+ * @property string      $language
+ * @property string      $backendTheme
+ * @property string      $fullscreen
+ * @property string      $uploader
+ * @property string      $showHelp
+ * @property string      $thumbnails
+ * @property string      $useRTE
+ * @property string      $useCE
+ * @property string      $password
+ * @property string      $pwChange
+ * @property string      $admin
+ * @property array       $groups
+ * @property string      $inherit
+ * @property string      $modules
+ * @property string      $themes
+ * @property array       $pagemounts
+ * @property string      $alpty
+ * @property array       $filemounts
+ * @property string      $fop
+ * @property string      $forms
+ * @property string      $formp
+ * @property array       $amg
+ * @property string      $disable
+ * @property string      $start
+ * @property string      $stop
+ * @property array       $session
+ * @property integer     $dateAdded
+ * @property integer     $lastLogin
+ * @property integer     $currentLogin
+ * @property integer     $loginAttempts
+ * @property integer     $locked
+ * @property string      $firstname
+ * @property string      $lastname
+ * @property string      $dateOfBirth
+ * @property string      $gender
+ * @property string      $company
+ * @property string      $street
+ * @property string      $postal
+ * @property string      $city
+ * @property string      $state
+ * @property string      $country
+ * @property string      $phone
+ * @property string      $mobile
+ * @property string      $fax
+ * @property string      $website
+ * @property string      $login
+ * @property string      $assignDir
+ * @property string      $homeDir
+ * @property integer     $createdOn
+ * @property string      $loginPage
+ * @property object      $objImport
+ * @property object      $objAuth
+ * @property object      $objLogin
+ * @property object      $objLogout
+ * @property string      $useTwoFactor
+ * @property string|null $secret
+ * @property string|null $backupCodes
+ * @property integer     $trustedTokenVersion
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
 abstract class User extends System implements UserInterface, EquatableInterface, \Serializable
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var User
@@ -167,7 +168,9 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	/**
 	 * Prevent cloning of the object (Singleton)
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Set an object property
@@ -189,12 +192,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	 */
 	public function __get($strKey)
 	{
-		if (isset($this->arrData[$strKey]))
-		{
-			return $this->arrData[$strKey];
-		}
-
-		return parent::__get($strKey);
+		return $this->arrData[$strKey] ?? parent::__get($strKey);
 	}
 
 	/**
@@ -269,7 +267,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	 */
 	public function authenticate()
 	{
-		@trigger_error('Using User::authenticate() has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\User::authenticate()" has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.');
 
 		return false;
 	}
@@ -284,7 +282,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	 */
 	public function login()
 	{
-		@trigger_error('Using User::login() has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\User::login()" has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.');
 
 		return false;
 	}
@@ -299,7 +297,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	 */
 	protected function checkAccountStatus()
 	{
-		@trigger_error('Using User::checkAccountStatus() has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\User::checkAccountStatus()" has been deprecated and will no longer work in Contao 5.0. Use Symfony security instead.');
 
 		try
 		{
@@ -360,7 +358,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	 */
 	protected function regenerateSessionId()
 	{
-		@trigger_error('Using User::regenerateSessionId() has been deprecated and will no longer work in Contao 5.0. Use Symfony authentication instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\User::regenerateSessionId()" has been deprecated and will no longer work in Contao 5.0. Use Symfony authentication instead.');
 
 		$container = System::getContainer();
 		$strategy = $container->getParameter('security.authentication.session_strategy.strategy');
@@ -392,7 +390,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	 */
 	protected function generateSession()
 	{
-		@trigger_error('Using User::generateSession() has been deprecated and will no longer work in Contao 5.0. Use Symfony authentication instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\User::generateSession()" has been deprecated and will no longer work in Contao 5.0. Use Symfony authentication instead.');
 	}
 
 	/**
@@ -405,7 +403,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	 */
 	public function logout()
 	{
-		@trigger_error('Using User::logout() has been deprecated and will no longer work in Contao 5.0. Use Symfony authentication instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using "Contao\User::logout()" has been deprecated and will no longer work in Contao 5.0. Use Symfony authentication instead.');
 
 		throw new RedirectResponseException(System::getContainer()->get('security.logout_url_generator')->getLogoutUrl());
 	}
@@ -456,8 +454,6 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	}
 
 	/**
-	 * {@inheritdoc}
-	 *
 	 * @return User
 	 */
 	public static function loadUserByUsername($username)
@@ -495,20 +491,6 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 			}
 		}
 
-		// Check if a passwords needs rehashing (see contao/core#8820)
-		if ($isLogin)
-		{
-			$blnAuthenticated = password_verify($request->request->get('password'), $user->password);
-			$blnNeedsRehash = password_needs_rehash($user->password, PASSWORD_DEFAULT);
-
-			// Re-hash the password if the algorithm has changed
-			if ($blnAuthenticated && $blnNeedsRehash)
-			{
-				$user->password = password_hash($request->request->get('password'), PASSWORD_DEFAULT);
-				$user->save();
-			}
-		}
-
 		$user->setUserFromDb();
 
 		return $user;
@@ -522,9 +504,6 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 		return $this->username;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
 	public function setUsername($username)
 	{
 		$this->username = $username;
@@ -540,9 +519,6 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 		return $this->password;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
 	public function setPassword($password)
 	{
 		$this->password = $password;
@@ -558,9 +534,6 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 		return $this->salt;
 	}
 
-	/**
-	 * {@inheritdoc}
-	 */
 	public function setSalt($salt)
 	{
 		$this->salt = $salt;
@@ -578,7 +551,6 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 			'id' => $this->id,
 			'username' => $this->username,
 			'password' => $this->password,
-			'admin' => $this->admin,
 			'disable' => $this->disable,
 			'start' => $this->start,
 			'stop' => $this->stop
@@ -594,18 +566,20 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 	{
 		$data = unserialize($serialized, array('allowed_classes'=>false));
 
-		if (array_keys($data) != array('id', 'username', 'password', 'admin', 'disable', 'start', 'stop'))
+		if (array_keys($data) != array('id', 'username', 'password', 'disable', 'start', 'stop'))
 		{
 			return;
 		}
 
-		list($this->id, $this->username, $this->password, $this->admin, $this->disable, $this->start, $this->stop) = array_values($data);
+		list($this->id, $this->username, $this->password, $this->disable, $this->start, $this->stop) = array_values($data);
 	}
 
 	/**
 	 * {@inheritdoc}
 	 */
-	public function eraseCredentials() {}
+	public function eraseCredentials()
+	{
+	}
 
 	/**
 	 * {@inheritdoc}
@@ -627,24 +601,17 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 			return false;
 		}
 
-		if ((bool) $this->admin !== (bool) $user->admin)
-		{
-			return false;
-		}
-
 		if ((bool) $this->disable !== (bool) $user->disable)
 		{
 			return false;
 		}
 
-		$time = Date::floorToMinute();
-
-		if ($this->start !== '' && $this->start > $time)
+		if ($this->start !== '' && $this->start > time())
 		{
 			return false;
 		}
 
-		if ($this->stop !== '' && $this->stop <= ($time + 60))
+		if ($this->stop !== '' && $this->stop <= time())
 		{
 			return false;
 		}
@@ -670,7 +637,7 @@ abstract class User extends System implements UserInterface, EquatableInterface,
 			return false;
 		}
 
-		@trigger_error('Using the "importUser" hook has been deprecated and will no longer work in Contao 5.0. Use the contao.import_user event instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.5', 'Using the "importUser" hook has been deprecated and will no longer work in Contao 5.0. Use the "contao.import_user" event instead.');
 
 		foreach ($GLOBALS['TL_HOOKS']['importUser'] as $callback)
 		{

@@ -12,27 +12,28 @@ declare(strict_types=1);
 
 namespace Contao\CoreBundle\Controller;
 
-use Contao\CoreBundle\Exception\InsufficientAuthenticationException;
-use Contao\CoreBundle\Exception\ResponseException;
-use Contao\FrontendCron;
+use Contao\CoreBundle\Cron\Cron;
 use Contao\FrontendIndex;
 use Contao\FrontendShare;
-use Contao\PageError401;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Core\Exception\LogoutException;
+use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 
 /**
  * @Route(defaults={"_scope" = "frontend", "_token_check" = true})
+ *
+ * @internal
  */
 class FrontendController extends AbstractController
 {
     public function indexAction(): Response
     {
-        $this->get('contao.framework')->initialize();
+        $this->initializeContaoFramework();
+
+        trigger_deprecation('contao/core-bundle', '4.10', 'Using "Contao\FrontendController::indexAction()" has been deprecated and will no longer work in Contao 5.0. Use the Symfony routing instead.');
 
         $controller = new FrontendIndex();
 
@@ -42,13 +43,13 @@ class FrontendController extends AbstractController
     /**
      * @Route("/_contao/cron", name="contao_frontend_cron")
      */
-    public function cronAction(): Response
+    public function cronAction(Request $request, Cron $cron): Response
     {
-        $this->get('contao.framework')->initialize();
+        if ($request->isMethod(Request::METHOD_GET)) {
+            $cron->run(Cron::SCOPE_WEB);
+        }
 
-        $controller = new FrontendCron();
-
-        return $controller->run();
+        return new Response('', Response::HTTP_NO_CONTENT);
     }
 
     /**
@@ -56,38 +57,11 @@ class FrontendController extends AbstractController
      */
     public function shareAction(): RedirectResponse
     {
-        $this->get('contao.framework')->initialize();
+        $this->initializeContaoFramework();
 
         $controller = new FrontendShare();
 
         return $controller->run();
-    }
-
-    /**
-     * Symfony will authenticate the user automatically by calling this route.
-     *
-     * @return RedirectResponse|Response
-     *
-     * @Route("/_contao/login", name="contao_frontend_login")
-     */
-    public function loginAction(): Response
-    {
-        $this->get('contao.framework')->initialize();
-
-        if (!isset($GLOBALS['TL_PTY']['error_401']) || !class_exists($GLOBALS['TL_PTY']['error_401'])) {
-            throw new UnauthorizedHttpException('', 'Not authorized');
-        }
-
-        /** @var PageError401 $pageHandler */
-        $pageHandler = new $GLOBALS['TL_PTY']['error_401']();
-
-        try {
-            return $pageHandler->getResponse();
-        } catch (ResponseException $e) {
-            return $e->getResponse();
-        } catch (InsufficientAuthenticationException $e) {
-            throw new UnauthorizedHttpException('', $e->getMessage());
-        }
     }
 
     /**
@@ -107,14 +81,15 @@ class FrontendController extends AbstractController
      *
      * This route can be used to include e.g. a hidden <img> tag to force
      * a request to the application. That way, cookies can be set even if
-     * the output is cached (used in the core for the RememberMe cookie if
-     * the "alwaysLoadFromCache" option is enabled).
+     * the output is cached (used in the core if the "alwaysLoadFromCache"
+     * option is enabled to evaluate the RememberMe cookie and then set
+     * the session cookie).
      *
      * @Route("/_contao/check_cookies", name="contao_frontend_check_cookies")
      */
     public function checkCookiesAction(): Response
     {
-        static $image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+        static $image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
         $response = new Response(base64_decode($image, true));
         $response->setPrivate();
@@ -123,5 +98,39 @@ class FrontendController extends AbstractController
         $response->headers->addCacheControlDirective('must-revalidate');
 
         return $response;
+    }
+
+    /**
+     * Returns a script that makes sure a valid request token is filled into
+     * all forms if the "alwaysLoadFromCache" option is enabled.
+     *
+     * @Route("/_contao/request_token_script", name="contao_frontend_request_token_script")
+     */
+    public function requestTokenScriptAction(): Response
+    {
+        $token = $this
+            ->get('contao.csrf.token_manager')
+            ->getToken($this->getParameter('contao.csrf_token_name'))
+            ->getValue()
+        ;
+
+        $token = json_encode($token);
+
+        $response = new Response();
+        $response->setContent('document.querySelectorAll("input[name=REQUEST_TOKEN]").forEach(function(i){i.value='.$token.'})');
+        $response->headers->set('Content-Type', 'application/javascript; charset=UTF-8');
+        $response->headers->addCacheControlDirective('no-store');
+        $response->headers->addCacheControlDirective('must-revalidate');
+
+        return $response;
+    }
+
+    public static function getSubscribedServices(): array
+    {
+        $services = parent::getSubscribedServices();
+
+        $services['contao.csrf.token_manager'] = CsrfTokenManagerInterface::class;
+
+        return $services;
     }
 }

@@ -19,7 +19,6 @@ use Patchwork\Utf8;
  */
 class ModuleCloseAccount extends Module
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -33,7 +32,9 @@ class ModuleCloseAccount extends Module
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 			$objTemplate->wildcard = '### ' . Utf8::strtoupper($GLOBALS['TL_LANG']['FMD']['closeAccount'][0]) . ' ###';
@@ -80,8 +81,10 @@ class ModuleCloseAccount extends Module
 		{
 			$objWidget->validate();
 
+			$encoder = System::getContainer()->get('security.encoder_factory')->getEncoder(FrontendUser::class);
+
 			// Validate the password
-			if (!$objWidget->hasErrors() && !password_verify($objWidget->value, $this->User->password))
+			if (!$objWidget->hasErrors() && !$encoder->isPasswordValid($this->User->password, $objWidget->value, null))
 			{
 				$objWidget->value = '';
 				$objWidget->addError($GLOBALS['TL_LANG']['ERR']['invalidPass']);
@@ -120,7 +123,7 @@ class ModuleCloseAccount extends Module
 				$container = System::getContainer();
 
 				// Log out the user (see #93)
-				$container->get('security.token_storage')->setToken(null);
+				$container->get('security.token_storage')->setToken();
 				$container->get('session')->invalidate();
 
 				// Check whether there is a jumpTo page
@@ -136,7 +139,6 @@ class ModuleCloseAccount extends Module
 		$this->Template->fields = $objWidget->parse();
 
 		$this->Template->formId = $strFormId;
-		$this->Template->action = Environment::get('indexFreeRequest');
 		$this->Template->slabel = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['closeAccount']);
 		$this->Template->rowLast = 'row_1 row_last odd';
 	}

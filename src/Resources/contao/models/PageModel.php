@@ -13,6 +13,7 @@ namespace Contao;
 use Contao\CoreBundle\Exception\NoRootPageFoundException;
 use Contao\Model\Collection;
 use Contao\Model\Registry;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -27,47 +28,54 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @property string  $type
  * @property string  $pageTitle
  * @property string  $language
+ * @property boolean $disableLanguageRedirect
+ * @property boolean $useFolderUrl
+ * @property boolean $useAutoItem
  * @property string  $robots
  * @property string  $description
  * @property string  $redirect
  * @property integer $jumpTo
- * @property boolean $redirectBack
+ * @property string  $redirectBack
  * @property string  $url
- * @property boolean $target
+ * @property string  $target
  * @property string  $dns
  * @property string  $staticFiles
  * @property string  $staticPlugins
- * @property boolean $fallback
+ * @property string  $fallback
+ * @property string  $favicon
+ * @property string  $robotsTxt
  * @property string  $adminEmail
  * @property string  $dateFormat
  * @property string  $timeFormat
  * @property string  $datimFormat
  * @property string  $validAliasCharacters
- * @property boolean $createSitemap
+ * @property string  $urlPrefix
+ * @property string  $urlSuffix
+ * @property string  $createSitemap
  * @property string  $sitemapName
- * @property boolean $useSSL
- * @property boolean $autoforward
- * @property boolean $protected
+ * @property string  $useSSL
+ * @property string  $autoforward
+ * @property string  $protected
  * @property string  $groups
- * @property boolean $includeLayout
+ * @property string  $includeLayout
  * @property integer $layout
- * @property boolean $includeCache
+ * @property string  $includeCache
  * @property integer $cache
- * @property boolean $alwaysLoadFromCache
+ * @property string  $alwaysLoadFromCache
  * @property integer $clientCache
- * @property boolean $includeChmod
+ * @property string  $includeChmod
  * @property integer $cuser
  * @property integer $cgroup
  * @property string  $chmod
- * @property boolean $noSearch
- * @property boolean $requireItem
+ * @property string  $noSearch
+ * @property string  $requireItem
  * @property string  $cssClass
  * @property string  $sitemap
- * @property boolean $hide
- * @property boolean $guests
+ * @property string  $hide
+ * @property string  $guests
  * @property integer $tabindex
- * @property boolean $accesskey
- * @property boolean $published
+ * @property string  $accesskey
+ * @property string  $published
  * @property string  $start
  * @property string  $stop
  * @property array   $trail
@@ -97,6 +105,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @property boolean $hasMooTools
  * @property string  $template
  * @property string  $templateGroup
+ * @property string  $enforceTwoFactor
+ * @property integer $twoFactorJumpTo
+ * @property string  $mailerTransport
  *
  * @method static PageModel|null findById($id, array $opt=array())
  * @method static PageModel|null findByPk($id, array $opt=array())
@@ -110,6 +121,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static PageModel|null findOneByType($val, array $opt=array())
  * @method static PageModel|null findOneByPageTitle($val, array $opt=array())
  * @method static PageModel|null findOneByLanguage($val, array $opt=array())
+ * @method static PageModel|null findOneByDisableLanguageRedirect($val, array $opt=array())
+ * @method static PageModel|null findOneByUseFolderUrl($val, array $opt=array())
  * @method static PageModel|null findOneByRobots($val, array $opt=array())
  * @method static PageModel|null findOneByDescription($val, array $opt=array())
  * @method static PageModel|null findOneByRedirect($val, array $opt=array())
@@ -121,10 +134,15 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static PageModel|null findOneByStaticFiles($val, array $opt=array())
  * @method static PageModel|null findOneByStaticPlugins($val, array $opt=array())
  * @method static PageModel|null findOneByFallback($val, array $opt=array())
+ * @method static PageModel|null findOneByFavicon($val, array $opt=array())
+ * @method static PageModel|null findOneByRobotsTxt($val, array $opt=array())
  * @method static PageModel|null findOneByAdminEmail($val, array $opt=array())
  * @method static PageModel|null findOneByDateFormat($val, array $opt=array())
  * @method static PageModel|null findOneByTimeFormat($val, array $opt=array())
  * @method static PageModel|null findOneByDatimFormat($val, array $opt=array())
+ * @method static PageModel|null findOneByValidAliasCharacters($val, array $opt=array())
+ * @method static PageModel|null findOneByUrlPrefix($val, array $opt=array())
+ * @method static PageModel|null findOneByUrlSuffix($val, array $opt=array())
  * @method static PageModel|null findOneByCreateSitemap($val, array $opt=array())
  * @method static PageModel|null findOneBySitemapName($val, array $opt=array())
  * @method static PageModel|null findOneByUseSSL($val, array $opt=array())
@@ -149,6 +167,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static PageModel|null findOneByPublished($val, array $opt=array())
  * @method static PageModel|null findOneByStart($val, array $opt=array())
  * @method static PageModel|null findOneByStop($val, array $opt=array())
+ * @method static PageModel|null findOneByEnforceTwoFactor($val, array $opt=array())
+ * @method static PageModel|null findOneByTwoFactorJumpTo($val, array $opt=array())
+ * @method static PageModel|null findOneByMailerTransport($val, array $opt=array())
  *
  * @method static Collection|PageModel[]|PageModel|null findByPid($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findBySorting($val, array $opt=array())
@@ -158,6 +179,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static Collection|PageModel[]|PageModel|null findByType($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByPageTitle($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByLanguage($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByDisableLanguageRedirect($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByUseFolderUrl($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByRobots($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByDescription($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByRedirect($val, array $opt=array())
@@ -169,10 +192,15 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static Collection|PageModel[]|PageModel|null findByStaticFiles($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByStaticPlugins($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByFallback($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByFavicon($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByRobotsTxt($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByAdminEmail($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByDateFormat($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByTimeFormat($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByDatimFormat($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByValidAliasCharacters($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByUrlPrefix($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByUrlSuffix($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByCreateSitemap($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findBySitemapName($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByUseSSL($val, array $opt=array())
@@ -197,6 +225,9 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static Collection|PageModel[]|PageModel|null findByPublished($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByStart($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findByStop($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByEnforceTwoFactor($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByTwoFactorJumpTo($val, array $opt=array())
+ * @method static Collection|PageModel[]|PageModel|null findByMailerTransport($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findMultipleByIds($val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findBy($col, $val, array $opt=array())
  * @method static Collection|PageModel[]|PageModel|null findAll(array $opt=array())
@@ -210,6 +241,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static integer countByType($val, array $opt=array())
  * @method static integer countByPageTitle($val, array $opt=array())
  * @method static integer countByLanguage($val, array $opt=array())
+ * @method static integer countByDisableLanguageRedirect($val, array $opt=array())
+ * @method static integer countByUseFolderUrl($val, array $opt=array())
  * @method static integer countByRobots($val, array $opt=array())
  * @method static integer countByDescription($val, array $opt=array())
  * @method static integer countByRedirect($val, array $opt=array())
@@ -221,10 +254,15 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static integer countByStaticFiles($val, array $opt=array())
  * @method static integer countByStaticPlugins($val, array $opt=array())
  * @method static integer countByFallback($val, array $opt=array())
+ * @method static integer countByFavicon($val, array $opt=array())
+ * @method static integer countByRobotsTxt($val, array $opt=array())
  * @method static integer countByAdminEmail($val, array $opt=array())
  * @method static integer countByDateFormat($val, array $opt=array())
  * @method static integer countByTimeFormat($val, array $opt=array())
  * @method static integer countByDatimFormat($val, array $opt=array())
+ * @method static integer countByValidAliasCharacters($val, array $opt=array())
+ * @method static integer countByUrlPrefix($val, array $opt=array())
+ * @method static integer countByUrlSuffix($val, array $opt=array())
  * @method static integer countByCreateSitemap($val, array $opt=array())
  * @method static integer countBySitemapName($val, array $opt=array())
  * @method static integer countByUseSSL($val, array $opt=array())
@@ -249,12 +287,14 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * @method static integer countByPublished($val, array $opt=array())
  * @method static integer countByStart($val, array $opt=array())
  * @method static integer countByStop($val, array $opt=array())
+ * @method static integer countByEnforceTwoFactor($val, array $opt=array())
+ * @method static integer countByTwoFactorJumpTo($val, array $opt=array())
+ * @method static integer countByMailerTransport($val, array $opt=array())
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
 class PageModel extends Model
 {
-
 	/**
 	 * Table name
 	 * @var string
@@ -283,7 +323,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		return static::findOneBy($arrColumns, $intId, $arrOptions);
@@ -305,7 +345,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		return static::findBy($arrColumns, $intPid, $arrOptions);
@@ -324,7 +364,7 @@ class PageModel extends Model
 	 */
 	public static function findFirstPublishedRootByHostAndLanguage($strHost, $varLanguage, array $arrOptions=array())
 	{
-		@trigger_error('Using PageModel::findFirstPublishedRootByHostAndLanguage() has been deprecated and will no longer work Contao 5.0.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.7', 'Using "Contao\PageModel::findFirstPublishedRootByHostAndLanguage()" has been deprecated and will no longer work Contao 5.0.');
 
 		$t = static::$strTable;
 		$objDatabase = Database::getInstance();
@@ -335,7 +375,7 @@ class PageModel extends Model
 
 			if (!empty($varLanguage))
 			{
-				$arrColumns[] = "($t.language IN('". implode("','", $varLanguage) ."') OR $t.fallback='1')";
+				$arrColumns[] = "($t.language IN('" . implode("','", $varLanguage) . "') OR $t.fallback='1')";
 			}
 			else
 			{
@@ -350,29 +390,27 @@ class PageModel extends Model
 			if (!static::isPreviewMode($arrOptions))
 			{
 				$time = Date::floorToMinute();
-				$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+				$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 			}
 
 			return static::findOneBy($arrColumns, $strHost, $arrOptions);
 		}
-		else
+
+		$arrColumns = array("$t.type='root' AND ($t.dns=? OR $t.dns='') AND ($t.language=? OR $t.fallback='1')");
+		$arrValues = array($strHost, $varLanguage);
+
+		if (!isset($arrOptions['order']))
 		{
-			$arrColumns = array("$t.type='root' AND ($t.dns=? OR $t.dns='') AND ($t.language=? OR $t.fallback='1')");
-			$arrValues = array($strHost, $varLanguage);
-
-			if (!isset($arrOptions['order']))
-			{
-				$arrOptions['order'] = "$t.dns DESC, $t.fallback";
-			}
-
-			if (!static::isPreviewMode($arrOptions))
-			{
-				$time = Date::floorToMinute();
-				$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
-			}
-
-			return static::findOneBy($arrColumns, $arrValues, $arrOptions);
+			$arrOptions['order'] = "$t.dns DESC, $t.fallback";
 		}
+
+		if (!static::isPreviewMode($arrOptions))
+		{
+			$time = Date::floorToMinute();
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
+		}
+
+		return static::findOneBy($arrColumns, $arrValues, $arrOptions);
 	}
 
 	/**
@@ -391,7 +429,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -418,7 +456,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -445,7 +483,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -472,7 +510,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -499,7 +537,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -526,7 +564,7 @@ class PageModel extends Model
 		}
 
 		// Remove everything that is not an alias
-		$arrAliases = array_filter(array_map(function ($v) { return preg_match('/^[\w\/.-]+$/u', $v) ? $v : null; }, $arrAliases));
+		$arrAliases = array_filter(array_map(static function ($v) { return preg_match('/^[\w\/.-]+$/u', $v) ? $v : null; }, $arrAliases));
 
 		// Return if nothing is left
 		if (empty($arrAliases))
@@ -541,7 +579,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -568,7 +606,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		return static::findBy($arrColumns, $varId, $arrOptions);
@@ -587,7 +625,7 @@ class PageModel extends Model
 	{
 		$time = Date::floorToMinute();
 
-		$objSubpages = Database::getInstance()->prepare("SELECT p1.*, (SELECT COUNT(*) FROM tl_page p2 WHERE p2.pid=p1.id AND p2.type!='root' AND p2.type!='error_401' AND p2.type!='error_403' AND p2.type!='error_404'" . (!$blnShowHidden ? ($blnIsSitemap ? " AND (p2.hide='' OR sitemap='map_always')" : " AND p2.hide=''") : "") . (FE_USER_LOGGED_IN ? " AND p2.guests=''" : "") . (!BE_USER_LOGGED_IN ? " AND (p2.start='' OR p2.start<='$time') AND (p2.stop='' OR p2.stop>'" . ($time + 60) . "') AND p2.published='1'" : "") . ") AS subpages FROM tl_page p1 WHERE p1.pid=? AND p1.type!='root' AND p1.type!='error_401' AND p1.type!='error_403' AND p1.type!='error_404'" . (!$blnShowHidden ? ($blnIsSitemap ? " AND (p1.hide='' OR sitemap='map_always')" : " AND p1.hide=''") : "") . (FE_USER_LOGGED_IN ? " AND p1.guests=''" : "") . (!BE_USER_LOGGED_IN ? " AND (p1.start='' OR p1.start<='$time') AND (p1.stop='' OR p1.stop>'" . ($time + 60) . "') AND p1.published='1'" : "") . " ORDER BY p1.sorting")
+		$objSubpages = Database::getInstance()->prepare("SELECT p1.*, (SELECT COUNT(*) FROM tl_page p2 WHERE p2.pid=p1.id AND p2.type!='root' AND p2.type!='error_401' AND p2.type!='error_403' AND p2.type!='error_404'" . (!$blnShowHidden ? ($blnIsSitemap ? " AND (p2.hide='' OR sitemap='map_always')" : " AND p2.hide=''") : "") . (FE_USER_LOGGED_IN ? " AND p2.guests=''" : "") . (!BE_USER_LOGGED_IN ? " AND p2.published='1' AND (p2.start='' OR p2.start<='$time') AND (p2.stop='' OR p2.stop>'$time')" : "") . ") AS subpages FROM tl_page p1 WHERE p1.pid=? AND p1.type!='root' AND p1.type!='error_401' AND p1.type!='error_403' AND p1.type!='error_404'" . (!$blnShowHidden ? ($blnIsSitemap ? " AND (p1.hide='' OR sitemap='map_always')" : " AND p1.hide=''") : "") . (FE_USER_LOGGED_IN ? " AND p1.guests=''" : "") . (!BE_USER_LOGGED_IN ? " AND p1.published='1' AND (p1.start='' OR p1.start<='$time') AND (p1.stop='' OR p1.stop>'$time')" : "") . " ORDER BY p1.sorting")
 											   ->execute($intPid);
 
 		if ($objSubpages->numRows < 1)
@@ -629,7 +667,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -661,7 +699,7 @@ class PageModel extends Model
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		if (!isset($arrOptions['order']))
@@ -696,10 +734,15 @@ class PageModel extends Model
 		$t = static::$strTable;
 		$arrColumns = array("$t.dns=? AND $t.fallback='1'");
 
+		if (isset($arrOptions['fallbackToEmpty']) && $arrOptions['fallbackToEmpty'] === true)
+		{
+			$arrColumns = array("($t.dns=? OR $t.dns='') AND $t.fallback='1'");
+		}
+
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
 		return static::findOneBy($arrColumns, $strHost, $arrOptions);
@@ -715,15 +758,20 @@ class PageModel extends Model
 	public static function findPublishedRootPages(array $arrOptions=array())
 	{
 		$t = static::$strTable;
-		$arrColumns = array("$t.type=?");
+		$arrColumns = array("$t.type='root'");
+
+		if (isset($arrOptions['dns']))
+		{
+			$arrColumns = array("$t.type='root' AND $t.dns=?");
+		}
 
 		if (!static::isPreviewMode($arrOptions))
 		{
 			$time = Date::floorToMinute();
-			$arrColumns[] = "($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'" . ($time + 60) . "') AND $t.published='1'";
+			$arrColumns[] = "$t.published='1' AND ($t.start='' OR $t.start<='$time') AND ($t.stop='' OR $t.stop>'$time')";
 		}
 
-		return static::findBy($arrColumns, 'root', $arrOptions);
+		return static::findBy($arrColumns, $arrOptions['dns'] ?? null, $arrOptions);
 	}
 
 	/**
@@ -754,7 +802,7 @@ class PageModel extends Model
 	/**
 	 * Find the first active page by its member groups
 	 *
-	 * @param string $arrIds An array of member group IDs
+	 * @param array $arrIds An array of member group IDs
 	 *
 	 * @return PageModel|null The model or null if there is no matching member group
 	 */
@@ -769,7 +817,7 @@ class PageModel extends Model
 		$objDatabase = Database::getInstance();
 		$arrIds = array_map('\intval', $arrIds);
 
-		$objResult = $objDatabase->prepare("SELECT p.* FROM tl_member_group g LEFT JOIN tl_page p ON g.jumpTo=p.id WHERE g.id IN(" . implode(',', $arrIds) . ") AND g.jumpTo>0 AND g.redirect='1' AND g.disable!='1' AND (g.start='' OR g.start<='$time') AND (g.stop='' OR g.stop>'" . ($time + 60) . "') AND p.published='1' AND (p.start='' OR p.start<='$time') AND (p.stop='' OR p.stop>'" . ($time + 60) . "') ORDER BY " . $objDatabase->findInSet('g.id', $arrIds))
+		$objResult = $objDatabase->prepare("SELECT p.* FROM tl_member_group g LEFT JOIN tl_page p ON g.jumpTo=p.id WHERE g.id IN(" . implode(',', $arrIds) . ") AND g.jumpTo>0 AND g.redirect='1' AND g.disable!='1' AND (g.start='' OR g.start<='$time') AND (g.stop='' OR g.stop>'$time') AND p.published='1' AND (p.start='' OR p.start<='$time') AND (p.stop='' OR p.stop>'$time') ORDER BY " . $objDatabase->findInSet('g.id', $arrIds))
 								 ->limit(1)
 								 ->execute();
 
@@ -873,7 +921,7 @@ class PageModel extends Model
 		$pname = '';
 		$ptitle = '';
 		$trail = array($this->id, $pid);
-		$time = Date::floorToMinute();
+		$time = time();
 
 		// Inherit the settings
 		if ($this->type == 'root')
@@ -893,7 +941,7 @@ class PageModel extends Model
 					$type = $objParentPage->type;
 
 					// Parent title
-					if ($ptitle == '')
+					if (!$ptitle)
 					{
 						$palias = $objParentPage->alias;
 						$pname = $objParentPage->title;
@@ -903,10 +951,16 @@ class PageModel extends Model
 					// Page title
 					if ($type != 'root')
 					{
+						// If $folderUrl is not yet set, use the alias of the first
+						// parent page if it is not a root page (see #2129)
+						if (!$folderUrl && $objParentPage->alias)
+						{
+							$folderUrl = $objParentPage->alias . '/';
+						}
+
 						$alias = $objParentPage->alias;
 						$name = $objParentPage->title;
 						$title = $objParentPage->pageTitle ?: $objParentPage->title;
-						$folderUrl = basename($alias) . '/' . $folderUrl;
 						$trail[] = $objParentPage->pid;
 					}
 
@@ -960,13 +1014,27 @@ class PageModel extends Model
 			$this->timeFormat = $objParentPage->timeFormat;
 			$this->datimFormat = $objParentPage->datimFormat;
 			$this->validAliasCharacters = $objParentPage->validAliasCharacters;
+			$this->urlPrefix = $objParentPage->urlPrefix;
+			$this->urlSuffix = $objParentPage->urlSuffix;
+			$this->disableLanguageRedirect = $objParentPage->disableLanguageRedirect;
 			$this->adminEmail = $objParentPage->adminEmail;
+			$this->enforceTwoFactor = $objParentPage->enforceTwoFactor;
+			$this->twoFactorJumpTo = $objParentPage->twoFactorJumpTo;
+			$this->useFolderUrl = $objParentPage->useFolderUrl;
+			$this->mailerTransport = $objParentPage->mailerTransport;
+			$this->useAutoItem = Config::get('useAutoItem');
 
 			// Store whether the root page has been published
-			$this->rootIsPublic = ($objParentPage->published && ($objParentPage->start == '' || $objParentPage->start <= $time) && ($objParentPage->stop == '' || $objParentPage->stop > ($time + 60)));
+			$this->rootIsPublic = ($objParentPage->published && (!$objParentPage->start || $objParentPage->start <= $time) && (!$objParentPage->stop || $objParentPage->stop > $time));
 			$this->rootIsFallback = true;
 			$this->rootUseSSL = $objParentPage->useSSL;
 			$this->rootFallbackLanguage = $objParentPage->language;
+
+			if (System::getContainer()->getParameter('contao.legacy_routing'))
+			{
+				$this->urlPrefix = System::getContainer()->getParameter('contao.prepend_locale') ? $objParentPage->language : '';
+				$this->urlSuffix = System::getContainer()->getParameter('contao.url_suffix');
+			}
 
 			// Store the fallback language (see #6874)
 			if (!$objParentPage->fallback)
@@ -986,27 +1054,30 @@ class PageModel extends Model
 		// No root page found
 		elseif (TL_MODE == 'FE' && $this->type != 'root')
 		{
-			System::log('Page ID "'. $this->id .'" does not belong to a root page', __METHOD__, TL_ERROR);
+			System::log('Page ID "' . $this->id . '" does not belong to a root page', __METHOD__, TL_ERROR);
+
 			throw new NoRootPageFoundException('No root page found');
 		}
 
 		$this->trail = array_reverse($trail);
 
 		// Use the global date format if none is set (see #6104)
-		if ($this->dateFormat == '')
+		if (!$this->dateFormat)
 		{
 			$this->dateFormat = Config::get('dateFormat');
 		}
-		if ($this->timeFormat == '')
+
+		if (!$this->timeFormat)
 		{
 			$this->timeFormat = Config::get('timeFormat');
 		}
-		if ($this->datimFormat == '')
+
+		if (!$this->datimFormat)
 		{
 			$this->datimFormat = Config::get('datimFormat');
 		}
 
-		$this->isPublic = ($this->published && ($this->start == '' || $this->start <= $time) && ($this->stop == '' || $this->stop > ($time + 60)));
+		$this->isPublic = ($this->published && (!$this->start || $this->start <= $time) && (!$this->stop || $this->stop > $time));
 
 		// HOOK: add custom logic
 		if (!empty($GLOBALS['TL_HOOKS']['loadPageDetails']) && \is_array($GLOBALS['TL_HOOKS']['loadPageDetails']))
@@ -1041,35 +1112,34 @@ class PageModel extends Model
 	 */
 	public function getFrontendUrl($strParams=null, $strForceLang=null)
 	{
+		$page = $this;
+		$page->loadDetails();
+
 		if ($strForceLang !== null)
 		{
-			@trigger_error('Using PageModel::getFrontendUrl() with $strForceLang has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\PageModel::getFrontendUrl()" with $strForceLang has been deprecated and will no longer work in Contao 5.0.');
+
+			$page = $page->cloneOriginal();
+			$page->preventSaving(false);
+			$page->language = $strForceLang;
+			$page->rootLanguage = $strForceLang;
+
+			if (System::getContainer()->getParameter('contao.legacy_routing'))
+			{
+				$page->urlPrefix = System::getContainer()->getParameter('contao.prepend_locale') ? $strForceLang : '';
+			}
 		}
 
-		$this->loadDetails();
-
-		$objUrlGenerator = System::getContainer()->get('contao.routing.url_generator');
-
-		$strUrl = $objUrlGenerator->generate
-		(
-			($this->alias ?: $this->id) . $strParams,
-			array
-			(
-				'_locale' => ($strForceLang ?: $this->rootLanguage),
-				'_domain' => $this->domain,
-				'_ssl' => (bool) $this->rootUseSSL,
-			)
-		);
+		$objRouter = System::getContainer()->get('router');
+		$strUrl = $objRouter->generate(RouteObjectInterface::OBJECT_BASED_ROUTE_NAME, array(RouteObjectInterface::CONTENT_OBJECT => $this, 'parameters' => $strParams));
 
 		// Make the URL relative to the base path
-		if (0 === strncmp($strUrl, '/', 1))
+		if (0 === strncmp($strUrl, '/', 1) && 0 !== strncmp($strUrl, '//', 2))
 		{
 			$strUrl = substr($strUrl, \strlen(Environment::get('path')) + 1);
 		}
 
-		$strUrl = $this->applyLegacyLogic($strUrl, $strParams);
-
-		return $strUrl;
+		return $this->applyLegacyLogic($strUrl, $strParams);
 	}
 
 	/**
@@ -1083,23 +1153,42 @@ class PageModel extends Model
 	{
 		$this->loadDetails();
 
-		$objUrlGenerator = System::getContainer()->get('contao.routing.url_generator');
+		$objRouter = System::getContainer()->get('router');
+		$strUrl = $objRouter->generate(RouteObjectInterface::OBJECT_BASED_ROUTE_NAME, array(RouteObjectInterface::CONTENT_OBJECT => $this, 'parameters' => $strParams), UrlGeneratorInterface::ABSOLUTE_URL);
 
-		$strUrl = $objUrlGenerator->generate
-		(
-			($this->alias ?: $this->id) . $strParams,
-			array
-			(
-				'_locale' => $this->rootLanguage,
-				'_domain' => $this->domain,
-				'_ssl' => (bool) $this->rootUseSSL,
-			),
-			UrlGeneratorInterface::ABSOLUTE_URL
-		);
+		return $this->applyLegacyLogic($strUrl, $strParams);
+	}
 
-		$strUrl = $this->applyLegacyLogic($strUrl, $strParams);
+	/**
+	 * Generate the front end preview URL
+	 *
+	 * @param string $strParams An optional string of URL parameters
+	 *
+	 * @return string The front end preview URL
+	 */
+	public function getPreviewUrl($strParams=null)
+	{
+		$container = System::getContainer();
 
-		return $strUrl;
+		if (!$previewScript = $container->getParameter('contao.preview_script'))
+		{
+			return $this->getAbsoluteUrl($strParams);
+		}
+
+		$this->loadDetails();
+
+		$context = $container->get('router')->getContext();
+		$baseUrl = $context->getBaseUrl();
+
+		// Add the preview script
+		$context->setBaseUrl($previewScript);
+
+		$objRouter = System::getContainer()->get('router');
+		$strUrl = $objRouter->generate(RouteObjectInterface::OBJECT_BASED_ROUTE_NAME, array(RouteObjectInterface::CONTENT_OBJECT => $this, 'parameters' => $strParams), UrlGeneratorInterface::ABSOLUTE_URL);
+
+		$context->setBaseUrl($baseUrl);
+
+		return $this->applyLegacyLogic($strUrl, $strParams);
 	}
 
 	/**
@@ -1132,7 +1221,7 @@ class PageModel extends Model
 		// Decode sprintf placeholders
 		if (strpos($strParams, '%') !== false)
 		{
-			@trigger_error('Using sprintf placeholders in URLs has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.2', 'Using sprintf placeholders in URLs has been deprecated and will no longer work in Contao 5.0.');
 
 			$arrMatches = array();
 			preg_match_all('/%([sducoxXbgGeEfF])/', $strParams, $arrMatches);
@@ -1146,7 +1235,7 @@ class PageModel extends Model
 		// HOOK: add custom logic
 		if (isset($GLOBALS['TL_HOOKS']['generateFrontendUrl']) && \is_array($GLOBALS['TL_HOOKS']['generateFrontendUrl']))
 		{
-			@trigger_error('Using the "generateFrontendUrl" hook has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.0', 'Using the "generateFrontendUrl" hook has been deprecated and will no longer work in Contao 5.0.');
 
 			foreach ($GLOBALS['TL_HOOKS']['generateFrontendUrl'] as $callback)
 			{

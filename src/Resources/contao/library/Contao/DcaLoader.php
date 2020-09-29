@@ -25,6 +25,10 @@ namespace Contao;
  */
 class DcaLoader extends Controller
 {
+	/**
+	 * @var array
+	 */
+	protected static $arrLoaded = array();
 
 	/**
 	 * Table name
@@ -41,7 +45,7 @@ class DcaLoader extends Controller
 	 */
 	public function __construct($strTable)
 	{
-		if ($strTable == '')
+		if (!$strTable)
 		{
 			throw new \Exception('The table name must not be empty');
 		}
@@ -63,13 +67,23 @@ class DcaLoader extends Controller
 	 */
 	public function load($blnNoCache=false)
 	{
+		$this->loadDcaFiles($blnNoCache);
+	}
+
+	/**
+	 * Load the DCA files
+	 *
+	 * @param boolean $blnNoCache
+	 */
+	private function loadDcaFiles($blnNoCache)
+	{
 		// Return if the data has been loaded already
-		if (isset($GLOBALS['loadDataContainer'][$this->strTable]) && !$blnNoCache)
+		if (!$blnNoCache && isset(static::$arrLoaded['dcaFiles'][$this->strTable]))
 		{
 			return;
 		}
 
-		$GLOBALS['loadDataContainer'][$this->strTable] = true; // see #6145
+		static::$arrLoaded['dcaFiles'][$this->strTable] = true; // see #6145
 
 		$strCacheDir = System::getContainer()->getParameter('kernel.cache_dir');
 
@@ -95,6 +109,9 @@ class DcaLoader extends Controller
 			}
 		}
 
+		// Set the ptable dynamically
+		$this->setDynamicPTable();
+
 		// HOOK: allow to load custom settings
 		if (isset($GLOBALS['TL_HOOKS']['loadDataContainer']) && \is_array($GLOBALS['TL_HOOKS']['loadDataContainer']))
 		{
@@ -105,13 +122,121 @@ class DcaLoader extends Controller
 			}
 		}
 
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
 
 		// Local configuration file
-		if (file_exists($rootDir . '/system/config/dcaconfig.php'))
+		if (file_exists($projectDir . '/system/config/dcaconfig.php'))
 		{
-			@trigger_error('Using the dcaconfig.php file has been deprecated and will no longer work in Contao 5.0. Create one or more DCA files in app/Resources/contao/dca instead.', E_USER_DEPRECATED);
-			include $rootDir . '/system/config/dcaconfig.php';
+			trigger_deprecation('contao/core-bundle', '4.3', 'Using the "dcaconfig.php" file has been deprecated and will no longer work in Contao 5.0. Create custom DCA files in the "contao/dca" folder instead.');
+			include $projectDir . '/system/config/dcaconfig.php';
+		}
+
+		$this->addDefaultLabels($blnNoCache);
+	}
+
+	/**
+	 * Add the default labels (see #509)
+	 *
+	 * @param boolean $blnNoCache
+	 */
+	private function addDefaultLabels($blnNoCache)
+	{
+		// Return if there are no labels
+		if (!isset(static::$arrLanguageFiles[$this->strTable]))
+		{
+			return;
+		}
+
+		// Return if the labels have been added already
+		if (!$blnNoCache && isset(static::$arrLoaded['languageFiles'][$this->strTable]))
+		{
+			return;
+		}
+
+		static::$arrLoaded['languageFiles'][$this->strTable] = true;
+
+		// Operations
+		foreach (array('global_operations', 'operations') as $key)
+		{
+			if (!isset($GLOBALS['TL_DCA'][$this->strTable]['list'][$key]))
+			{
+				continue;
+			}
+
+			foreach ($GLOBALS['TL_DCA'][$this->strTable]['list'][$key] as $k=>&$v)
+			{
+				if (isset($v['label']))
+				{
+					continue;
+				}
+
+				if (isset($GLOBALS['TL_LANG'][$this->strTable][$k]))
+				{
+					$v['label'] = &$GLOBALS['TL_LANG'][$this->strTable][$k];
+				}
+				elseif (isset($GLOBALS['TL_LANG']['DCA'][$k]))
+				{
+					$v['label'] = &$GLOBALS['TL_LANG']['DCA'][$k];
+				}
+			}
+
+			unset($v);
+		}
+
+		// Fields
+		if (isset($GLOBALS['TL_DCA'][$this->strTable]['fields']))
+		{
+			foreach ($GLOBALS['TL_DCA'][$this->strTable]['fields'] as $k=>&$v)
+			{
+				if (isset($v['label']))
+				{
+					continue;
+				}
+
+				if (isset($GLOBALS['TL_LANG'][$this->strTable][$k]))
+				{
+					$v['label'] = &$GLOBALS['TL_LANG'][$this->strTable][$k];
+				}
+			}
+
+			unset($v);
+		}
+	}
+
+	/**
+	 * Sets the parent table for the current table, if enabled and not set.
+	 */
+	private function setDynamicPTable(): void
+	{
+		if (!($GLOBALS['TL_DCA'][$this->strTable]['config']['dynamicPtable'] ?? false) || !isset($GLOBALS['BE_MOD']))
+		{
+			return;
+		}
+
+		if (!$do = Input::get('do'))
+		{
+			return;
+		}
+
+		foreach (array_merge(...array_values($GLOBALS['BE_MOD'])) as $key => $module)
+		{
+			if ($do !== $key || !isset($module['tables']) || !\is_array($module['tables']))
+			{
+				continue;
+			}
+
+			foreach ($module['tables'] as $table)
+			{
+				Controller::loadDataContainer($table);
+				$ctable = $GLOBALS['TL_DCA'][$table]['config']['ctable'] ?? array();
+
+				if (\in_array($this->strTable, $ctable, true))
+				{
+					$GLOBALS['TL_DCA'][$this->strTable]['config']['ptable'] = $table;
+
+					return;
+				}
+			}
 		}
 	}
 }

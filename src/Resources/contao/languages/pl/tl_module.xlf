@@ -54,8 +54,7 @@
         <target>Pokaż zastrzeżone elementy</target>
       </trans-unit>
       <trans-unit id="tl_module.showProtected.1">
-        <source>Show items that are usually only visible to authenticated users.</source>
-        <target>Domyślnie zastrzeżone elementy nie są widoczne, dopóki użytkownik nie zaloguje się na stronie. Jednakże, jeśli wybierzesz tę opcję, zastrzeżone elementy będą widoczne cały czas.</target>
+        <source>Show items that are usually only visible to authenticated members.</source>
       </trans-unit>
       <trans-unit id="tl_module.defineRoot.0">
         <source>Set a reference page</source>
@@ -82,12 +81,10 @@
         <target>Wybierz szablon menu. Możesz dodać własne szablony wydarzeń do katalogu templates. Pliki szablonów wydarzeń muszą zaczynać się od nav_ i muszą mieć rozszerzenie .tpl.</target>
       </trans-unit>
       <trans-unit id="tl_module.customTpl.0">
-        <source>Custom module template</source>
-        <target>Własny szablon modułu</target>
+        <source>Module template</source>
       </trans-unit>
       <trans-unit id="tl_module.customTpl.1">
-        <source>Here you can overwrite the default module template.</source>
-        <target>Tutaj możesz wybrać własny szablon modułu.</target>
+        <source>Here you can select the module template.</source>
       </trans-unit>
       <trans-unit id="tl_module.pages.0">
         <source>Pages</source>
@@ -134,8 +131,7 @@
         <target>Przekieruj do ostatnio odwiedzonej strony</target>
       </trans-unit>
       <trans-unit id="tl_module.redirectBack.1">
-        <source>Redirect the user back to the last page visited instead of the redirect page.</source>
-        <target>Przekieruj użytkownika do strony, ostatnio odwiedzonej przed logowaniem/wylogowaniem.</target>
+        <source>Redirect the member back to the last page visited instead of the redirect page.</source>
       </trans-unit>
       <trans-unit id="tl_module.1cl.0">
         <source>One column</source>
@@ -226,20 +222,20 @@
         <target>W zaawansowanym szukaniu możesz wybrać rodzaj zapytania jaki będzie używać wyszukiwarka.</target>
       </trans-unit>
       <trans-unit id="tl_module.contextLength.0">
-        <source>Context range</source>
-        <target>Wielkość kontekstu</target>
+        <source>Context length</source>
+        <target>Długość kontekstu</target>
       </trans-unit>
       <trans-unit id="tl_module.contextLength.1">
-        <source>The number of characters on the left and right side of each keyword that are used as context.</source>
-        <target>Wpisz ilość znaków jaka ma się pojawić po obu stronach każdego wyszukiwanego słowa. Pomaga to zrozumieć kontekst wyszukiwanej frazy.</target>
+        <source>The first field defines the number of characters on the left and right side of each keyword and the second one the overall context length per result.</source>
+        <target>Pierwsze pole określa liczbę znaków po lewej i prawej stronie każdego słowa kluczowego, a drugie ogólną długość kontekstu w wyinku.</target>
       </trans-unit>
-      <trans-unit id="tl_module.totalLength.0">
-        <source>Maximum context length</source>
-        <target>Maksymalna długość kontekstu</target>
+      <trans-unit id="tl_module.minKeywordLength.0">
+        <source>Minimum keyword length</source>
+        <target>Minimalna długość słowa kluczowego</target>
       </trans-unit>
-      <trans-unit id="tl_module.totalLength.1">
-        <source>Here you can limit the overall context length per result.</source>
-        <target>Wprowadź maksymalną (całkowitą) długość kontekstu dla każdej wyszukiwanej frazy.</target>
+      <trans-unit id="tl_module.minKeywordLength.1">
+        <source>Keywords deceeding the minimum length will be ignored in the search results. Set to 0 to disable.</source>
+        <target>Słowa kluczowe poniżej minimalnej długości będą ignorowane w wynikach wyszukiwania. Ustaw na 0, aby wyłączyć.</target>
       </trans-unit>
       <trans-unit id="tl_module.perPage.0">
         <source>Items per page</source>
@@ -266,12 +262,12 @@
         <target>Wybierz szablon wyników wyszukiwania. Domyślnym szablonem jest &lt;em&gt;search_default&lt;/em&gt;. Jeśli chcesz dodać własny szablon, wgraj go do katalogu &lt;em&gt;templates&lt;/em&gt; (rozszerzenie pliku musi być &lt;em&gt;tpl&lt;/em&gt;).</target>
       </trans-unit>
       <trans-unit id="tl_module.inColumn.0">
-        <source>Column</source>
-        <target>Kolumna</target>
+        <source>Layout section</source>
+        <target>Sekcja szablonu</target>
       </trans-unit>
       <trans-unit id="tl_module.inColumn.1">
-        <source>Please choose the column whose articles you want to list.</source>
-        <target>Wybierz kolumnę, na której będzie lista artykułów.</target>
+        <source>Please choose the layout section whose articles you want to list.</source>
+        <target>Wybierz sekcję szablonu, w której chcesz wylistować artykuły.</target>
       </trans-unit>
       <trans-unit id="tl_module.skipFirst.0">
         <source>Skip items</source>
@@ -410,28 +406,25 @@
         <target>Jeśli potrzebujesz osobnej definicji do formatowania tego modułu w stylach CSS, możesz tu wprowadzić ID. To ID będzie przypisane do tego modułu i można je modyfikować w arkuszu CSS.</target>
       </trans-unit>
       <trans-unit id="tl_module.disableCaptcha.0">
-        <source>Disable the security question</source>
-        <target>Wyłącz pytanie kontrolne</target>
+        <source>Disable spam protection</source>
       </trans-unit>
       <trans-unit id="tl_module.disableCaptcha.1">
-        <source>Here you can disable the security question (not recommended).</source>
-        <target>Tu możesz wyłączyć pytanie kontrolne (nie zalecane).</target>
+        <source>Here you can disable the spam protection (not recommended).</source>
       </trans-unit>
       <trans-unit id="tl_module.reg_groups.0">
         <source>Member groups</source>
         <target>Grupy użytkowników</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_groups.1">
-        <source>Here you can assign the user to one or more groups.</source>
-        <target>Każdy redaktor, który nie jest administratorem dziedziczy zezwolenia po grupie, w której się znajduje. Dlatego każdy redaktor musi być członkiem co najmniej jednej grupy! Jeśli redaktor jest w więcej niż jednej grupie, zezwolenia się łączą.</target>
+        <source>Here you can assign the member to one or more groups.</source>
+        <target>Tutaj mozesz przypisać użytkownika do jednej lub więcej grup.</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_allowLogin.0">
         <source>Allow login</source>
         <target>Zezwól na logowanie</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_allowLogin.1">
-        <source>Allow the new user to log into the front end.</source>
-        <target>Wybierz ta opcje aby użytkownik mógł się zalogować przy pomocy nazwy użytkownika i hasła.</target>
+        <source>Allow the new member to log into the front end.</source>
       </trans-unit>
       <trans-unit id="tl_module.reg_skipName.0">
         <source>Skip username</source>
@@ -478,8 +471,7 @@
         <target>Przekierowanie po aktywacji</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_jumpTo.1">
-        <source>Please choose the page to which users will be redirected after the request has been completed.</source>
-        <target>Wybierz stronę, na którą zostanie przekierowany użytkownik po aktywacji konta.</target>
+        <source>Please choose the page to which members will be redirected after the request has been completed.</source>
       </trans-unit>
       <trans-unit id="tl_module.reg_text.0">
         <source>Activation message</source>
@@ -494,8 +486,7 @@
         <target>Email potwierdzajacy</target>
       </trans-unit>
       <trans-unit id="tl_module.reg_password.1">
-        <source>You can use the wildcards &lt;em&gt;##domain##&lt;/em&gt; (domain name), &lt;em&gt;##link##&lt;/em&gt; (activation link) and any user property (e.g. &lt;em&gt;##lastname##&lt;/em&gt;).</source>
-        <target>Podaj tekst maila potwierdzającego. Dozwolone są także informacje o użytkowniku (np. &lt;em&gt;##lastname##&lt;/em&gt;) jak również &lt;em&gt;##domain##&lt;/em&gt; (aktualna domena) oraz &lt;em&gt;##link##&lt;/em&gt; (link aktywacyjny).</target>
+        <source>You can use the wildcards &lt;em&gt;##domain##&lt;/em&gt; (domain name), &lt;em&gt;##link##&lt;/em&gt; (activation link) and any member property (e.g. &lt;em&gt;##lastname##&lt;/em&gt;).</source>
       </trans-unit>
       <trans-unit id="tl_module.title_legend">
         <source>Title and type</source>
@@ -568,6 +559,16 @@ The confirmation link is valid for 24 hours.
 
 If you did not request an account, please ignore this e-mail.
 </source>
+        <target>Dziękujemy za rejestrację na ##domain##.
+
+Kliknij tutaj, aby zakończyć rejestrację i aktywować swoje konto:
+
+##link##
+
+Link potwierdzający jest ważny 24 godziny.
+
+Jeśli nie zakładałeś konta, zignoruj ten e-mail.
+</target>
       </trans-unit>
       <trans-unit id="tl_module.passwordText.0">
         <source>Your password request on %s</source>
@@ -582,6 +583,14 @@ Click here to set the new password:
 
 If you did not request this e-mail, please contact the website administrator.
 </source>
+        <target>Zażądałeś nowego hasła na ##domain##.
+
+Kliknij tutaj, aby ustawić nowe hasło:
+
+##link##
+
+Jeśli nie prosiłeś o ten e-mail, skontaktuj się z administratorem strony.
+</target>
       </trans-unit>
       <trans-unit id="tl_module.internal">
         <source>Internal file</source>
@@ -600,68 +609,32 @@ If you did not request this e-mail, please contact the website administrator.
         <target>Nieodwracalne usunięcie konta</target>
       </trans-unit>
       <trans-unit id="tl_module.new.0">
-        <source>Add module</source>
-        <target>Dodaj moduł</target>
+        <source>New</source>
+        <target>Nowy</target>
       </trans-unit>
       <trans-unit id="tl_module.new.1">
-        <source>Add a module</source>
-        <target>Dodaj nowy moduł</target>
+        <source>Create a new module</source>
+        <target>Utwórz nowy moduł</target>
       </trans-unit>
-      <trans-unit id="tl_module.show.0">
-        <source>Module details</source>
-        <target>Szczegóły modułu</target>
-      </trans-unit>
-      <trans-unit id="tl_module.show.1">
+      <trans-unit id="tl_module.show">
         <source>Show the details of module ID %s</source>
         <target>Pokaż szczegóły modułu ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_module.edit.0">
-        <source>Edit module</source>
-        <target>Edytuj moduł</target>
-      </trans-unit>
-      <trans-unit id="tl_module.edit.1">
+      <trans-unit id="tl_module.edit">
         <source>Edit module ID %s</source>
         <target>Edytuj moduł ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_module.cut.0">
-        <source>Move module</source>
-        <target>Przenieś moduł</target>
-      </trans-unit>
-      <trans-unit id="tl_module.cut.1">
-        <source>Move module ID %s</source>
-        <target>Przenieś moduł ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_module.copy.0">
-        <source>Duplicate module</source>
-        <target>Duplikuj moduł</target>
-      </trans-unit>
-      <trans-unit id="tl_module.copy.1">
+      <trans-unit id="tl_module.copy">
         <source>Duplicate module ID %s</source>
         <target>Duplikuj moduł ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_module.delete.0">
-        <source>Delete module</source>
-        <target>Skasuj moduł</target>
+      <trans-unit id="tl_module.cut">
+        <source>Move module ID %s</source>
+        <target>Przenieś moduł ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_module.delete.1">
+      <trans-unit id="tl_module.delete">
         <source>Delete module ID %s</source>
         <target>Skasuj moduł ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_module.editheader.0">
-        <source>Edit theme</source>
-        <target>Edytuj motyw</target>
-      </trans-unit>
-      <trans-unit id="tl_module.editheader.1">
-        <source>Edit the theme settings</source>
-        <target>Edytuj ustawienia motywu</target>
-      </trans-unit>
-      <trans-unit id="tl_module.pasteafter.0">
-        <source>Paste here</source>
-        <target>Wklej tutaj</target>
-      </trans-unit>
-      <trans-unit id="tl_module.pasteafter.1">
-        <source>Paste after module ID %s</source>
-        <target>Wklej po module ID %s</target>
       </trans-unit>
     </body>
   </file>

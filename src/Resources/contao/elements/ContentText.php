@@ -17,7 +17,6 @@ namespace Contao;
  */
 class ContentText extends ContentElement
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -42,7 +41,7 @@ class ContentText extends ContentElement
 		$this->Template->addImage = false;
 
 		// Add an image
-		if ($this->addImage && $this->singleSRC != '')
+		if ($this->addImage && $this->singleSRC)
 		{
 			$objModel = FilesModel::findByUuid($this->singleSRC);
 

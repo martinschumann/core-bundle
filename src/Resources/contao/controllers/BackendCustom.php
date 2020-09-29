@@ -22,7 +22,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BackendCustom extends BackendMain
 {
-
 	/**
 	 * Constructor.
 	 */
@@ -51,13 +50,7 @@ class BackendCustom extends BackendMain
 	 */
 	public function run()
 	{
-		try {
-			$version = PackageUtil::getVersion('contao/core-bundle');
-		} catch (\OutOfBoundsException $e) {
-			$version = PackageUtil::getVersion('contao/contao');
-		}
-
-		$this->Template->version = $GLOBALS['TL_LANG']['MSC']['version'] . ' ' . $version;
+		$this->Template->version = $GLOBALS['TL_LANG']['MSC']['version'] . ' ' . PackageUtil::getContaoVersion();
 
 		// Ajax request
 		if ($_POST && Environment::get('isAjaxRequest'))

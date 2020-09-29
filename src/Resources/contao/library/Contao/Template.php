@@ -10,7 +10,9 @@
 
 namespace Contao;
 
-use MatthiasMullie\Minify;
+use Contao\CoreBundle\EventListener\SubrequestCacheSubscriber;
+use MatthiasMullie\Minify\CSS;
+use MatthiasMullie\Minify\JS;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\VarDumper\VarDumper;
 
@@ -33,6 +35,29 @@ use Symfony\Component\VarDumper\VarDumper;
  * @property string       $inColumn
  * @property string       $headline
  * @property array        $hl
+ * @property string       $action
+ * @property string       $enforceTwoFactor
+ * @property string       $targetPath
+ * @property string       $message
+ * @property string       $href
+ * @property string       $twoFactor
+ * @property string       $explain
+ * @property string       $active
+ * @property string       $enableButton
+ * @property string       $disableButton
+ * @property boolean      $enable
+ * @property boolean      $isEnabled
+ * @property string       $secret
+ * @property string       $textCode
+ * @property string       $qrCode
+ * @property string       $scan
+ * @property string       $verify
+ * @property string       $verifyHelp
+ * @property boolean      $showBackupCodes
+ * @property array        $backupCodes
+ * @property boolean      $trustedDevicesEnabled
+ * @property array        $trustedDevices
+ * @property string       $currentDevice
  *
  * @author Leo Feyer <https://github.com/leofeyer>
  */
@@ -230,7 +255,7 @@ abstract class Template extends Controller
 	 */
 	public function showTemplateVars()
 	{
-		@trigger_error('Using Template::showTemplateVars() has been deprecated and will no longer work in Contao 5.0. Use Template::dumpTemplateVars() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Template::showTemplateVars()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Template::dumpTemplateVars()" instead.');
 
 		$this->dumpTemplateVars();
 	}
@@ -250,7 +275,7 @@ abstract class Template extends Controller
 	 */
 	public function parse()
 	{
-		if ($this->strTemplate == '')
+		if (!$this->strTemplate)
 		{
 			return '';
 		}
@@ -276,16 +301,13 @@ abstract class Template extends Controller
 	 */
 	public function output()
 	{
-		@trigger_error('Using Template::output() has been deprecated and will no longer work in Contao 5.0. Use Template::getResponse() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Template::output()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Template::getResponse()" instead.');
 
 		$this->compile();
 
 		header('Content-Type: ' . $this->strContentType . '; charset=' . Config::get('characterSet'));
 
 		echo $this->strBuffer;
-
-		// Flush the output buffers (see #6962)
-		$this->flushAllData();
 	}
 
 	/**
@@ -299,6 +321,10 @@ abstract class Template extends Controller
 
 		$response = new Response($this->strBuffer);
 		$response->headers->set('Content-Type', $this->strContentType . '; charset=' . Config::get('characterSet'));
+
+		// Mark this response to affect the caching of the current page but remove any default cache headers
+		$response->headers->set(SubrequestCacheSubscriber::MERGE_CACHE_HEADER, true);
+		$response->headers->remove('Cache-Control');
 
 		return $response;
 	}
@@ -316,7 +342,7 @@ abstract class Template extends Controller
 		$strUrl = System::getContainer()->get('router')->generate($strName, $arrParams);
 		$strUrl = substr($strUrl, \strlen(Environment::get('path')) + 1);
 
-		return ampersand($strUrl);
+		return StringUtil::ampersand($strUrl);
 	}
 
 	/**
@@ -329,20 +355,24 @@ abstract class Template extends Controller
 	 */
 	public function previewRoute($strName, $arrParams=array())
 	{
-		$objRouter = System::getContainer()->get('router');
-		$objContext = $objRouter->getContext();
+		$container = System::getContainer();
 
-		$objPreviewContext = clone $objContext;
-		$objPreviewContext->setBaseUrl('/preview.php');
+		if (!$previewScript = $container->getParameter('contao.preview_script'))
+		{
+			return $this->route($strName, $arrParams);
+		}
 
-		$objRouter->setContext($objPreviewContext);
+		$router = $container->get('router');
 
-		$strUrl = $objRouter->generate($strName, $arrParams);
+		$context = $router->getContext();
+		$context->setBaseUrl($previewScript);
+
+		$strUrl = $router->generate($strName, $arrParams);
 		$strUrl = substr($strUrl, \strlen(Environment::get('path')) + 1);
 
-		$objRouter->setContext($objContext);
+		$context->setBaseUrl('');
 
-		return ampersand($strUrl);
+		return StringUtil::ampersand($strUrl);
 	}
 
 	/**
@@ -376,6 +406,18 @@ abstract class Template extends Controller
 	}
 
 	/**
+	 * Returns a container parameter
+	 *
+	 * @param string $strKey
+	 *
+	 * @return mixed
+	 */
+	public function param($strKey)
+	{
+		return System::getContainer()->getParameter($strKey);
+	}
+
+	/**
 	 * Compile the template
 	 *
 	 * @internal Do not call this method in your code. It will be made private in Contao 5.0.
@@ -395,7 +437,7 @@ abstract class Template extends Controller
 	 */
 	protected function getDebugBar()
 	{
-		@trigger_error('Using Template::getDebugBar() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Template::getDebugBar()" has been deprecated and will no longer work in Contao 5.0.');
 	}
 
 	/**
@@ -421,7 +463,7 @@ abstract class Template extends Controller
 		$strType = null;
 
 		// Check for valid JavaScript types (see #7927)
-		$isJavaScript = function ($strChunk)
+		$isJavaScript = static function ($strChunk)
 		{
 			$typeMatch = array();
 
@@ -473,13 +515,13 @@ abstract class Template extends Controller
 				// Minify inline scripts
 				if ($strType == 'js')
 				{
-					$objMinify = new Minify\JS();
+					$objMinify = new JS();
 					$objMinify->add($strChunk);
 					$strChunk = $objMinify->minify();
 				}
 				elseif ($strType == 'css')
 				{
-					$objMinify = new Minify\CSS();
+					$objMinify = new CSS();
 					$objMinify->add($strChunk);
 					$strChunk = $objMinify->minify();
 				}
@@ -512,20 +554,20 @@ abstract class Template extends Controller
 		if ($mtime === null && !preg_match('@^https?://@', $href))
 		{
 			$container = System::getContainer();
-			$rootDir = $container->getParameter('kernel.project_dir');
+			$projectDir = $container->getParameter('kernel.project_dir');
 
-			if (file_exists($rootDir . '/' . $href))
+			if (file_exists($projectDir . '/' . $href))
 			{
-				$mtime = filemtime($rootDir . '/' . $href);
+				$mtime = filemtime($projectDir . '/' . $href);
 			}
 			else
 			{
 				$webDir = StringUtil::stripRootDir($container->getParameter('contao.web_dir'));
 
 				// Handle public bundle resources in web/
-				if (file_exists($rootDir . '/' . $webDir . '/' . $href))
+				if (file_exists($projectDir . '/' . $webDir . '/' . $href))
 				{
-					$mtime = filemtime($rootDir . '/' . $webDir . '/' . $href);
+					$mtime = filemtime($projectDir . '/' . $webDir . '/' . $href);
 				}
 			}
 		}
@@ -553,34 +595,35 @@ abstract class Template extends Controller
 	/**
 	 * Generate the markup for a JavaScript tag
 	 *
-	 * @param string      $src         The script path
-	 * @param boolean     $async       True to add the async attribute
-	 * @param mixed       $mtime       The file mtime
-	 * @param string|null $hash        An optional integrity hash
-	 * @param string|null $crossorigin An optional crossorigin attribute
+	 * @param string      $src            The script path
+	 * @param boolean     $async          True to add the async attribute
+	 * @param mixed       $mtime          The file mtime
+	 * @param string|null $hash           An optional integrity hash
+	 * @param string|null $crossorigin    An optional crossorigin attribute
+	 * @param string|null $referrerpolicy An optional referrerpolicy attribute
 	 *
 	 * @return string The markup string
 	 */
-	public static function generateScriptTag($src, $async=false, $mtime=false, $hash=null, $crossorigin=null)
+	public static function generateScriptTag($src, $async=false, $mtime=false, $hash=null, $crossorigin=null, $referrerpolicy=null)
 	{
 		// Add the filemtime if not given and not an external file
 		if ($mtime === null && !preg_match('@^https?://@', $src))
 		{
 			$container = System::getContainer();
-			$rootDir = $container->getParameter('kernel.project_dir');
+			$projectDir = $container->getParameter('kernel.project_dir');
 
-			if (file_exists($rootDir . '/' . $src))
+			if (file_exists($projectDir . '/' . $src))
 			{
-				$mtime = filemtime($rootDir . '/' . $src);
+				$mtime = filemtime($projectDir . '/' . $src);
 			}
 			else
 			{
 				$webDir = StringUtil::stripRootDir($container->getParameter('contao.web_dir'));
 
 				// Handle public bundle resources in web/
-				if (file_exists($rootDir . '/' . $webDir . '/' . $src))
+				if (file_exists($projectDir . '/' . $webDir . '/' . $src))
 				{
-					$mtime = filemtime($rootDir . '/' . $webDir . '/' . $src);
+					$mtime = filemtime($projectDir . '/' . $webDir . '/' . $src);
 				}
 			}
 		}
@@ -590,7 +633,7 @@ abstract class Template extends Controller
 			$src .= '?v=' . substr(md5($mtime), 0, 8);
 		}
 
-		return '<script src="' . $src . '"' . ($async ? ' async' : '') . ($hash ? ' integrity="' . $hash . '"' : '') . ($crossorigin ? ' crossorigin="' . $crossorigin . '"' : '') . '></script>';
+		return '<script src="' . $src . '"' . ($async ? ' async' : '') . ($hash ? ' integrity="' . $hash . '"' : '') . ($crossorigin ? ' crossorigin="' . $crossorigin . '"' : '') . ($referrerpolicy ? ' referrerpolicy="' . $referrerpolicy . '"' : '') . '></script>';
 	}
 
 	/**
@@ -626,13 +669,13 @@ abstract class Template extends Controller
 	 */
 	public function flushAllData()
 	{
-		@trigger_error('Using Template::flushAllData() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Template::flushAllData()" has been deprecated and will no longer work in Contao 5.0.');
 
 		if (\function_exists('fastcgi_finish_request'))
 		{
 			fastcgi_finish_request();
 		}
-		elseif (PHP_SAPI !== 'cli')
+		elseif (\PHP_SAPI !== 'cli')
 		{
 			$status = ob_get_status(true);
 			$level = \count($status);

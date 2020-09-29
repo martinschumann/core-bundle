@@ -22,7 +22,6 @@ namespace Contao;
  */
 class PageTree extends Widget
 {
-
 	/**
 	 * Submit user input
 	 * @var boolean
@@ -58,8 +57,10 @@ class PageTree extends Widget
 		parent::__construct($arrAttributes);
 
 		// Prepare the order field
-		if ($this->orderField != '')
+		if ($this->orderField)
 		{
+			trigger_deprecation('contao/core-bundle', '4.10', 'Using "orderField" for the page tree has been deprecated and will no longer work in Contao 5.0. Use "isSortable" instead.');
+
 			$this->strOrderId = $this->orderField . str_replace($this->strField, '', $this->strId);
 			$this->strOrderName = $this->orderField . str_replace($this->strField, '', $this->strName);
 
@@ -90,7 +91,7 @@ class PageTree extends Widget
 		}
 
 		// Store the order value
-		if ($this->orderField != '')
+		if ($this->orderField)
 		{
 			$arrNew = array();
 
@@ -110,7 +111,7 @@ class PageTree extends Widget
 		}
 
 		// Return the value as usual
-		if ($varInput == '')
+		if (!$varInput)
 		{
 			if ($this->mandatory)
 			{
@@ -119,16 +120,15 @@ class PageTree extends Widget
 
 			return '';
 		}
-		elseif (strpos($varInput, ',') === false)
+
+		if (strpos($varInput, ',') === false)
 		{
 			return $this->multiple ? array((int) $varInput) : (int) $varInput;
 		}
-		else
-		{
-			$arrValue = array_map('\intval', array_filter(explode(',', $varInput)));
 
-			return $this->multiple ? $arrValue : $arrValue[0];
-		}
+		$arrValue = array_map('\intval', array_filter(explode(',', $varInput)));
+
+		return $this->multiple ? $arrValue : $arrValue[0];
 	}
 
 	/**
@@ -138,7 +138,7 @@ class PageTree extends Widget
 	 */
 	protected function checkValue($varInput)
 	{
-		if ($varInput == '' || !\is_array($this->rootNodes))
+		if (!$varInput || !\is_array($this->rootNodes))
 		{
 			return;
 		}
@@ -167,57 +167,40 @@ class PageTree extends Widget
 	{
 		$arrSet = array();
 		$arrValues = array();
-		$blnHasOrder = ($this->orderField != '' && \is_array($this->{$this->orderField}));
+		$blnHasOrder = $this->orderField && \is_array($this->{$this->orderField});
 
-		if (!empty($this->varValue)) // can be an array
+		// $this->varValue can be an array, so use empty() here
+		if (!empty($this->varValue))
 		{
 			$objPages = PageModel::findMultipleByIds((array) $this->varValue);
 
 			if ($objPages !== null)
 			{
-				while ($objPages->next())
+				foreach ($objPages as $objPage)
 				{
-					$arrSet[] = $objPages->id;
-					$arrValues[$objPages->id] = Image::getHtml($this->getPageStatusIcon($objPages)) . ' ' . $objPages->title . ' (' . $objPages->alias . Config::get('urlSuffix') . ')';
+					$objPage->loadDetails();
+
+					$arrSet[] = $objPage->id;
+					$arrValues[$objPage->id] = Image::getHtml($this->getPageStatusIcon($objPage)) . ' ' . $objPage->title . ' (' . ($objPage->urlPrefix ? ($objPage->urlPrefix . '/') : '') . $objPage->alias . $objPage->urlSuffix . ')';
 				}
 			}
 
 			// Apply a custom sort order
 			if ($blnHasOrder)
 			{
-				$arrNew = array();
-
-				foreach ((array) $this->{$this->orderField} as $i)
-				{
-					if (isset($arrValues[$i]))
-					{
-						$arrNew[$i] = $arrValues[$i];
-						unset($arrValues[$i]);
-					}
-				}
-
-				if (!empty($arrValues))
-				{
-					foreach ($arrValues as $k=>$v)
-					{
-						$arrNew[$k] = $v;
-					}
-				}
-
-				$arrValues = $arrNew;
-				unset($arrNew);
+				$arrValues = ArrayUtil::sortByOrderField($arrValues, $this->{$this->orderField}, null, true);
 			}
 		}
 
-		$return = '<input type="hidden" name="'.$this->strName.'" id="ctrl_'.$this->strId.'" value="'.implode(',', $arrSet).'">' . ($blnHasOrder ? '
-  <input type="hidden" name="'.$this->strOrderName.'" id="ctrl_'.$this->strOrderId.'" value="'.$this->{$this->orderField}.'">' : '') . '
-  <div class="selector_container">' . (($blnHasOrder && \count($arrValues) > 1) ? '
+		$return = '<input type="hidden" name="' . $this->strName . '" id="ctrl_' . $this->strId . '" value="' . implode(',', $arrSet) . '">' . ($blnHasOrder ? '
+  <input type="hidden" name="' . $this->strOrderName . '" id="ctrl_' . $this->strOrderId . '" value="' . $this->{$this->orderField} . '">' : '') . '
+  <div class="selector_container">' . ((($blnHasOrder || $this->isSortable) && \count($arrValues) > 1) ? '
     <p class="sort_hint">' . $GLOBALS['TL_LANG']['MSC']['dragItemsHint'] . '</p>' : '') . '
-    <ul id="sort_'.$this->strId.'" class="'.($blnHasOrder ? 'sortable' : '').'">';
+    <ul id="sort_' . $this->strId . '" class="' . ($blnHasOrder || $this->isSortable ? 'sortable' : '') . '">';
 
 		foreach ($arrValues as $k=>$v)
 		{
-			$return .= '<li data-id="'.$k.'">'.$v.'</li>';
+			$return .= '<li data-id="' . $k . '">' . $v . '</li>';
 		}
 
 		$return .= '</ul>';
@@ -225,23 +208,14 @@ class PageTree extends Widget
 		if (!System::getContainer()->get('contao.picker.builder')->supportsContext('page'))
 		{
 			$return .= '
-	<p><button class="tl_submit" disabled>'.$GLOBALS['TL_LANG']['MSC']['changeSelection'].'</button></p>';
+	<p><button class="tl_submit" disabled>' . $GLOBALS['TL_LANG']['MSC']['changeSelection'] . '</button></p>';
 		}
 		else
 		{
-			$extras = array
-			(
-				'fieldType' => $this->fieldType,
-				'source' => $this->strTable.'.'.$this->currentRecord,
-			);
-
-			if (\is_array($this->rootNodes))
-			{
-				$extras['rootNodes'] = array_values($this->rootNodes);
-			}
+			$extras = $this->getPickerUrlExtras($arrValues);
 
 			$return .= '
-    <p><a href="' . ampersand(System::getContainer()->get('contao.picker.builder')->getUrl('page', $extras)) . '" class="tl_submit" id="pt_' . $this->strName . '">'.$GLOBALS['TL_LANG']['MSC']['changeSelection'].'</a></p>
+    <p><a href="' . StringUtil::ampersand(System::getContainer()->get('contao.picker.builder')->getUrl('page', $extras)) . '" class="tl_submit" id="pt_' . $this->strName . '">' . $GLOBALS['TL_LANG']['MSC']['changeSelection'] . '</a></p>
     <script>
       $("pt_' . $this->strName . '").addEvent("click", function(e) {
         e.preventDefault();
@@ -257,17 +231,38 @@ class PageTree extends Widget
                 json.javascript && Browser.exec(json.javascript);
                 $("ctrl_' . $this->strId . '").fireEvent("change");
               }
-            }).post({"action":"reloadPagetree", "name":"' . $this->strId . '", "value":value.join("\t"), "REQUEST_TOKEN":"' . REQUEST_TOKEN . '"});
+            }).post({"action":"reloadPagetree", "name":"' . $this->strName . '", "value":value.join("\t"), "REQUEST_TOKEN":"' . REQUEST_TOKEN . '"});
           }
         });
       });
-    </script>' . ($blnHasOrder ? '
-    <script>Backend.makeMultiSrcSortable("sort_'.$this->strId.'", "ctrl_'.$this->strOrderId.'", "ctrl_'.$this->strId.'")</script>' : '');
+    </script>' . ($blnHasOrder || $this->isSortable ? '
+    <script>Backend.makeMultiSrcSortable("sort_' . $this->strId . '", "ctrl_' . ($blnHasOrder ? $this->strOrderId : $this->strId) . '", "ctrl_' . $this->strId . '")</script>' : '');
 		}
 
 		$return = '<div>' . $return . '</div></div>';
 
 		return $return;
+	}
+
+	/**
+	 * Return the extra parameters for the picker URL
+	 *
+	 * @param array $values
+	 *
+	 * @return array
+	 */
+	protected function getPickerUrlExtras($values = array())
+	{
+		$extras = array();
+		$extras['fieldType'] = $this->fieldType;
+		$extras['source'] = $this->strTable . '.' . $this->currentRecord;
+
+		if (\is_array($this->rootNodes))
+		{
+			$extras['rootNodes'] = array_values($this->rootNodes);
+		}
+
+		return $extras;
 	}
 }
 

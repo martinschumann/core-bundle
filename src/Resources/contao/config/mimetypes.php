@@ -76,7 +76,7 @@ $GLOBALS['TL_MIME'] = array
 
 	// Audio files
 	'm4a'   => array('audio/x-m4a', 'iconM4A.svg'),
-	'mp3'   => array('audio/mp3', 'iconMP3.svg'),
+	'mp3'   => array('audio/mpeg', 'iconMP3.svg'),
 	'wma'   => array('audio/wma', 'iconWMA.svg'),
 	'mpeg'  => array('audio/mpeg', 'iconMPEG.svg'),
 	'wav'   => array('audio/wav', 'iconWAV.svg'),
@@ -102,6 +102,7 @@ $GLOBALS['TL_MIME'] = array
 	'tif'   => array('image/tiff', 'iconTIF.svg'),
 	'svg'   => array('image/svg+xml', 'iconSVG.svg'),
 	'svgz'  => array('image/svg+xml', 'iconSVGZ.svg'),
+	'webp'  => array('image/webp', 'iconWEBP.svg'),
 
 	// Mailbox files
 	'eml'   => array('message/rfc822', 'iconEML.svg'),
@@ -122,6 +123,7 @@ $GLOBALS['TL_MIME'] = array
 	'rtf'   => array('text/rtf', 'iconRTF.svg'),
 	'xml'   => array('text/xml', 'iconXML.svg'),
 	'xsl'   => array('text/xml', 'iconXSL.svg'),
+	'csv'   => array('text/csv', 'iconCSV.svg'),
 
 	// Videos
 	'mp4'   => array('video/mp4', 'iconMP4.svg'),

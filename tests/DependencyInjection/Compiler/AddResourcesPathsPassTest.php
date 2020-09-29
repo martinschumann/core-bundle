@@ -15,46 +15,57 @@ namespace Contao\CoreBundle\Tests\DependencyInjection\Compiler;
 use Contao\CoreBundle\DependencyInjection\Compiler\AddResourcesPathsPass;
 use Contao\CoreBundle\HttpKernel\Bundle\ContaoModuleBundle;
 use Contao\CoreBundle\Tests\TestCase;
+use Contao\NewBundle\ContaoNewBundle;
 use Contao\TestBundle\ContaoTestBundle;
 use Symfony\Bundle\FrameworkBundle\FrameworkBundle;
+use Webmozart\PathUtil\Path;
 
 class AddResourcesPathsPassTest extends TestCase
 {
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using "app/Resources/contao" has been deprecated %s.
-     * @expectedDeprecation Using "src/Resources/contao" has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.9: Using "app/Resources/contao" has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.9: Using "src/Resources/contao" has been deprecated %s.
      */
     public function testAddsTheResourcesPaths(): void
     {
+        $fixturesDir = Path::normalize($this->getFixturesDir());
+
         $bundles = [
             'FrameworkBundle' => FrameworkBundle::class,
             'ContaoTestBundle' => ContaoTestBundle::class,
+            'ContaoNewBundle' => ContaoNewBundle::class,
             'foobar' => ContaoModuleBundle::class,
         ];
 
-        $container = $this->getContainerWithContaoConfiguration($this->getFixturesDir());
+        $meta = [
+            'FrameworkBundle' => ['path' => (new FrameworkBundle())->getPath()],
+            'ContaoTestBundle' => ['path' => (new ContaoTestBundle())->getPath()],
+            'ContaoNewBundle' => ['path' => (new ContaoNewBundle())->getPath()],
+            'foobar' => ['path' => $fixturesDir.'/system/modules/foobar'],
+        ];
+
+        $container = $this->getContainerWithContaoConfiguration($fixturesDir);
         $container->setParameter('kernel.bundles', $bundles);
+        $container->setParameter('kernel.bundles_metadata', $meta);
 
         $pass = new AddResourcesPathsPass();
         $pass->process($container);
 
         $this->assertTrue($container->hasParameter('contao.resources_paths'));
 
-        $path = $this->getFixturesDir().'/vendor/contao/test-bundle';
-
-        if ('\\' === \DIRECTORY_SEPARATOR) {
-            $path = strtr($path, '/', '\\');
-        }
+        $testPath = $fixturesDir.'/vendor/contao/test-bundle';
+        $newPath = $fixturesDir.'/vendor/contao/new-bundle';
 
         $this->assertSame(
             [
-                $path.'/Resources/contao',
-                $this->getFixturesDir().'/system/modules/foobar',
-                $this->getFixturesDir().'/contao',
-                $this->getFixturesDir().'/app/Resources/contao',
-                $this->getFixturesDir().'/src/Resources/contao',
+                $testPath.'/Resources/contao',
+                $newPath.'/contao',
+                $fixturesDir.'/system/modules/foobar',
+                $fixturesDir.'/contao',
+                $fixturesDir.'/app/Resources/contao',
+                $fixturesDir.'/src/Resources/contao',
             ],
             $container->getParameter('contao.resources_paths')
         );

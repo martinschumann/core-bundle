@@ -36,7 +36,7 @@ class ContaoTableHandlerTest extends TestCase
     /**
      * @group legacy
      *
-     * @expectedDeprecation Using the addLogEntry hook has been deprecated %s.
+     * @expectedDeprecation Since contao/core-bundle 4.0: Using the "addLogEntry" hook has been deprecated %s.
      */
     public function testHandlesContaoRecords(): void
     {
@@ -66,7 +66,7 @@ class ContaoTableHandlerTest extends TestCase
         $container->set('contao.framework', $this->mockContaoFramework([System::class => $system]));
         $container->set('doctrine.dbal.default_connection', $connection);
 
-        $GLOBALS['TL_HOOKS']['addLogEntry'][] = [\get_class($this), 'addLogEntry'];
+        $GLOBALS['TL_HOOKS']['addLogEntry'][] = [static::class, 'addLogEntry'];
 
         $handler = new ContaoTableHandler();
         $handler->setContainer($container);

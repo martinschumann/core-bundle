@@ -35,32 +35,28 @@ class UrlGenerator implements UrlGeneratorInterface
      */
     private $prependLocale;
 
+    /**
+     * @internal Do not inherit from this class; decorate the "contao.routing.url_generator" service instead
+     */
     public function __construct(UrlGeneratorInterface $router, ContaoFramework $framework, bool $prependLocale)
     {
+        trigger_deprecation('contao/core-bundle', '4.10', 'Using the "Contao\CoreBundle\Routing\UrlGenerator" class has been deprecated and will no longer work in Contao 5.0. Use the Symfony router instead.', E_USER_DEPRECATED);
+
         $this->router = $router;
         $this->framework = $framework;
         $this->prependLocale = $prependLocale;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setContext(RequestContext $context): void
     {
         $this->router->setContext($context);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getContext(): RequestContext
     {
         return $this->router->getContext();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function generate($name, $parameters = [], $referenceType = self::ABSOLUTE_PATH): ?string
     {
         $this->framework->initialize();
@@ -126,14 +122,12 @@ class UrlGenerator implements UrlGeneratorInterface
         $config = $this->framework->getAdapter(Config::class);
 
         $parameters['alias'] = preg_replace_callback(
-            '/\{([^\}]+)\}/',
+            '/{([^}]+)}/',
             static function (array $matches) use ($alias, &$parameters, $autoItems, &$hasAutoItem, $config): string {
                 $param = $matches[1];
 
                 if (!isset($parameters[$param])) {
-                    throw new MissingMandatoryParametersException(
-                        sprintf('Parameters "%s" is missing to generate a URL for "%s"', $param, $alias)
-                    );
+                    throw new MissingMandatoryParametersException(sprintf('Parameters "%s" is missing to generate a URL for "%s"', $param, $alias));
                 }
 
                 $value = $parameters[$param];
@@ -172,6 +166,10 @@ class UrlGenerator implements UrlGeneratorInterface
      */
     private function addHostToContext(RequestContext $context, array $parameters, int &$referenceType): void
     {
+        /**
+         * @var string   $host
+         * @var int|null $port
+         */
         [$host, $port] = $this->getHostAndPort($parameters['_domain']);
 
         if ($context->getHost() === $host) {
@@ -195,12 +193,14 @@ class UrlGenerator implements UrlGeneratorInterface
     /**
      * Extracts host and port from the domain.
      *
-     * @return (string|null)[]
+     * @return array<string|int|null>
      */
     private function getHostAndPort(string $domain): array
     {
         if (false !== strpos($domain, ':')) {
-            return explode(':', $domain, 2);
+            [$host, $port] = explode(':', $domain, 2);
+
+            return [$host, (int) $port];
         }
 
         return [$domain, null];
@@ -209,7 +209,7 @@ class UrlGenerator implements UrlGeneratorInterface
     /**
      * Returns the auto_item key from the parameters or the global array.
      *
-     * @return string[]
+     * @return array<string>
      */
     private function getAutoItems(array $parameters): array
     {

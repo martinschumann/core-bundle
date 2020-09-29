@@ -19,7 +19,6 @@ use Patchwork\Utf8;
  */
 class ModuleChangePassword extends Module
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -33,7 +32,9 @@ class ModuleChangePassword extends Module
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 			$objTemplate->wildcard = '### ' . Utf8::strtoupper($GLOBALS['TL_LANG']['FMD']['changePassword'][0]) . ' ###';
@@ -143,11 +144,15 @@ class ModuleChangePassword extends Module
 				$objWidget->validate();
 
 				// Validate the old password
-				if ($strKey == 'oldPassword' && !password_verify($objWidget->value, $objMember->password))
+				if ($strKey == 'oldPassword')
 				{
-					$objWidget->value = '';
-					$objWidget->addError($GLOBALS['TL_LANG']['MSC']['oldPasswordWrong']);
-					sleep(2); // Wait 2 seconds while brute forcing :)
+					$encoder = System::getContainer()->get('security.encoder_factory')->getEncoder(FrontendUser::class);
+
+					if (!$encoder->isPasswordValid($objMember->password, $objWidget->value, null))
+					{
+						$objWidget->value = '';
+						$objWidget->addError($GLOBALS['TL_LANG']['MSC']['oldPasswordWrong']);
+					}
 				}
 
 				if ($objWidget->hasErrors())
@@ -163,7 +168,7 @@ class ModuleChangePassword extends Module
 		$this->Template->hasError = $doNotSubmit;
 
 		// Store the new password
-		if (Input::post('FORM_SUBMIT') == $strFormId && !$doNotSubmit)
+		if (!$doNotSubmit && Input::post('FORM_SUBMIT') == $strFormId)
 		{
 			$objMember->tstamp = time();
 			$objMember->password = $objNewPassword->value;
@@ -206,7 +211,6 @@ class ModuleChangePassword extends Module
 		}
 
 		$this->Template->formId = $strFormId;
-		$this->Template->action = Environment::get('indexFreeRequest');
 		$this->Template->slabel = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['changePassword']);
 		$this->Template->rowLast = 'row_' . $row . ' row_last' . ((($row % 2) == 0) ? ' even' : ' odd');
 	}

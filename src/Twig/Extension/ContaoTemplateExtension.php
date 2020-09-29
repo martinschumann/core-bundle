@@ -16,8 +16,10 @@ use Contao\BackendCustom;
 use Contao\CoreBundle\Framework\ContaoFramework;
 use Contao\CoreBundle\Routing\ScopeMatcher;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Twig\Extension\AbstractExtension;
+use Twig\TwigFunction;
 
-class ContaoTemplateExtension extends \Twig_Extension
+class ContaoTemplateExtension extends AbstractExtension
 {
     /**
      * @var RequestStack
@@ -34,6 +36,9 @@ class ContaoTemplateExtension extends \Twig_Extension
      */
     private $scopeMatcher;
 
+    /**
+     * @internal Do not inherit from this class; decorate the "contao.twig.template_extension" service instead
+     */
     public function __construct(RequestStack $requestStack, ContaoFramework $framework, ScopeMatcher $scopeMatcher)
     {
         $this->requestStack = $requestStack;
@@ -41,13 +46,10 @@ class ContaoTemplateExtension extends \Twig_Extension
         $this->scopeMatcher = $scopeMatcher;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getFunctions(): array
     {
         return [
-            new \Twig_SimpleFunction('render_contao_backend_template', [$this, 'renderContaoBackendTemplate']),
+            new TwigFunction('render_contao_backend_template', [$this, 'renderContaoBackendTemplate']),
         ];
     }
 

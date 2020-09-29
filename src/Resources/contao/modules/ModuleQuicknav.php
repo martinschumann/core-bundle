@@ -19,7 +19,6 @@ use Patchwork\Utf8;
  */
 class ModuleQuicknav extends Module
 {
-
 	/**
 	 * Template
 	 * @var string
@@ -33,7 +32,9 @@ class ModuleQuicknav extends Module
 	 */
 	public function generate()
 	{
-		if (TL_MODE == 'BE')
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
+
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$objTemplate = new BackendTemplate('be_wildcard');
 			$objTemplate->wildcard = '### ' . Utf8::strtoupper($GLOBALS['TL_LANG']['FMD']['quicknav'][0]) . ' ###';
@@ -76,7 +77,7 @@ class ModuleQuicknav extends Module
 			$objRootPage = PageModel::findWithDetails($this->rootPage);
 
 			// Set the domain
-			if ($objRootPage->rootId != $objPage->rootId && $objRootPage->domain != '' && $objRootPage->domain != $objPage->domain)
+			if ($objRootPage->rootId != $objPage->rootId && $objRootPage->domain && $objRootPage->domain != $objPage->domain)
 			{
 				$host = $objRootPage->domain;
 			}
@@ -86,7 +87,6 @@ class ModuleQuicknav extends Module
 		$this->Template->targetPage = $GLOBALS['TL_LANG']['MSC']['targetPage'];
 		$this->Template->button = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['go']);
 		$this->Template->title = $this->customLabel ?: $GLOBALS['TL_LANG']['MSC']['quicknav'];
-		$this->Template->request = ampersand(Environment::get('request'), true);
 		$this->Template->items = $this->getQuicknavPages($this->rootPage, 1, $host);
 	}
 

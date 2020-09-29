@@ -13,41 +13,37 @@ declare(strict_types=1);
 namespace Contao\CoreBundle\EventListener;
 
 use Contao\BackendUser;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\Security\Core\Security;
+use Symfony\Contracts\Translation\LocaleAwareInterface;
 
+/**
+ * @internal
+ */
 class BackendLocaleListener
 {
     /**
-     * @var TokenStorageInterface
+     * @var Security
      */
-    private $tokenStorage;
+    private $security;
 
     /**
-     * @var TranslatorInterface
+     * @var LocaleAwareInterface
      */
     private $translator;
 
-    public function __construct(TokenStorageInterface $tokenStorage, TranslatorInterface $translator)
+    public function __construct(Security $security, LocaleAwareInterface $translator)
     {
-        $this->tokenStorage = $tokenStorage;
+        $this->security = $security;
         $this->translator = $translator;
     }
 
     /**
      * Sets the default locale based on the user language.
      */
-    public function onKernelRequest(GetResponseEvent $event): void
+    public function __invoke(RequestEvent $event): void
     {
-        $token = $this->tokenStorage->getToken();
-
-        if (!$token instanceof TokenInterface) {
-            return;
-        }
-
-        $user = $token->getUser();
+        $user = $this->security->getUser();
 
         if (!$user instanceof BackendUser || !$user->language) {
             return;

@@ -6,7 +6,7 @@
         <source>E-mail address of the system administrator</source>
       </trans-unit>
       <trans-unit id="tl_settings.adminEmail.1">
-        <source>Auto-generated messages like subscription confirmation e-mails will be sent to this address.</source>
+        <source>This e-mail address will be used to send and receive system messages.</source>
       </trans-unit>
       <trans-unit id="tl_settings.dateFormat.0">
         <source>Date format</source>
@@ -55,18 +55,6 @@
       </trans-unit>
       <trans-unit id="tl_settings.doNotCollapse.1">
         <source>Do not collapse elements in the back end preview.</source>
-      </trans-unit>
-      <trans-unit id="tl_settings.doNotRedirectEmpty.0">
-        <source>Do not redirect empty URLs</source>
-      </trans-unit>
-      <trans-unit id="tl_settings.doNotRedirectEmpty.1">
-        <source>For an empty URL display the website instead of redirecting to the language root page (not recommended).</source>
-      </trans-unit>
-      <trans-unit id="tl_settings.folderUrl.0">
-        <source>Enable folder URLs</source>
-      </trans-unit>
-      <trans-unit id="tl_settings.folderUrl.1">
-        <source>Here you can enable folder-style page aliases like &lt;em&gt;docs/install/download.html&lt;/em&gt; instead of &lt;em&gt;docs-install-download.html&lt;/em&gt;.</source>
       </trans-unit>
       <trans-unit id="tl_settings.allowedTags.0">
         <source>Allowed HTML tags</source>
@@ -122,18 +110,6 @@
       <trans-unit id="tl_settings.imageHeight.1">
         <source>Here you can enter the maximum height for image uploads in pixels.</source>
       </trans-unit>
-      <trans-unit id="tl_settings.enableSearch.0">
-        <source>Enable searching</source>
-      </trans-unit>
-      <trans-unit id="tl_settings.enableSearch.1">
-        <source>Index pages so they can be searched.</source>
-      </trans-unit>
-      <trans-unit id="tl_settings.indexProtected.0">
-        <source>Index protected pages</source>
-      </trans-unit>
-      <trans-unit id="tl_settings.indexProtected.1">
-        <source>Use this option carefully and always exclude personalized pages from being indexed!</source>
-      </trans-unit>
       <trans-unit id="tl_settings.defaultUser.0">
         <source>Default page owner</source>
       </trans-unit>
@@ -161,9 +137,6 @@
       <trans-unit id="tl_settings.backend_legend">
         <source>Back end configuration</source>
       </trans-unit>
-      <trans-unit id="tl_settings.frontend_legend">
-        <source>Front end configuration</source>
-      </trans-unit>
       <trans-unit id="tl_settings.security_legend">
         <source>Security settings</source>
       </trans-unit>
@@ -176,14 +149,11 @@
       <trans-unit id="tl_settings.cron_legend">
         <source>Cron job settings</source>
       </trans-unit>
-      <trans-unit id="tl_settings.search_legend">
-        <source>Search engine settings</source>
-      </trans-unit>
       <trans-unit id="tl_settings.chmod_legend">
         <source>Default access rights</source>
       </trans-unit>
-      <trans-unit id="tl_settings.edit">
-        <source>Edit the local configuration</source>
+      <trans-unit id="tl_settings.configuredInApp">
+        <source>This setting has been defined in the app configuration and cannot be changed here anymore.</source>
       </trans-unit>
     </body>
   </file>

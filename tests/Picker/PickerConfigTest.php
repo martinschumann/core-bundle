@@ -22,9 +22,6 @@ class PickerConfigTest extends TestCase
      */
     private $config;
 
-    /**
-     * {@inheritdoc}
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,6 +45,15 @@ class PickerConfigTest extends TestCase
         $this->config->setExtra('foo', 'bar');
 
         $this->assertSame('bar', $this->config->getExtra('foo'));
+    }
+
+    public function testCanReadProviderExtras(): void
+    {
+        $this->config->setExtra('insertTag', '{{fallback}}');
+        $this->config->setExtra('foobar', ['insertTag' => '{{foobarSpecific}}']);
+
+        $this->assertSame('{{fallback}}', $this->config->getExtraForProvider('insertTag', 'notExistingProvider'));
+        $this->assertSame('{{foobarSpecific}}', $this->config->getExtraForProvider('insertTag', 'foobar'));
     }
 
     public function testClonesTheCurrentObject(): void

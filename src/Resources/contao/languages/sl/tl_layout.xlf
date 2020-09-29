@@ -139,9 +139,11 @@
       </trans-unit>
       <trans-unit id="tl_layout.stylesheet.0">
         <source>Internal style sheets</source>
+        <target>Lastne slogovne predloge</target>
       </trans-unit>
       <trans-unit id="tl_layout.stylesheet.1">
         <source>Here you can add internal style sheets to the layout.</source>
+        <target>Tu lahko vnesete lastne slogovne predloge</target>
       </trans-unit>
       <trans-unit id="tl_layout.framework.0">
         <source>CSS framework</source>
@@ -178,12 +180,14 @@
       </trans-unit>
       <trans-unit id="tl_layout.form.css.0">
         <source>Basic forms</source>
+        <target>Osnovni obrazci</target>
       </trans-unit>
       <trans-unit id="tl_layout.form.css.1">
         <source>Adds basic form elements and buttons formatting.</source>
       </trans-unit>
       <trans-unit id="tl_layout.icons.css.0">
         <source>Basic icons</source>
+        <target>Osnovne ikone</target>
       </trans-unit>
       <trans-unit id="tl_layout.icons.css.1">
         <source>Adds basic mime icons for downloads and enclosures.</source>
@@ -201,6 +205,7 @@
       </trans-unit>
       <trans-unit id="tl_layout.loadingOrder.1">
         <source>Here you can select the loading order of the style sheets.</source>
+        <target>Tu lahko določite vrstni red nalaganja slogovnih predlog CSS.</target>
       </trans-unit>
       <trans-unit id="tl_layout.combineScripts.0">
         <source>Combine scripts</source>
@@ -212,9 +217,11 @@
       </trans-unit>
       <trans-unit id="tl_layout.external_first">
         <source>Load external style sheets first</source>
+        <target>Najprej naloži zunanje slogovne predloge</target>
       </trans-unit>
       <trans-unit id="tl_layout.internal_first">
         <source>Load internal style sheets first</source>
+        <target>Najprej naloži lastne slogovne predloge</target>
       </trans-unit>
       <trans-unit id="tl_layout.webfonts.0">
         <source>Google web fonts</source>
@@ -223,6 +230,20 @@
       <trans-unit id="tl_layout.webfonts.1">
         <source>Here you can add Google web fonts to your website. Specify the font families without the base URL (e.g. &lt;em&gt;Ubuntu|Ubuntu+Mono&lt;/em&gt;).</source>
         <target>Tu lahko v svoje spletne strani vključite pisave iz storitve Google web fonts. Vnesite družine pisav brez osnovnega URL (npr. &lt;em&gt;Ubuntu|Ubuntu+Mono&lt;/em&gt;).</target>
+      </trans-unit>
+      <trans-unit id="tl_layout.lightboxSize.0">
+        <source>Lightbox image size</source>
+      </trans-unit>
+      <trans-unit id="tl_layout.lightboxSize.1">
+        <source>Here you can select an image size for the images shown in the lightbox.</source>
+      </trans-unit>
+      <trans-unit id="tl_layout.defaultImageDensities.0">
+        <source>Default image pixel densities</source>
+        <target>Privzete gostote pikslov slike</target>
+      </trans-unit>
+      <trans-unit id="tl_layout.defaultImageDensities.1">
+        <source>Here you can define the default pixel densities, e.g. &lt;em&gt;1x, 1.5x, 2x&lt;/em&gt;.</source>
+        <target>Tu lahko določite privzeto gostoto pikslov, npr. &lt;em&gt;1x, 1.5x, 2x&lt;/ em&gt;.</target>
       </trans-unit>
       <trans-unit id="tl_layout.modules.0">
         <source>Included modules</source>
@@ -240,13 +261,13 @@
         <source>Here you can select the page template.</source>
         <target>Tu lahko izberete predlogo strani.</target>
       </trans-unit>
-      <trans-unit id="tl_layout.doctype.0">
-        <source>Output format</source>
-        <target>Določanje vrste dokumenta (DTD)</target>
+      <trans-unit id="tl_layout.minifyMarkup.0">
+        <source>Minify the markup</source>
+        <target>Skrči HTML označevanje</target>
       </trans-unit>
-      <trans-unit id="tl_layout.doctype.1">
-        <source>Here you can set the output format.</source>
-        <target>Prosimo, izberite vrsto dokumenta (Document Type Definition).</target>
+      <trans-unit id="tl_layout.minifyMarkup.1">
+        <source>Minify the HTML markup before it is sent to the browser.</source>
+        <target>Skrči HTML označevanje preden je poslano brskalniku.</target>
       </trans-unit>
       <trans-unit id="tl_layout.cssClass.0">
         <source>Body class</source>
@@ -254,6 +275,7 @@
       </trans-unit>
       <trans-unit id="tl_layout.cssClass.1">
         <source>Here you can add custom classes to the &amp;lt;body&amp;gt; tag.</source>
+        <target>Tu lahko vnesete prilagojene razrede CSS za HTML element &amp;lt;body&amp;gt;.</target>
       </trans-unit>
       <trans-unit id="tl_layout.viewport.0">
         <source>Viewport tag</source>
@@ -329,12 +351,6 @@
         <source>Here you can select one or more MooTools templates.</source>
         <target>Tu lahko izberete eno ali več MooTools predlog.</target>
       </trans-unit>
-      <trans-unit id="tl_layout.picturefill.0">
-        <source>Load the image polyfill</source>
-      </trans-unit>
-      <trans-unit id="tl_layout.picturefill.1">
-        <source>Include the image polyfill (&lt;em&gt;respimage.js&lt;/em&gt;) in the layout.</source>
-      </trans-unit>
       <trans-unit id="tl_layout.scripts.0">
         <source>JavaScript templates</source>
         <target>JavaScript predloge</target>
@@ -357,6 +373,7 @@
       </trans-unit>
       <trans-unit id="tl_layout.externalJs.1">
         <source>Here you can add external JS files from the file system.</source>
+        <target>Tu lahko vnesete zunanje datoteke JS iz datotečnega sistema.</target>
       </trans-unit>
       <trans-unit id="tl_layout.script.0">
         <source>Custom JavaScript code</source>
@@ -410,12 +427,13 @@
         <source>Web fonts</source>
         <target>Spletne pisave</target>
       </trans-unit>
+      <trans-unit id="tl_layout.image_legend">
+        <source>Image sizes</source>
+        <target>Velikosti slik</target>
+      </trans-unit>
       <trans-unit id="tl_layout.style_legend">
         <source>Style sheets</source>
         <target>Slogovne predloge</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.picturefill_legend">
-        <source>Responsive images</source>
       </trans-unit>
       <trans-unit id="tl_layout.modules_legend">
         <source>Front end modules</source>
@@ -447,6 +465,7 @@
       </trans-unit>
       <trans-unit id="tl_layout.j_fallback">
         <source>CDN with local fallback</source>
+        <target>CDN with local fallback</target>
       </trans-unit>
       <trans-unit id="tl_layout.mootools_legend">
         <source>MooTools</source>
@@ -462,6 +481,7 @@
       </trans-unit>
       <trans-unit id="tl_layout.moo_fallback">
         <source>CDN with local fallback</source>
+        <target>CDN with local fallback</target>
       </trans-unit>
       <trans-unit id="tl_layout.html5">
         <source>HTML</source>
@@ -479,65 +499,37 @@
         <source>Google Analytics</source>
         <target>Google Analytics</target>
       </trans-unit>
-      <trans-unit id="tl_layout.analytics_piwik">
-        <source>Piwik</source>
-        <target>Piwik</target>
+      <trans-unit id="tl_layout.analytics_matomo">
+        <source>Matomo</source>
+        <target>Matomo</target>
       </trans-unit>
       <trans-unit id="tl_layout.new.0">
-        <source>New layout</source>
-        <target>Nova postavitev</target>
+        <source>New</source>
+        <target>Nov</target>
       </trans-unit>
       <trans-unit id="tl_layout.new.1">
-        <source>Create a new layout</source>
+        <source>Create a new page layout</source>
         <target>Ustvari novo postavitev strani</target>
       </trans-unit>
-      <trans-unit id="tl_layout.show.0">
-        <source>Layout details</source>
-        <target>Podrobnosti postavitve</target>
+      <trans-unit id="tl_layout.show">
+        <source>Show the details of page layout ID %s</source>
+        <target>Prikaži podrobnosti postavitve strani %s</target>
       </trans-unit>
-      <trans-unit id="tl_layout.show.1">
-        <source>Show the details of layout ID %s</source>
-        <target>Prikaži podrobnosti postavitve z ID %s</target>
+      <trans-unit id="tl_layout.edit">
+        <source>Edit page layout ID %s</source>
+        <target>Uredi postavitev strani z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_layout.edit.0">
-        <source>Edit layout</source>
-        <target>Uredi postavitev</target>
+      <trans-unit id="tl_layout.copy">
+        <source>Duplicate page layout ID %s</source>
+        <target>Podvoji postavitev strani z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_layout.edit.1">
-        <source>Edit layout ID %s</source>
-        <target>Uredi postavitev z ID %s</target>
+      <trans-unit id="tl_layout.cut">
+        <source>Move page layout ID %s</source>
+        <target>Premakni postavitev strani z ID %s</target>
       </trans-unit>
-      <trans-unit id="tl_layout.cut.0">
-        <source>Move layout</source>
-        <target>Premakni postavitev</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.cut.1">
-        <source>Move layout ID %s</source>
-        <target>Premakni postavitev z ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.copy.0">
-        <source>Duplicate layout</source>
-        <target>Podvoji postavitev</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.copy.1">
-        <source>Duplicate layout ID %s</source>
-        <target>Podvoji postavitev z ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.delete.0">
-        <source>Delete layout</source>
-        <target>Izbriši postavitev</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.delete.1">
-        <source>Delete layout ID %s</source>
-        <target>Izbriši postavitev z ID %s</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.editheader.0">
-        <source>Edit theme</source>
-        <target>Uredi temo</target>
-      </trans-unit>
-      <trans-unit id="tl_layout.editheader.1">
-        <source>Edit the theme settings</source>
-        <target>Uredi nastavitve teme</target>
+      <trans-unit id="tl_layout.delete">
+        <source>Delete page layout ID %s</source>
+        <target>Izbriši postavitev strani z ID %s</target>
       </trans-unit>
     </body>
   </file>

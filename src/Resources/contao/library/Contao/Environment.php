@@ -25,7 +25,6 @@ namespace Contao;
  */
 class Environment
 {
-
 	/**
 	 * Object instance (Singleton)
 	 * @var Environment
@@ -36,7 +35,7 @@ class Environment
 	 * The SAPI name
 	 * @var string
 	 */
-	protected static $strSapi = PHP_SAPI;
+	protected static $strSapi = \PHP_SAPI;
 
 	/**
 	 * Cache
@@ -58,7 +57,7 @@ class Environment
 			return static::$arrCache[$strKey];
 		}
 
-		if (\in_array($strKey, get_class_methods(__CLASS__)))
+		if (\in_array($strKey, get_class_methods(self::class)))
 		{
 			static::$arrCache[$strKey] = static::$strKey();
 		}
@@ -98,7 +97,7 @@ class Environment
 	 */
 	protected static function scriptFilename()
 	{
-		return str_replace('//', '/', strtr((static::$strSapi == 'cgi' || static::$strSapi == 'isapi' || static::$strSapi == 'cgi-fcgi' || static::$strSapi == 'fpm-fcgi') && (@$_SERVER['ORIG_PATH_TRANSLATED'] ?: $_SERVER['PATH_TRANSLATED']) ? (@$_SERVER['ORIG_PATH_TRANSLATED'] ?: $_SERVER['PATH_TRANSLATED']) : (@$_SERVER['ORIG_SCRIPT_FILENAME'] ?: $_SERVER['SCRIPT_FILENAME']), '\\', '/'));
+		return str_replace('//', '/', strtr((static::$strSapi == 'cgi' || static::$strSapi == 'isapi' || static::$strSapi == 'cgi-fcgi' || static::$strSapi == 'fpm-fcgi') && ($_SERVER['ORIG_PATH_TRANSLATED'] ?? $_SERVER['PATH_TRANSLATED']) ? ($_SERVER['ORIG_PATH_TRANSLATED'] ?? $_SERVER['PATH_TRANSLATED']) : ($_SERVER['ORIG_SCRIPT_FILENAME'] ?? $_SERVER['SCRIPT_FILENAME']), '\\', '/'));
 	}
 
 	/**
@@ -112,7 +111,7 @@ class Environment
 
 		if ($request === null)
 		{
-			return @$_SERVER['ORIG_SCRIPT_NAME'] ?: $_SERVER['SCRIPT_NAME'];
+			return $_SERVER['ORIG_SCRIPT_NAME'] ?? $_SERVER['SCRIPT_NAME'];
 		}
 
 		return $request->getScriptName();
@@ -149,7 +148,7 @@ class Environment
 			return str_replace('//', '/', strtr(realpath($_SERVER['DOCUMENT_ROOT']), '\\', '/'));
 		}
 
-		if (substr($scriptFilename, 0, 1) == '/')
+		if (0 === strncmp($scriptFilename, '/', 1))
 		{
 			$strDocumentRoot = '/';
 		}
@@ -297,7 +296,7 @@ class Environment
 			}
 		}
 
-		return preg_replace('/[^A-Za-z0-9[\].:-]/', '', $host);
+		return preg_replace('/[^A-Za-z0-9[\].:_-]/', '', $host);
 	}
 
 	/**
@@ -307,7 +306,12 @@ class Environment
 	 */
 	protected static function httpXForwardedHost()
 	{
-		return preg_replace('/[^A-Za-z0-9[\].:-]/', '', @$_SERVER['HTTP_X_FORWARDED_HOST']);
+		if (!isset($_SERVER['HTTP_X_FORWARDED_HOST']))
+		{
+			return '';
+		}
+
+		return preg_replace('/[^A-Za-z0-9[\].:-]/', '', $_SERVER['HTTP_X_FORWARDED_HOST']);
 	}
 
 	/**
@@ -334,16 +338,7 @@ class Environment
 	 */
 	protected static function url()
 	{
-		$host = static::get('httpHost');
-		$xhost = static::get('httpXForwardedHost');
-
-		// SSL proxy
-		if ($xhost != '' && $xhost == Config::get('sslProxyDomain'))
-		{
-			return 'https://' .  $xhost . '/' . $host;
-		}
-
-		return (static::get('ssl') ? 'https://' : 'http://') . $host;
+		return (static::get('ssl') ? 'https://' : 'http://') . static::get('httpHost');
 	}
 
 	/**
@@ -482,7 +477,12 @@ class Environment
 	 */
 	protected static function isAjaxRequest()
 	{
-		return @$_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest';
+		if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']))
+		{
+			return false;
+		}
+
+		return $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest';
 	}
 
 	/**
@@ -536,7 +536,7 @@ class Environment
 		$return->class = $os . ' ' . $browser . ' ' . $engine;
 
 		// Add the version number if available
-		if ($version != '')
+		if ($version)
 		{
 			$return->class .= ' ' . $shorty . $version;
 		}
@@ -572,7 +572,7 @@ class Environment
 	 */
 	protected static function encodeRequestString($strRequest)
 	{
-		return preg_replace_callback('/[^A-Za-z0-9\-_.~&=+,\/?%\[\]]+/', function ($matches) { return rawurlencode($matches[0]); }, $strRequest);
+		return preg_replace_callback('/[^A-Za-z0-9\-_.~&=+,\/?%\[\]]+/', static function ($matches) { return rawurlencode($matches[0]); }, $strRequest);
 	}
 
 	/**
@@ -581,7 +581,9 @@ class Environment
 	 * @deprecated Deprecated since Contao 4.0, to be removed in Contao 5.0.
 	 *             The Environment class is now static.
 	 */
-	protected function __construct() {}
+	protected function __construct()
+	{
+	}
 
 	/**
 	 * Prevent cloning of the object (Singleton)
@@ -589,7 +591,9 @@ class Environment
 	 * @deprecated Deprecated since Contao 4.0, to be removed in Contao 5.0.
 	 *             The Environment class is now static.
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Return an environment variable
@@ -630,7 +634,7 @@ class Environment
 	 */
 	public static function getInstance()
 	{
-		@trigger_error('Using Environment::getInstance() has been deprecated and will no longer work in Contao 5.0. The Environment class is now static.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Environment::getInstance()" has been deprecated and will no longer work in Contao 5.0. The "Contao\Environment" class is now static.');
 
 		if (static::$objInstance === null)
 		{

@@ -31,15 +31,15 @@ class ModelArgumentResolver implements ArgumentValueResolverInterface
      */
     private $scopeMatcher;
 
+    /**
+     * @internal Do not inherit from this class; decorate the "contao.model_argument_resolver" service instead
+     */
     public function __construct(ContaoFramework $framework, ScopeMatcher $scopeMatcher)
     {
         $this->framework = $framework;
         $this->scopeMatcher = $scopeMatcher;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function supports(Request $request, ArgumentMetadata $argument): bool
     {
         if (!$this->scopeMatcher->isContaoRequest($request)) {
@@ -59,9 +59,6 @@ class ModelArgumentResolver implements ArgumentValueResolverInterface
         return true;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function resolve(Request $request, ArgumentMetadata $argument): \Generator
     {
         yield $this->fetchModel($request, $argument);
@@ -75,10 +72,17 @@ class ModelArgumentResolver implements ArgumentValueResolverInterface
             return null;
         }
 
+        $value = $request->attributes->get($name);
+        $type = $argument->getType();
+
+        if ($type && $value instanceof $type) {
+            return $value;
+        }
+
         /** @var Model $model */
         $model = $this->framework->getAdapter($argument->getType());
 
-        return $model->findByPk($request->attributes->getInt($name));
+        return $model->findByPk((int) $value);
     }
 
     /**

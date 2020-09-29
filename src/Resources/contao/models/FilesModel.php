@@ -10,6 +10,7 @@
 
 namespace Contao;
 
+use Contao\CoreBundle\File\Metadata;
 use Contao\Model\Collection;
 use Contao\Model\Registry;
 
@@ -30,10 +31,10 @@ use Contao\Model\Registry;
  * @property boolean $found
  * @property string  $name
  * @property boolean $protected
- * @property integer $importantPartX
- * @property integer $importantPartY
- * @property integer $importantPartWidth
- * @property integer $importantPartHeight
+ * @property float   $importantPartX
+ * @property float   $importantPartY
+ * @property float   $importantPartWidth
+ * @property float   $importantPartHeight
  * @property string  $meta
  *
  * @method static FilesModel|null findByIdOrAlias($val, array $opt=array())
@@ -88,7 +89,6 @@ use Contao\Model\Registry;
  */
 class FilesModel extends Model
 {
-
 	/**
 	 * Table name
 	 * @var string
@@ -254,11 +254,17 @@ class FilesModel extends Model
 	 */
 	public static function findByPath($path, array $arrOptions=array())
 	{
-		$rootDir = System::getContainer()->getParameter('kernel.project_dir');
+		$projectDir = System::getContainer()->getParameter('kernel.project_dir');
+		$uploadPath = System::getContainer()->getParameter('contao.upload_path');
 
-		if (strncmp($path, $rootDir . '/', \strlen($rootDir) + 1) === 0)
+		if (strncmp($path, $projectDir . '/', \strlen($projectDir) + 1) === 0)
 		{
-			$path = substr($path, \strlen($rootDir) + 1);
+			$path = substr($path, \strlen($projectDir) + 1);
+		}
+
+		if (strncmp($path, $uploadPath . '/', \strlen($uploadPath) + 1) !== 0)
+		{
+			return null;
 		}
 
 		return static::findOneBy('path', $path, $arrOptions);
@@ -362,7 +368,7 @@ class FilesModel extends Model
 		$t = static::$strTable;
 		$strPath = str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), $strPath);
 
-		return static::findBy(array("$t.type='file' AND $t.path LIKE ? AND $t.path NOT LIKE ?"), array($strPath.'/%', $strPath.'/%/%'), $arrOptions);
+		return static::findBy(array("$t.type='file' AND $t.path LIKE ? AND $t.path NOT LIKE ?"), array($strPath . '/%', $strPath . '/%/%'), $arrOptions);
 	}
 
 	/**
@@ -378,7 +384,7 @@ class FilesModel extends Model
 		$t = static::$strTable;
 		$strPath = str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), $strPath);
 
-		return static::findBy(array("$t.type='folder' AND $t.path LIKE ? AND $t.path NOT LIKE ?"), array($strPath.'/%', $strPath.'/%/%'), $arrOptions);
+		return static::findBy(array("$t.type='folder' AND $t.path LIKE ? AND $t.path NOT LIKE ?"), array($strPath . '/%', $strPath . '/%/%'), $arrOptions);
 	}
 
 	/**
@@ -386,7 +392,51 @@ class FilesModel extends Model
 	 *
 	 * @param integer $intType The query type (Model::INSERT or Model::UPDATE)
 	 */
-	protected function postSave($intType) {}
+	protected function postSave($intType)
+	{
+	}
+
+	/**
+	 * Return the meta fields defined in tl_files.meta.eval.metaFields
+	 */
+	public static function getMetaFields(): array
+	{
+		Controller::loadDataContainer('tl_files');
+
+		return array_keys($GLOBALS['TL_DCA']['tl_files']['fields']['meta']['eval']['metaFields'] ?? array());
+	}
+
+	/**
+	 * Return the metadata for this file
+	 *
+	 * Returns the metadata of the first matching locale or null if none was found.
+	 */
+	public function getMetadata(string ...$locales): ?Metadata
+	{
+		$dataCollection = StringUtil::deserialize($this->meta, true);
+
+		foreach ($locales as $locale)
+		{
+			if (!\is_array($data = $dataCollection[$locale] ?? null))
+			{
+				continue;
+			}
+
+			// Make sure we resolve insert tags pointing to files
+			if (isset($data[Metadata::VALUE_URL]))
+			{
+				$data[Metadata::VALUE_URL] = Controller::replaceInsertTags($data[Metadata::VALUE_URL]);
+			}
+
+			// Fill missing meta fields with empty values
+			$metaFields = self::getMetaFields();
+			$data = array_merge(array_combine($metaFields, array_fill(0, \count($metaFields), '')), $data);
+
+			return new Metadata($data);
+		}
+
+		return null;
+	}
 }
 
 class_alias(FilesModel::class, 'FilesModel');

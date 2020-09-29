@@ -14,6 +14,7 @@ use Contao\Database\Result;
 use Contao\Database\Statement;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Doctrine\DBAL\Exception\DriverException;
 
 /**
  * Handle the database communication
@@ -34,7 +35,6 @@ use Doctrine\DBAL\DriverManager;
  */
 class Database
 {
-
 	/**
 	 * Object instances (Singleton)
 	 * @var array
@@ -71,7 +71,7 @@ class Database
 		// Deprecated since Contao 4.0, to be removed in Contao 5.0
 		if (!empty($arrConfig))
 		{
-			@trigger_error('Passing a custom configuration to Database::__construct() has been deprecated and will no longer work in Contao 5.0.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.0', 'Passing a custom configuration to "Contao\Database::__construct()" has been deprecated and will no longer work in Contao 5.0.');
 
 			$arrParams = array
 			(
@@ -102,13 +102,15 @@ class Database
 	 */
 	public function __destruct()
 	{
-		unset($this->resConnection);
+		$this->resConnection = null;
 	}
 
 	/**
 	 * Prevent cloning of the object (Singleton)
 	 */
-	final public function __clone() {}
+	final public function __clone()
+	{
+	}
 
 	/**
 	 * Return an object property
@@ -277,7 +279,7 @@ class Database
 	 */
 	public function tableExists($strTable, $strDatabase=null, $blnNoCache=false)
 	{
-		if ($strTable == '')
+		if (!$strTable)
 		{
 			return false;
 		}
@@ -303,7 +305,7 @@ class Database
 			while ($objFields->next())
 			{
 				$arrTmp = array();
-				$arrChunks = preg_split('/(\([^\)]+\))/', $objFields->Type, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY);
+				$arrChunks = preg_split('/(\([^)]+\))/', $objFields->Type, -1, PREG_SPLIT_DELIM_CAPTURE|PREG_SPLIT_NO_EMPTY);
 
 				$arrTmp['name'] = $objFields->Field;
 				$arrTmp['type'] = $arrChunks[0];
@@ -334,7 +336,7 @@ class Database
 					$arrTmp['attributes'] = trim($arrChunks[2]);
 				}
 
-				if ($objFields->Key != '')
+				if ($objFields->Key)
 				{
 					switch ($objFields->Key)
 					{
@@ -372,7 +374,7 @@ class Database
 			{
 				$strColumnName = $objIndex->Column_name;
 
-				if ($objIndex->Sub_part != '')
+				if ($objIndex->Sub_part)
 				{
 					$strColumnName .= '(' . $objIndex->Sub_part . ')';
 				}
@@ -400,7 +402,7 @@ class Database
 	 */
 	public function fieldExists($strField, $strTable, $blnNoCache=false)
 	{
-		if ($strField == '' || $strTable == '')
+		if (!$strField || !$strTable)
 		{
 			return false;
 		}
@@ -427,7 +429,7 @@ class Database
 	 */
 	public function indexExists($strName, $strTable, $blnNoCache=false)
 	{
-		if ($strName == '' || $strTable == '')
+		if (!$strName || !$strTable)
 		{
 			return false;
 		}
@@ -537,7 +539,7 @@ class Database
 				foreach (array_reverse(array_keys($arrOrdered)) as $pid)
 				{
 					$pos = (int) array_search($pid, $arrReturn);
-					array_insert($arrReturn, $pos+1, $arrOrdered[$pid]);
+					ArrayUtil::arrayInsert($arrReturn, $pos+1, $arrOrdered[$pid]);
 				}
 
 				$arrReturn = $this->getChildRecords($arrChilds, $strTable, $blnSorting, $arrReturn, $strWhere);
@@ -644,6 +646,15 @@ class Database
 	 */
 	public function getSizeOf($strTable)
 	{
+		try
+		{
+			// MySQL 8 compatibility
+			$this->resConnection->executeQuery('SET @@SESSION.information_schema_stats_expiry = 0');
+		}
+		catch (DriverException $e)
+		{
+		}
+
 		$statement = $this->resConnection->executeQuery('SHOW TABLE STATUS LIKE ' . $this->resConnection->quote($strTable));
 		$status = $statement->fetch(\PDO::FETCH_ASSOC);
 
@@ -659,6 +670,15 @@ class Database
 	 */
 	public function getNextId($strTable)
 	{
+		try
+		{
+			// MySQL 8 compatibility
+			$this->resConnection->executeQuery('SET @@SESSION.information_schema_stats_expiry = 0');
+		}
+		catch (DriverException $e)
+		{
+		}
+
 		$statement = $this->resConnection->executeQuery('SHOW TABLE STATUS LIKE ' . $this->resConnection->quote($strTable));
 		$status = $statement->fetch(\PDO::FETCH_ASSOC);
 
@@ -726,7 +746,7 @@ class Database
 	 */
 	public function executeUncached($strQuery)
 	{
-		@trigger_error('Using Database::executeUncached() has been deprecated and will no longer work in Contao 5.0. Use Database::execute() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Database::executeUncached()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Database::execute()" instead.');
 
 		return $this->execute($strQuery);
 	}
@@ -743,7 +763,7 @@ class Database
 	 */
 	public function executeCached($strQuery)
 	{
-		@trigger_error('Using Database::executeCached() has been deprecated and will no longer work in Contao 5.0. Use Database::execute() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Database::executeCached()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Database::execute()" instead.');
 
 		return $this->execute($strQuery);
 	}

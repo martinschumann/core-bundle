@@ -21,7 +21,6 @@ use Symfony\Component\HttpFoundation\Session\Session;
  */
 class BackendConfirm extends Backend
 {
-
 	/**
 	 * Initialize the controller
 	 *
@@ -65,8 +64,8 @@ class BackendConfirm extends Backend
 		$objTemplate = new BackendTemplate('be_confirm');
 
 		// Prepare the URL
-		$url = preg_replace('/(\?|&)rt=[^&]*/', '', $objSession->get('INVALID_TOKEN_URL'));
-		$objTemplate->href = ampersand($url . ((strpos($url, '?') !== false) ? '&rt=' : '?rt=') . REQUEST_TOKEN);
+		$url = preg_replace('/[?&]rt=[^&]*/', '', $objSession->get('INVALID_TOKEN_URL'));
+		$objTemplate->href = StringUtil::ampersand($url . ((strpos($url, '?') !== false) ? '&rt=' : '?rt=') . REQUEST_TOKEN);
 
 		$vars = array();
 		list(, $request) = explode('?', $url, 2);
@@ -132,13 +131,16 @@ class BackendConfirm extends Backend
 		}
 		else
 		{
-			$arrInfo['act'] = $GLOBALS['TL_LANG'][$arrInfo['table']][$arrInfo['act']][0];
+			$arrInfo['act'] = \is_array($GLOBALS['TL_LANG'][$arrInfo['table']][$arrInfo['act']]) ? $GLOBALS['TL_LANG'][$arrInfo['table']][$arrInfo['act']][0] : $GLOBALS['TL_LANG'][$arrInfo['table']][$arrInfo['act']];
 		}
 
-		unset($arrInfo['pid']);
-		unset($arrInfo['clipboard']);
-		unset($arrInfo['ref']);
-		unset($arrInfo['mode']);
+		// Replace the ID wildcard
+		if (strpos($arrInfo['act'], '%s') !== false)
+		{
+			$arrInfo['act'] = sprintf($arrInfo['act'], $vars['id']);
+		}
+
+		unset($arrInfo['pid'], $arrInfo['clipboard'], $arrInfo['ref'], $arrInfo['mode']);
 
 		// Template variables
 		$objTemplate->confirm = true;
@@ -153,7 +155,7 @@ class BackendConfirm extends Backend
 		$objTemplate->language = $GLOBALS['TL_LANGUAGE'];
 		$objTemplate->h1 = $GLOBALS['TL_LANG']['MSC']['invalidToken'];
 		$objTemplate->title = StringUtil::specialchars($GLOBALS['TL_LANG']['MSC']['invalidToken']);
-		$objTemplate->host = Environment::get('host');
+		$objTemplate->host = Backend::getDecodedHostname();
 		$objTemplate->charset = Config::get('characterSet');
 
 		return $objTemplate->getResponse();

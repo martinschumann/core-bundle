@@ -35,7 +35,6 @@ namespace Contao;
  */
 class Folder extends System
 {
-
 	/**
 	 * Folder name
 	 * @var string
@@ -61,6 +60,12 @@ class Folder extends System
 	protected $arrPathinfo = array();
 
 	/**
+	 * Scan cache
+	 * @var array
+	 */
+	private static $arrScanCache = array();
+
+	/**
 	 * Check whether the folder exists
 	 *
 	 * @param string $strFolder The folder path
@@ -69,8 +74,6 @@ class Folder extends System
 	 */
 	public function __construct($strFolder)
 	{
-		// No parent::__construct() here
-
 		// Handle open_basedir restrictions
 		if ($strFolder == '.')
 		{
@@ -122,7 +125,6 @@ class Folder extends System
 		{
 			case 'hash':
 				return $this->getHash();
-				break;
 
 			case 'name':
 			case 'basename':
@@ -132,7 +134,6 @@ class Folder extends System
 				}
 
 				return $this->arrPathinfo['basename'];
-				break;
 
 			case 'dirname':
 			case 'filename':
@@ -142,32 +143,25 @@ class Folder extends System
 				}
 
 				return $this->arrPathinfo[$strKey];
-				break;
 
 			case 'path':
 			case 'value':
 				return $this->strFolder;
-				break;
 
 			case 'size':
 				return $this->getSize();
-				break;
 
 			case 'ctime':
 				return filectime($this->strRootDir . '/' . $this->strFolder);
-				break;
 
 			case 'mtime':
 				return filemtime($this->strRootDir . '/' . $this->strFolder);
-				break;
 
 			case 'atime':
 				return fileatime($this->strRootDir . '/' . $this->strFolder);
-				break;
 
 			default:
 				return parent::__get($strKey);
-				break;
 		}
 	}
 
@@ -178,7 +172,7 @@ class Folder extends System
 	 */
 	public function isEmpty()
 	{
-		return \count(scan($this->strRootDir . '/' . $this->strFolder, true)) < 1;
+		return \count(static::scan($this->strRootDir . '/' . $this->strFolder, true)) < 1;
 	}
 
 	/**
@@ -213,7 +207,7 @@ class Folder extends System
 	 */
 	public function clear()
 	{
-		@trigger_error('Using Folder->clear() has been deprecated and will no longer work in Contao 5.0. Use Folder->purge() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\Folder->clear()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Folder->purge()" instead.');
 
 		$this->purge();
 	}
@@ -374,8 +368,7 @@ class Folder extends System
 			}
 
 			$path = \dirname($path);
-		}
-		while ($path != '.');
+		} while ($path != '.');
 
 		return false;
 	}
@@ -429,8 +422,7 @@ class Folder extends System
 			}
 
 			$path = \dirname($path);
-		}
-		while ($path != '.');
+		} while ($path != '.');
 
 		return false;
 	}
@@ -459,7 +451,7 @@ class Folder extends System
 	 */
 	protected function getHash()
 	{
-		@trigger_error('Using Folder::getHash() has been deprecated and will no longer work in Contao 5.0. Use Dbafs::getFolderHash() instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.4', 'Using "Contao\Folder::getHash()" has been deprecated and will no longer work in Contao 5.0. Use "Contao\Dbafs::getFolderHash()" instead.');
 
 		$arrFiles = array();
 
@@ -468,7 +460,8 @@ class Folder extends System
 			new \RecursiveDirectoryIterator(
 				$this->strRootDir . '/' . $this->strFolder,
 				\FilesystemIterator::UNIX_PATHS|\FilesystemIterator::FOLLOW_SYMLINKS|\FilesystemIterator::SKIP_DOTS
-			), \RecursiveIteratorIterator::SELF_FIRST
+			),
+			\RecursiveIteratorIterator::SELF_FIRST
 		);
 
 		foreach ($it as $i)
@@ -491,7 +484,7 @@ class Folder extends System
 	{
 		$intSize = 0;
 
-		foreach (scan($this->strRootDir . '/' . $this->strFolder, true) as $strFile)
+		foreach (static::scan($this->strRootDir . '/' . $this->strFolder, true) as $strFile)
 		{
 			if (strncmp($strFile, '.', 1) === 0)
 			{
@@ -537,7 +530,7 @@ class Folder extends System
 		$matches = array();
 		$return = array('dirname'=>'', 'basename'=>'', 'extension'=>'', 'filename'=>'');
 
-		preg_match('%^^(.*?)[\\\\/]*([^/\\\\]*?)[\\\\/\.]*$%m', $this->strFolder, $matches);
+		preg_match('%^(.*?)[\\\\/]*([^/\\\\]*?)[\\\\/.]*$%m', $this->strFolder, $matches);
 
 		if (isset($matches[1]))
 		{
@@ -551,6 +544,52 @@ class Folder extends System
 		}
 
 		return $return;
+	}
+
+	/**
+	 * Scan a directory and return its files and folders as array
+	 *
+	 * @param string  $strFolder
+	 * @param boolean $blnUncached
+	 *
+	 * @return array
+	 */
+	public static function scan($strFolder, $blnUncached=false): array
+	{
+		static::$arrScanCache;
+
+		// Add a trailing slash
+		if (substr($strFolder, -1, 1) != '/')
+		{
+			$strFolder .= '/';
+		}
+
+		// Load from cache
+		if (!$blnUncached && isset($arrScanCache[$strFolder]))
+		{
+			return $arrScanCache[$strFolder];
+		}
+
+		$arrReturn = array();
+
+		// Scan directory
+		foreach (scandir($strFolder, SCANDIR_SORT_ASCENDING) as $strFile)
+		{
+			if ($strFile == '.' || $strFile == '..')
+			{
+				continue;
+			}
+
+			$arrReturn[] = $strFile;
+		}
+
+		// Cache the result
+		if (!$blnUncached)
+		{
+			$arrScanCache[$strFolder] = $arrReturn;
+		}
+
+		return $arrReturn;
 	}
 }
 

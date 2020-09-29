@@ -17,25 +17,32 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
  * Makes services public that we need to retrieve directly.
+ *
+ * @internal
  */
 class MakeServicesPublicPass implements CompilerPassInterface
 {
-    /**
-     * {@inheritdoc}
-     */
+    private const SERVICES = [
+        'assets.packages',
+        'fragment.handler',
+        'lexik_maintenance.driver.factory',
+        'monolog.logger.contao',
+        'security.authentication.trust_resolver',
+        'security.firewall.map',
+        'security.logout_url_generator',
+        'security.helper',
+        'uri_signer',
+    ];
+
+    private const ALIASES = [
+        'database_connection',
+        'mailer',
+        'security.encoder_factory',
+    ];
+
     public function process(ContainerBuilder $container): void
     {
-        static $services = [
-            'assets.packages',
-            'fragment.handler',
-            'lexik_maintenance.driver.factory',
-            'monolog.logger.contao',
-            'security.authentication.trust_resolver',
-            'security.firewall.map',
-            'security.logout_url_generator',
-        ];
-
-        foreach ($services as $service) {
+        foreach (self::SERVICES as $service) {
             if (!$container->hasDefinition($service)) {
                 continue;
             }
@@ -44,12 +51,7 @@ class MakeServicesPublicPass implements CompilerPassInterface
             $definition->setPublic(true);
         }
 
-        static $aliases = [
-            'database_connection',
-            'swiftmailer.mailer',
-        ];
-
-        foreach ($aliases as $alias) {
+        foreach (self::ALIASES as $alias) {
             if (!$container->hasAlias($alias)) {
                 continue;
             }

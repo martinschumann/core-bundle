@@ -1,7 +1,7 @@
 <?php
 
-/**
- * Contao Open Source CMS
+/*
+ * This file is part of Contao.
  *
  * (c) Leo Feyer
  *
@@ -25,8 +25,9 @@ class ModuleProxy extends Module
 	public function generate()
 	{
 		$reference = new FrontendModuleReference($this->objModel, $this->strColumn);
+		$request = System::getContainer()->get('request_stack')->getCurrentRequest();
 
-		if ('BE' === TL_MODE)
+		if ($request && System::getContainer()->get('contao.routing.scope_matcher')->isBackendRequest($request))
 		{
 			$reference->setBackendScope();
 		}

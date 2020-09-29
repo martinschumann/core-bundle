@@ -23,7 +23,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class FrontendIndex extends Frontend
 {
-
 	/**
 	 * Initialize the object
 	 */
@@ -43,6 +42,8 @@ class FrontendIndex extends Frontend
 	 */
 	public function run()
 	{
+		trigger_deprecation('contao/core-bundle', '4.10', 'Using "Contao\FrontendIndex::run()" has been deprecated and will no longer work in Contao 5.0. Use the Symfony routing instead.');
+
 		$pageId = $this->getPageIdFromUrl();
 		$objRootPage = null;
 
@@ -86,6 +87,7 @@ class FrontendIndex extends Frontend
 	 */
 	public function renderPage($pageModel)
 	{
+		/** @var PageModel $objPage */
 		global $objPage;
 
 		$objPage = $pageModel;
@@ -93,7 +95,7 @@ class FrontendIndex extends Frontend
 		// Check the URL and language of each page if there are multiple results
 		if ($objPage instanceof Collection && $objPage->count() > 1)
 		{
-			@trigger_error('Using FrontendIndex::renderPage() with a model collection has been deprecated and will no longer work Contao 5.0. Use the Symfony routing instead.', E_USER_DEPRECATED);
+			trigger_deprecation('contao/core-bundle', '4.7', 'Using "Contao\FrontendIndex::renderPage()" with a model collection has been deprecated and will no longer work Contao 5.0. Use the Symfony routing instead.');
 
 			$objNewPage = null;
 			$arrPages = array();
@@ -118,14 +120,7 @@ class FrontendIndex extends Frontend
 			$strHost = Environment::get('host');
 
 			// Look for a root page whose domain name matches the host name
-			if (isset($arrPages[$strHost]))
-			{
-				$arrLangs = $arrPages[$strHost];
-			}
-			else
-			{
-				$arrLangs = $arrPages['*'] ?: array(); // empty domain
-			}
+			$arrLangs = $arrPages[$strHost] ?? ($arrPages['*'] ?: array());
 
 			// Throw an exception if there are no matches (see #1522)
 			if (empty($arrLangs))
@@ -134,7 +129,7 @@ class FrontendIndex extends Frontend
 			}
 
 			// Use the first result (see #4872)
-			if (!Config::get('addLanguageToUrl'))
+			if (!System::getContainer()->getParameter('contao.legacy_routing') || !Config::get('addLanguageToUrl'))
 			{
 				$objNewPage = current($arrLangs);
 			}
@@ -168,6 +163,7 @@ class FrontendIndex extends Frontend
 		if ($objPage instanceof Collection && $objPage->count() > 1)
 		{
 			$this->log('More than one page matches ' . Environment::get('base') . Environment::get('request'), __METHOD__, TL_ERROR);
+
 			throw new \LogicException('More than one page found: ' . Environment::get('uri'));
 		}
 
@@ -178,12 +174,12 @@ class FrontendIndex extends Frontend
 		}
 
 		// If the page has an alias, it can no longer be called via ID (see #7661)
-		if ($objPage->alias != '')
+		if ($objPage->alias)
 		{
-			$language = Config::get('addLanguageToUrl') ? '[a-z]{2}(-[A-Z]{2})?/' : '';
-			$suffix = Config::get('urlSuffix') ? preg_quote(Config::get('urlSuffix'), '#') : '$';
+			$language = $objPage->urlPrefix ? preg_quote($objPage->urlPrefix . '/', '#') : '';
+			$suffix = preg_quote($objPage->urlSuffix, '#');
 
-			if (preg_match('#^' . $language . $objPage->id . '(' . $suffix . '|/)#', Environment::get('relativeRequest')))
+			if (preg_match('#^' . $language . $objPage->id . '(' . $suffix . '($|\?)|/)#', Environment::get('relativeRequest')))
 			{
 				throw new PageNotFoundException('Page not found: ' . Environment::get('uri'));
 			}
@@ -234,7 +230,7 @@ class FrontendIndex extends Frontend
 		}
 
 		// Set the admin e-mail address
-		if ($objPage->adminEmail != '')
+		if ($objPage->adminEmail)
 		{
 			list($GLOBALS['TL_ADMIN_NAME'], $GLOBALS['TL_ADMIN_EMAIL']) = StringUtil::splitFriendlyEmail($objPage->adminEmail);
 		}
@@ -251,20 +247,17 @@ class FrontendIndex extends Frontend
 		}
 
 		// Check wether the language matches the root page language
-		if (Config::get('addLanguageToUrl') && isset($_GET['language']) && Input::get('language') != $objPage->rootLanguage)
+		if (isset($_GET['language']) && Config::get('addLanguageToUrl') && Input::get('language') != $objPage->rootLanguage)
 		{
 			throw new PageNotFoundException('Page not found: ' . Environment::get('uri'));
 		}
 
 		// Check whether there are domain name restrictions
-		if ($objPage->domain != '')
+		if ($objPage->domain && $objPage->domain != Environment::get('host'))
 		{
-			// Load an error 404 page object
-			if ($objPage->domain != Environment::get('host'))
-			{
-				$this->log('Page ID "' . $objPage->id . '" was requested via "' . Environment::get('host') . '" but can only be accessed via "' . $objPage->domain . '" (' . Environment::get('base') . Environment::get('request') . ')', __METHOD__, TL_ERROR);
-				throw new PageNotFoundException('Page not found: ' . Environment::get('uri'));
-			}
+			$this->log('Page ID "' . $objPage->id . '" was requested via "' . Environment::get('host') . '" but can only be accessed via "' . $objPage->domain . '" (' . Environment::get('base') . Environment::get('request') . ')', __METHOD__, TL_ERROR);
+
+			throw new PageNotFoundException('Page not found: ' . Environment::get('uri'));
 		}
 
 		// Authenticate the user if the page is protected
@@ -289,6 +282,7 @@ class FrontendIndex extends Frontend
 			if (empty($arrGroups) || !\is_array($arrGroups) || !\is_array($this->User->groups) || !\count(array_intersect($arrGroups, $this->User->groups)))
 			{
 				$this->log('Page ID "' . $objPage->id . '" can only be accessed by groups "' . implode(', ', (array) $objPage->groups) . '" (current user groups: ' . implode(', ', $this->User->groups) . ')', __METHOD__, TL_ERROR);
+
 				throw new AccessDeniedException('Access denied: ' . Environment::get('uri'));
 			}
 		}
@@ -309,24 +303,22 @@ class FrontendIndex extends Frontend
 
 					/** @var PageError401 $objHandler */
 					return $objHandler->getResponse($objPage->rootId);
-					break;
 
 				case 'error_403':
 					$objHandler = new $GLOBALS['TL_PTY']['error_403']();
 
 					/** @var PageError403 $objHandler */
 					return $objHandler->getResponse($objPage->rootId);
-					break;
 
 				case 'error_404':
 					$objHandler = new $GLOBALS['TL_PTY']['error_404']();
 
 					/** @var PageError404 $objHandler */
 					return $objHandler->getResponse();
-					break;
 
 				default:
-					$objHandler = new $GLOBALS['TL_PTY'][$objPage->type]();
+					$pageType = $GLOBALS['TL_PTY'][$objPage->type] ?? PageRegular::class;
+					$objHandler = new $pageType();
 
 					// Backwards compatibility
 					if (!method_exists($objHandler, 'getResponse'))
@@ -349,7 +341,6 @@ class FrontendIndex extends Frontend
 
 					/** @var PageRegular $objHandler */
 					return $objHandler->getResponse($objPage, true);
-					break;
 			}
 		}
 
@@ -362,10 +353,7 @@ class FrontendIndex extends Frontend
 			$GLOBALS['TL_MOOTOOLS'] = $arrMootools;
 			$GLOBALS['TL_JQUERY'] = $arrJquery;
 
-			/** @var PageError404 $objHandler */
-			$objHandler = new $GLOBALS['TL_PTY']['error_404']();
-
-			return $objHandler->getResponse();
+			throw $e;
 		}
 	}
 
@@ -377,7 +365,7 @@ class FrontendIndex extends Frontend
 	 */
 	protected function outputFromCache()
 	{
-		@trigger_error('Using FrontendIndex::outputFromCache() has been deprecated and will no longer work in Contao 5.0. Use the kernel.request event instead.', E_USER_DEPRECATED);
+		trigger_deprecation('contao/core-bundle', '4.0', 'Using "Contao\FrontendIndex::outputFromCache()" has been deprecated and will no longer work in Contao 5.0. Use the "kernel.request" event instead.');
 	}
 }
 
